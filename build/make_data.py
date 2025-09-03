@@ -5,8 +5,10 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 
-SHP_PATH = "../choropleth/geodata/farm.shp"
-CSV_PATH = "../choropleth/datasets/soil-tests.csv"
+root = os.path.dirname(__file__)
+
+SHP_PATH = os.path.join(root, "geodata/farm.shp")
+CSV_PATH = os.path.join(root, "datasets/soil-tests.csv")
 OUT_DIR = "data"
 METRICS = ["OM", "P1", "K", "MG", "CA", "PH"]
 OPTIMAL = {"OM": (3.25, 5.2), "P1": (40, 90), "K": (245, 400),

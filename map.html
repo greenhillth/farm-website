@@ -4,6 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <base target="_parent" />
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
     <title>Farm Map</title>
 
     <!-- Leaflet (CDN) -->
@@ -19,10 +27,38 @@
       crossorigin=""
     ></script>
 
-    <!-- Tailwind (built file) -->
+    <!-- Tailwind (built) -->
     <link rel="stylesheet" href="assets/css/site.css" />
+
+    <!-- Minimal fallback so the map shows even if Tailwind isn't built -->
+    <style>
+      html,
+      body,
+      #app {
+        height: 100%;
+        margin: 0;
+      }
+      #map {
+        position: absolute;
+        inset: 0;
+      }
+      #app {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+      }
+      #sidebar {
+        padding: 12px;
+        border-right: 1px solid #1f2a37;
+        overflow: auto;
+      }
+      @media (max-width: 900px) {
+        #app {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
   </head>
-  <body class="bg-bg text-text">
+  <body class="bg-bg text-text font-sans">
     <div id="app" class="grid h-dvh grid-cols-[320px_1fr]">
       <aside
         id="sidebar"
@@ -30,17 +66,15 @@
       >
         <header class="flex items-center gap-2 mb-3">
           <img src="assets/img/logo.svg" alt="" class="size-7" />
-          <h1 class="text-lg font-semibold">Farm Mapping</h1>
+          <h1 class="text-lg font-bold">Greenhill Bros Farm</h1>
         </header>
 
-        <section class="space-y-3">
-          <label class="grid gap-1">
-            <span class="text-sm text-muted">Metric</span>
-            <select
-              id="metricSelect"
-              class="bg-transparent border border-border rounded px-2 py-1"
-            ></select>
-          </label>
+        <section class="space-y-4">
+          <nav aria-label="Layers">
+            <div class="text-sm text-muted mb-2 px-3">Layers</div>
+            <!-- buttons are injected here -->
+            <div id="metricNav" class="space-y-1"></div>
+          </nav>
 
           <label class="inline-flex items-center gap-2 text-sm">
             <input
@@ -52,7 +86,16 @@
             <span>Show field labels</span>
           </label>
 
-          <div id="legendPanel" class="mt-4 text-sm text-muted"></div>
+          <div class="flex gap-2 text-sm">
+            <button
+              id="fitBounds"
+              class="border border-border rounded px-2 py-1"
+            >
+              Fit to farm
+            </button>
+          </div>
+
+          <div id="legendPanel" class="mt-2 text-sm text-muted"></div>
         </section>
       </aside>
 
@@ -61,7 +104,7 @@
       </main>
     </div>
 
-    <!-- One module entrypoint that imports everything else -->
+    <!-- Single module entrypoint -->
     <script type="module" src="assets/js/app.js"></script>
   </body>
 </html>

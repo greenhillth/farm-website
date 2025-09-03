@@ -1,16 +1,22 @@
-window.APP_CONFIG = {
+const CONFIG = {
   data: {
     geojson: "data/farm.geojson",
     optima: "data/optima.json",
-    bounds: "data/bounds.json", // optional
+    bounds: "data/bounds.json",
   },
+
+  // ESRI basemap
   tiles: {
-    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: "&copy; OpenStreetMap contributors",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution:
+      "Imagery &copy; Esri, Maxar, Earthstar Geographics, and the GIS community",
+    maxZoom: 20,
   },
-  metrics: ["OM", "P1", "K", "MG", "CA", "PH"], // order in the dropdown
+
+  // keep the rest for later when we re-add shading
+  metrics: ["OM", "P1", "K", "MG", "CA", "PH"],
   defaultMetric: "OM",
-  // Color ramp (low → mid → high diverging)
   palette: ["#f7d200", "#b3e472", "#16a34a", "#89e472", "#b91c1c"],
   maxDevFactor: 1.5,
 };
+export default CONFIG;
