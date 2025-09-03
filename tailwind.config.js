@@ -1,6 +1,16 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./*.html", "./assets/js/**/*.js"],
+  safelist: [
+    "w-0",
+    "w-80",
+    "p-0",
+    "p-4",
+    "opacity-0",
+    "pointer-events-none",
+    "border-r",
+    "border-r-0",
+  ],
   theme: {
     extend: {
       colors: {

@@ -43,14 +43,15 @@
         inset: 0;
       }
       #app {
-        display: grid;
-        grid-template-columns: 320px 1fr;
+        height: 100%;
+        margin: 0;
       }
       #sidebar {
         padding: 12px;
         border-right: 1px solid #1f2a37;
         overflow: auto;
       }
+
       @media (max-width: 900px) {
         #app {
           grid-template-columns: 1fr;
@@ -59,21 +60,44 @@
     </style>
   </head>
   <body class="bg-bg text-text font-sans">
-    <div id="app" class="grid h-dvh grid-cols-[320px_1fr]">
+    <div id="app" class="flex h-dvh">
+      <!-- Sidebar -->
       <aside
         id="sidebar"
-        class="bg-panel border-r border-border p-4 overflow-auto"
+        class="bg-panel border-r border-border overflow-auto w-80 shrink-0 transition-[width,opacity,padding] duration-300 ease-in-out p-4"
       >
-        <header class="flex items-center gap-2 mb-3">
-          <img src="assets/img/logo.png" alt="" class="size-7" />
-          <h1 class="text-lg font-bold">Greenhill Bros Farm</h1>
+        <header class="flex items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2">
+            <img src="assets/img/logo.png" alt="" class="size-7" />
+            <h1 class="text-lg font-semibold">Greenhill Bros Farm</h1>
+          </div>
+          <!-- Collapse button -->
+          <button
+            id="collapseSidebar"
+            class="rounded-md px-2 py-1 text-sm text-muted hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-accent/40"
+            title="Collapse sidebar"
+            aria-label="Collapse sidebar"
+          >
+            <!-- heroicon chevron-left -->
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              class="size-5"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M12.78 15.53a.75.75 0 0 1-1.06 0l-4-4a.75.75 0 0 1 0-1.06l4-4a.75.75 0 1 1 1.06 1.06L9.31 10l3.47 3.47a.75.75 0 0 1 0 1.06Z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
         </header>
 
-        <section class="space-y-4">
-          <nav aria-label="Soil Data">
-            <div class="text-sm text-muted mb-2 px-1">Soil Data</div>
-            <!-- buttons are injected here -->
-            <div id="metricNav" class="space-y-2"></div>
+        <section class="space-y-4 px-1">
+          <nav aria-label="Layers">
+            <div class="text-sm text-muted mb-2 px-3">Soil Data</div>
+            <div id="metricNav" class="space-y-1"></div>
           </nav>
 
           <label class="inline-flex items-center gap-2 text-sm">
@@ -99,12 +123,33 @@
         </section>
       </aside>
 
-      <main id="main" class="relative">
+      <!-- Map area -->
+      <main id="main" class="relative flex-1 min-w-0">
         <div id="map" class="absolute inset-0"></div>
+
+        <!-- Floating reopen button (shows when sidebar is collapsed) -->
+        <button
+          id="openSidebar"
+          class="hidden absolute top-3 left-3 z-50 rounded-full border border-border bg-panel/80 backdrop-blur px-3 py-2 text-sm text-muted hover:text-white hover:bg-panel/95 focus:outline-none focus:ring-2 focus:ring-accent/40"
+          title="Open sidebar"
+          aria-label="Open sidebar"
+          aria-expanded="false"
+        >
+          <!-- heroicon bars-3 -->
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            class="size-5"
+          >
+            <path
+              d="M3.75 5.25h16.5v1.5H3.75zM3.75 11.25h16.5v1.5H3.75zM3.75 17.25h16.5v1.5H3.75z"
+            />
+          </svg>
+        </button>
       </main>
     </div>
 
-    <!-- Single module entrypoint -->
     <script type="module" src="assets/js/app.js"></script>
   </body>
 </html>
