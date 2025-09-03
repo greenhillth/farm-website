@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <base target="_parent" />
+    <title>Farm Map</title>
+
+    <!-- Leaflet (CDN) -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="assets/css/base.css" />
+    <link rel="stylesheet" href="assets/css/layout.css" />
+  </head>
+  <body>
+    <div id="app">
+      <aside id="sidebar">
+        <header class="brand">
+          <img src="assets/img/logo.svg" alt="" />
+          <h1>Farm Mapping</h1>
+        </header>
+
+        <section class="controls">
+          <label class="field">
+            <span>Metric</span>
+            <select id="metricSelect"></select>
+          </label>
+
+          <label class="field">
+            <input type="checkbox" id="showLabels" checked />
+            <span>Show field labels</span>
+          </label>
+
+          <div id="legendPanel" class="legend"></div>
+        </section>
+      </aside>
+
+      <main id="main">
+        <div id="map"></div>
+      </main>
+    </div>
+
+    <!-- App scripts -->
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/layers.js"></script>
+    <script src="assets/js/ui.js"></script>
+    <script src="assets/js/app.js"></script>
+  </body>
+</html>

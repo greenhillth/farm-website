@@ -1,0 +1,40 @@
+#app {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  height: 100%;
+}
+#sidebar {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 16px 14px;
+  overflow: auto;
+}
+#sidebar .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+#sidebar .brand img {
+  width: 28px;
+  height: 28px;
+}
+#main {
+  position: relative;
+}
+#map {
+  position: absolute;
+  inset: 0;
+}
+@media (max-width: 900px) {
+  #app {
+    grid-template-columns: 1fr;
+  }
+  #sidebar {
+    grid-row: 1;
+  }
+  #main {
+    grid-row: 2;
+    height: 60vh;
+  }
+}
