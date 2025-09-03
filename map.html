@@ -19,43 +19,49 @@
       crossorigin=""
     ></script>
 
-    <!-- Styles -->
-    <link rel="stylesheet" href="assets/css/base.css" />
-    <link rel="stylesheet" href="assets/css/layout.css" />
+    <!-- Tailwind (built file) -->
+    <link rel="stylesheet" href="assets/css/site.css" />
   </head>
-  <body>
-    <div id="app">
-      <aside id="sidebar">
-        <header class="brand">
-          <img src="assets/img/logo.svg" alt="" />
-          <h1>Farm Mapping</h1>
+  <body class="bg-bg text-text">
+    <div id="app" class="grid h-dvh grid-cols-[320px_1fr]">
+      <aside
+        id="sidebar"
+        class="bg-panel border-r border-border p-4 overflow-auto"
+      >
+        <header class="flex items-center gap-2 mb-3">
+          <img src="assets/img/logo.svg" alt="" class="size-7" />
+          <h1 class="text-lg font-semibold">Farm Mapping</h1>
         </header>
 
-        <section class="controls">
-          <label class="field">
-            <span>Metric</span>
-            <select id="metricSelect"></select>
+        <section class="space-y-3">
+          <label class="grid gap-1">
+            <span class="text-sm text-muted">Metric</span>
+            <select
+              id="metricSelect"
+              class="bg-transparent border border-border rounded px-2 py-1"
+            ></select>
           </label>
 
-          <label class="field">
-            <input type="checkbox" id="showLabels" checked />
+          <label class="inline-flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              id="showLabels"
+              class="accent-accent"
+              checked
+            />
             <span>Show field labels</span>
           </label>
 
-          <div id="legendPanel" class="legend"></div>
+          <div id="legendPanel" class="mt-4 text-sm text-muted"></div>
         </section>
       </aside>
 
-      <main id="main">
-        <div id="map"></div>
+      <main id="main" class="relative">
+        <div id="map" class="absolute inset-0"></div>
       </main>
     </div>
 
-    <!-- App scripts -->
-    <script src="assets/js/config.js"></script>
-    <script src="assets/js/utils.js"></script>
-    <script src="assets/js/layers.js"></script>
-    <script src="assets/js/ui.js"></script>
-    <script src="assets/js/app.js"></script>
+    <!-- One module entrypoint that imports everything else -->
+    <script type="module" src="assets/js/app.js"></script>
   </body>
 </html>
