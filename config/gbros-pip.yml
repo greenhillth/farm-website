@@ -1,0 +1,21 @@
+name: bra
+channels:
+  - defaults
+dependencies:
+  - pyodbc
+  - numpy
+  - pandas
+  - ipykernel
+  - matplotlib
+  - ipywidgets
+  - openpyxl
+  - statsmodels
+  - seaborn
+  - folium
+  - geopandas
+  - tensorflow
+  - python
+  - opencv
+  - rapidfuzz
+  - unidecode
+prefix: /home/tgreenhill/miniconda3/envs/bra
