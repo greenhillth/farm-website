@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import L from 'leaflet';
+  import 'leaflet/dist/leaflet.css';
   import CONFIG from '$lib/config';
   import { buildMetricLayer } from '$lib/layers';
   import { renderMetricNav, setActiveMetric, renderLegend } from '$lib/ui';
@@ -26,13 +27,13 @@
 
     // Active metric
     let active = CONFIG.defaultMetric;
-    let { layer, legend } = buildMetricLayer(geojson, active, optima, CONFIG);
+    let { layer, legend } = buildMetricLayer(geojson, active, optima, CONFIG, L);
     layer.addTo(map);
     renderLegend(legendPanel, legend);
     renderMetricNav(metricNav, CONFIG.metrics, active, (m) => {
       active = m;
       map.removeLayer(layer);
-      const result = buildMetricLayer(geojson, active, optima, CONFIG);
+      const result = buildMetricLayer(geojson, active, optima, CONFIG, L);
       layer = result.layer;
       legend = result.legend;
       layer.addTo(map);

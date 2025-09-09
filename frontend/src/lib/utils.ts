@@ -16,3 +16,4 @@ export function $(
 export function fmt(n: unknown): string {
   return Number.isFinite(n) ? String(Math.round(Number(n))) : "–";
 }
+

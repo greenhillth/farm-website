@@ -68,3 +68,4 @@ export function renderLegend(
       <span>${fmt(legend.ticks.vmax)}</span>
     </div>`;
 }
+

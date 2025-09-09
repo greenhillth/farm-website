@@ -1,11 +1,12 @@
-import { linearGradientCSS } from "./utils";
+import { linearGradientCSS } from './utils';
 
 /** Build a colored GeoJSON layer + legend for a given metric. */
 export function buildMetricLayer(
   geojson: any,
   metric: string,
   optima: Record<string, [number, number]>,
-  cfg: { palette: string[]; maxDevFactor: number }
+  cfg: { palette: string[]; maxDevFactor: number },
+  L: typeof import('leaflet')
 ): {
   layer: any;
   legend: { title: string; gradientCSS: string; ticks: Record<string, number> };
@@ -62,7 +63,7 @@ export function buildMetricLayer(
     return lerpColor(cfg.palette[idx], cfg.palette[idx + 1], localU);
   }
 
-  // Leaflet style function (kept as vanilla JS; Svelte page will import 'leaflet' and pass L down)
+  // Leaflet style function
   // @ts-ignore
   const layer = L.geoJSON(geojson, {
     style: (f: any) => {

@@ -1,3 +1,4 @@
+@import 'tailwindcss';
 /* Tailwind entry (replaces tw.css) */
 @tailwind base;
 @tailwind components;
@@ -5,102 +6,107 @@
 
 /* Keep Leaflet typography consistent if you use it */
 .leaflet-container {
-  font: inherit;
+	font: inherit;
 }
 
 /* === Your base.css → variables & resets === */
 /* (exact values kept) */
 :root {
-  --bg: 11 17 23; /* #0b1117 */
-  --panel: 15 23 34; /* #0f1722 */
-  --text: 230 237 243; /* #e6edf3 */
-  --muted: 159 179 200; /* #9fb3c8 */
-  --accent: 114 228 156; /* #72e49c */
-  --border: 31 42 55; /* #1f2a37 */
+	--bg: 11 17 23; /* #0b1117 */
+	--panel: 15 23 34; /* #0f1722 */
+	--text: 230 237 243; /* #e6edf3 */
+	--muted: 159 179 200; /* #9fb3c8 */
+	--accent: 114 228 156; /* #72e49c */
+	--border: 31 42 55; /* #1f2a37 */
 }
 * {
-  box-sizing: border-box;
+	box-sizing: border-box;
 }
 html,
 body,
 #app {
-  height: 100%;
-  margin: 0;
+	height: 100%;
+	margin: 0;
 }
 body {
-  font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  color: rgb(var(--text));
-  background: rgb(var(--bg));
+	font:
+		14px/1.4 system-ui,
+		-apple-system,
+		Segoe UI,
+		Roboto,
+		sans-serif;
+	color: rgb(var(--text));
+	background: rgb(var(--bg));
 }
 a {
-  color: rgb(var(--accent));
-  text-decoration: none;
+	color: rgb(var(--accent));
+	text-decoration: none;
 }
 label.field {
-  display: grid;
-  gap: 6px;
-  margin: 12px 0;
+	display: grid;
+	gap: 6px;
+	margin: 12px 0;
 }
 select,
-input[type="checkbox"] {
-  accent-color: rgb(var(--accent));
+input[type='checkbox'] {
+	accent-color: rgb(var(--accent));
 }
 .legend {
-  margin-top: 16px;
+	margin-top: 16px;
 }
 .legend .ramp {
-  height: 12px;
-  border: 1px solid rgb(var(--border));
+	height: 12px;
+	border: 1px solid rgb(var(--border));
 }
 .legend .ticks {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: rgb(var(--muted));
-  margin-top: 6px;
+	display: flex;
+	justify-content: space-between;
+	font-size: 12px;
+	color: rgb(var(--muted));
+	margin-top: 6px;
 }
 /* (source: base.css) */ /* :contentReference[oaicite:4]{index=4} */
 
 /* === Your layout.css → sidebar + map layout === */
 #app {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  height: 100%;
+	display: grid;
+	grid-template-columns: 320px 1fr;
+	height: 100%;
 }
 #sidebar {
-  background: rgb(var(--panel));
-  border-right: 1px solid rgb(var(--border));
-  padding: 16px 14px;
-  overflow: auto;
+	background: rgb(var(--panel));
+	border-right: 1px solid rgb(var(--border));
+	padding: 16px 14px;
+	overflow: auto;
 }
 #sidebar .brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 12px;
 }
 #sidebar .brand img {
-  width: 28px;
-  height: 28px;
+	width: 28px;
+	height: 28px;
 }
 #main {
-  position: relative;
+	position: relative;
 }
 #map {
-  position: absolute;
-  inset: 0;
+	position: absolute;
+	inset: 0;
 }
 @media (max-width: 900px) {
-  #app {
-    grid-template-columns: 1fr;
-  }
-  #sidebar {
-    grid-row: 1;
-  }
-  #main {
-    grid-row: 2;
-    height: 60vh;
-  }
+	#app {
+		grid-template-columns: 1fr;
+	}
+	#sidebar {
+		grid-row: 1;
+	}
+	#main {
+		grid-row: 2;
+		height: 60vh;
+	}
 }
 /* (source: layout.css) */ /* :contentReference[oaicite:5]{index=5} */
 

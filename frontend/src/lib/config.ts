@@ -16,3 +16,4 @@ const CONFIG = {
   maxDevFactor: 1.5,
 };
 export default CONFIG;
+
