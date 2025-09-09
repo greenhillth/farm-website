@@ -1,0 +1,8 @@
+{
+	"/": [],
+	"/alex": [],
+	"/map": [
+		"src/routes/map/+page.ts"
+	],
+	"/weather": []
+}
