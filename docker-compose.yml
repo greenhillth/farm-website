@@ -1,29 +1,12 @@
-version: "3.9"
 services:
-  api:
-    build: ./backend
-    container_name: farm-api
-    # Keep API private: no host port published
-    expose:
-      - "8000"
-    environment:
-      - UVICORN_WORKERS=2
-      # If you keep same-origin requests through /api, you can disable CORS entirely.
-      - DISABLE_CORS=true
-    volumes:
-      - ./backend/app:/app/app
-      - ./data:/app/data:ro
-    restart: unless-stopped
-
   web:
-    build: ./frontend
+    build: .
     container_name: farm-web
     environment:
       - NODE_ENV=production
       - PUBLIC_API_BASE=/api # Frontend calls same-origin
     expose:
-      - "3000"
-    depends_on: [api]
+      - '3000'
     restart: unless-stopped
 
   cloudflared:
@@ -34,4 +17,4 @@ services:
     command: tunnel --no-autoupdate run
     volumes:
       - ./cloudflared:/etc/cloudflared:ro
-    depends_on: [web, api]
+    depends_on: [web]
