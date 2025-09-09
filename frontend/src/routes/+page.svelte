@@ -22,13 +22,21 @@
       badge: 'Featured'
     },
     {
-      href: '/alex',
-      title: 'Media Lab',
-      description: 'Video + image experiments for the site.',
-      tags: ['media'],
-      image: '/img/tom-and-alex.jpg',
-      imageAlt: 'Tom and Alex'
+      href: '/weather',
+      title: 'Weather Station',
+      description: 'Live outdoor/indoor, wind, rainfall, solar and more.',
+      tags: ['weather'],
+      image: null,
+      badge: 'Dashboard'
     },
+    // {
+    //   href: '/alex',
+    //   title: 'Media Lab',
+    //   description: 'Video + image experiments for the site.',
+    //   tags: ['media'],
+    //   image: '/img/tom-and-alex.jpg',
+    //   imageAlt: 'Tom and Alex'
+    // },
     {
       href: '/map?metric=OM',
       title: 'Soil Organic Matter',

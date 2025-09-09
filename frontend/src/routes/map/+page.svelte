@@ -105,5 +105,11 @@
       <!-- bars icon -->
       <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="size-5" viewBox="0 0 24 24"><path d="M3.75 5.25h16.5v1.5H3.75zM3.75 11.25h16.5v1.5H3.75zM3.75 17.25h16.5v1.5H3.75z"/></svg>
     </button>
+    <a href="/" id="goHome" aria-label="Back to home"
+      class="absolute top-3 right-3 z-[1000] rounded-full border border-border bg-panel/95 backdrop-blur px-3 py-2 text-sm text-white hover:bg-panel focus:outline-none focus:ring-2 focus:ring-accent/40 shadow-md flex items-center gap-2">
+      <!-- home icon -->
+      <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="size-5" viewBox="0 0 24 24"><path d="M12 3.172 3 10.5V21h6v-6h6v6h6V10.5L12 3.172z"/></svg>
+      <span class="hidden sm:inline">Home</span>
+    </a>
   </main>
 </div>
