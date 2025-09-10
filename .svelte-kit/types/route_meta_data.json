@@ -1,8 +1,26 @@
 {
 	"/": [],
 	"/alex": [],
+	"/api/mqss/weather": [
+		"src/routes/api/mqss/weather/+server.ts"
+	],
+	"/api/mqss/weather/[metric]": [
+		"src/routes/api/mqss/weather/[metric]/+server.ts"
+	],
 	"/map": [
 		"src/routes/map/+page.ts"
 	],
-	"/weather": []
+	"/paddock": [
+		"src/routes/paddock/+page.ts"
+	],
+	"/paddock/[id]": [
+		"src/routes/paddock/[id]/+page.ts"
+	],
+	"/upload": [],
+	"/weather": [
+		"src/routes/weather/+page.ts"
+	],
+	"/weather/[metric]": [
+		"src/routes/weather/[metric]/+page.ts"
+	]
 }

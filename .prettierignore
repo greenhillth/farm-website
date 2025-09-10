@@ -6,6 +6,7 @@ bun.lock
 bun.lockb
 
 # Miscellaneous
+.svelte-kit/
 /static/
 .svelte-kit/
 node_modules/
