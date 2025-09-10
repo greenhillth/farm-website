@@ -1,12 +1,19 @@
 import type { Weather } from './mockWeather';
+import { getMockWeather } from './mockWeather';
 
 /**
  * Fetch full weather payload from the mock MQSS endpoint.
  */
 export async function fetchWeather(fetchFn: typeof fetch = fetch): Promise<Weather> {
-  const res = await fetchFn('/api/mqss/weather');
-  const data = (await res.json()) as Weather;
-  return data;
+  try {
+    const res = await fetchFn('/api/mqss/weather');
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const data = (await res.json()) as Weather;
+    return data;
+  } catch (_) {
+    // Fallback placeholder when service is unavailable
+    return getMockWeather();
+  }
 }
 
 /**

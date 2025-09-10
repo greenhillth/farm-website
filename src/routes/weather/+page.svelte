@@ -2,9 +2,11 @@
   import Panel from '$lib/components/Panel.svelte';
   import { onMount } from 'svelte';
   import type { Weather } from '$lib/mockWeather';
+  import { fetchWeather } from '$lib/mqss';
 
   export let data: { w: Weather };
-  let w: Weather & { updatedAt: Date } = {
+  // updatedAt comes as a string from the API; coerce to Date with a proper type
+  let w: Omit<Weather, 'updatedAt'> & { updatedAt: Date } = {
     ...data.w,
     updatedAt: new Date(data.w.updatedAt)
   };
@@ -18,11 +20,27 @@
   }
 
   let secondsAgo = 0;
+  let offline = false;
   onMount(() => {
-    const id = setInterval(() => {
+    const tick = setInterval(() => {
       secondsAgo = Math.floor((now().getTime() - w.updatedAt.getTime()) / 1000);
     }, 1000);
-    return () => clearInterval(id);
+
+    // Poll for latest weather; gracefully fall back if unavailable
+    const poll = setInterval(async () => {
+      try {
+        const latest = await fetchWeather();
+        w = { ...latest, updatedAt: new Date(latest.updatedAt) } as typeof w;
+        offline = false;
+      } catch (_) {
+        offline = true;
+      }
+    }, 15000);
+
+    return () => {
+      clearInterval(tick);
+      clearInterval(poll);
+    };
   });
 
   $: dayLabel = 'Daily';
@@ -33,7 +51,13 @@
 
 <header class="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
   <a href="/" class="text-sm text-muted hover:text-white">&larr; Back to home</a>
-  <div class="text-xs text-muted">Reported {secondsAgo}s ago</div>
+  <div class="flex items-center gap-3 text-xs">
+    <div class="text-muted">Reported {secondsAgo}s ago</div>
+    <span class={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 border ${offline ? 'border-red-400/40 text-red-300 bg-red-400/10' : 'border-green-400/40 text-green-300 bg-green-400/10'}`}>
+      <span class={`size-1.5 rounded-full ${offline ? 'bg-red-400' : 'bg-green-400'}`}></span>
+      {offline ? 'Offline' : 'Live'}
+    </span>
+  </div>
 </header>
 
 <main class="container mx-auto px-4 pb-8 space-y-5">

@@ -22,6 +22,22 @@
       badge: 'Featured'
     },
     {
+      href: '/paddocks',
+      title: 'Paddock Manager',
+      description: 'Manage paddocks, notes, and field tasks.',
+      tags: ['paddocks'],
+      image: null,
+      badge: 'New'
+    },
+    {
+      href: '/timesheet',
+      title: 'Timesheets',
+      description: 'Log hours and activities across the farm.',
+      tags: ['timesheet'],
+      image: null,
+      badge: 'New'
+    },
+    {
       href: '/weather',
       title: 'Weather Station',
       description: 'Live outdoor/indoor, wind, rainfall, solar and more.',

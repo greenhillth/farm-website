@@ -27,17 +27,25 @@ export {};
 
 declare module "$app/types" {
 	export interface AppTypes {
-		RouteId(): "/" | "/alex" | "/map" | "/weather";
+		RouteId(): "/" | "/alex" | "/api" | "/api/mqss" | "/api/mqss/weather" | "/api/mqss/weather/[metric]" | "/map" | "/paddocks" | "/timesheet" | "/weather" | "/weather/[metric]";
 		RouteParams(): {
-			
+			"/api/mqss/weather/[metric]": { metric: string };
+			"/weather/[metric]": { metric: string }
 		};
 		LayoutParams(): {
-			"/": Record<string, never>;
+			"/": { metric?: string };
 			"/alex": Record<string, never>;
+			"/api": { metric?: string };
+			"/api/mqss": { metric?: string };
+			"/api/mqss/weather": { metric?: string };
+			"/api/mqss/weather/[metric]": { metric: string };
 			"/map": Record<string, never>;
-			"/weather": Record<string, never>
+			"/paddocks": Record<string, never>;
+			"/timesheet": Record<string, never>;
+			"/weather": { metric?: string };
+			"/weather/[metric]": { metric: string }
 		};
-		Pathname(): "/" | "/alex" | "/alex/" | "/map" | "/map/" | "/weather" | "/weather/";
+		Pathname(): "/" | "/alex" | "/alex/" | "/api" | "/api/" | "/api/mqss" | "/api/mqss/" | "/api/mqss/weather" | "/api/mqss/weather/" | `/api/mqss/weather/${string}` & {} | `/api/mqss/weather/${string}/` & {} | "/map" | "/map/" | "/paddocks" | "/paddocks/" | "/timesheet" | "/timesheet/" | "/weather" | "/weather/" | `/weather/${string}` & {} | `/weather/${string}/` & {};
 		ResolvedPathname(): `${"" | `/${string}`}${ReturnType<AppTypes['Pathname']>}`;
 		Asset(): "/img/logo.png" | "/img/tom-and-alex.jpg" | "/robots.txt" | "/video/pysn.mp4" | string & {};
 	}
