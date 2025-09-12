@@ -21,22 +21,33 @@ export const GET: RequestHandler = () => {
 		.prepare('SELECT id, name, farm, year, OM, P1, K, MG, CA, PH, geometry FROM paddock')
 		.all() as PaddockRow[];
 
-	const features = rows.map((r) => ({
-		type: 'Feature',
-		geometry: r.geometry ? JSON.parse(r.geometry) : null,
-		properties: {
-			fieldID: r.id,
-			fieldName: r.name,
-			FARM: r.farm,
-			ADSYEAR: r.year,
-			OM: r.OM,
-			P1: r.P1,
-			K: r.K,
-			MG: r.MG,
-			CA: r.CA,
-			PH: r.PH
+	const features = rows.map((r) => {
+		let geometry = null;
+		if (r.geometry) {
+			try {
+				geometry = JSON.parse(r.geometry);
+			} catch (e) {
+				geometry = null;
+				// Optionally log the error here if desired
+			}
 		}
-	}));
+		return {
+			type: 'Feature',
+			geometry,
+			properties: {
+				fieldID: r.id,
+				fieldName: r.name,
+				FARM: r.farm,
+				ADSYEAR: r.year,
+				OM: r.OM,
+				P1: r.P1,
+				K: r.K,
+				MG: r.MG,
+				CA: r.CA,
+				PH: r.PH
+			}
+		};
+	});
 
 	return json({
 		type: 'FeatureCollection',
