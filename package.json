@@ -20,6 +20,9 @@
 		"@sveltejs/kit": "^2.22.0",
 		"@sveltejs/vite-plugin-svelte": "^6.0.0",
 		"@tailwindcss/vite": "^4.0.0",
+		"@types/better-sqlite3": "^7.6.13",
+		"@types/leaflet": "^1.9.20",
+		"@types/node": "^24.3.1",
 		"eslint": "^9.18.0",
 		"eslint-config-prettier": "^10.0.1",
 		"eslint-plugin-svelte": "^3.0.0",
@@ -35,6 +38,7 @@
 		"vite": "^7.0.4"
 	},
 	"dependencies": {
+		"better-sqlite3": "^9.6.0",
 		"leaflet": "^1.9.4"
 	}
 }
