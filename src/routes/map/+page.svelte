@@ -10,10 +10,19 @@
   let sidebar: HTMLElement;
   let metricNav: HTMLElement;
   let legendPanel: HTMLElement;
+  let collapsed = false;
+  let map: L.Map;
+
+  function invalidateSoon(delay = 320) {
+    // Wait until CSS transition completes, then tell Leaflet to recalc size
+    setTimeout(() => {
+      map?.invalidateSize();
+    }, delay);
+  }
 
   onMount(async () => {
     // Init map
-    const map = L.map(mapDiv).setView([-41.2, 146.4], 14); // start coords
+    map = L.map(mapDiv).setView([-41.2, 146.4], 14); // start coords
     L.tileLayer(CONFIG.tiles.url, CONFIG.tiles).addTo(map);
 
     // Load data
@@ -47,38 +56,23 @@
       if (bounds) map.fitBounds(bounds);
     });
 
-    // Sidebar toggle
-    const collapseBtn = document.getElementById('collapseSidebar');
-    const openBtn = document.getElementById('openSidebar');
-    collapseBtn?.addEventListener('click', () => {
-      sidebar.style.width = '0';
-      sidebar.style.padding = '0';
-      sidebar.style.opacity = '0';
-      openBtn?.classList.remove('hidden');
-    });
-    openBtn?.addEventListener('click', () => {
-      sidebar.style.width = '20rem';
-      sidebar.style.padding = '1rem';
-      sidebar.style.opacity = '1';
-      openBtn?.classList.add('hidden');
-    });
+    // Ensure first render has correct size
+    invalidateSoon(50);
   });
 </script>
 
-<div id="app" class="flex h-dvh">
+<div id="app" class="relative flex h-dvh">
   <!-- Sidebar -->
   <aside bind:this={sidebar} id="sidebar"
-    class="bg-panel border-r border-border overflow-auto w-80 shrink-0 transition-[width,opacity,padding] duration-300 ease-in-out p-4">
+    class={`relative bg-panel border-r border-border transition-[width,opacity,padding] duration-300 ease-in-out flex-none ${collapsed ? 'w-0 p-0 opacity-0 overflow-hidden' : 'w-80 p-4 opacity-100 overflow-auto'}`}
+    aria-hidden={collapsed}
+    on:transitionend={(e) => { if (e.target === sidebar) map?.invalidateSize(); }}
+  >
     <header class="flex items-center justify-between gap-2 mb-3">
       <div class="flex items-center gap-2">
         <img src="/img/logo.png" alt="" class="size-7" />
         <h1 class="text-lg font-semibold">Greenhill Bros Farm</h1>
       </div>
-      <button id="collapseSidebar"
-        class="rounded-md px-2 py-1 text-sm text-muted hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-accent/40">
-        <!-- chevron-left icon -->
-        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="size-5" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.78 15.53a.75.75 0 0 1-1.06 0l-4-4a.75.75 0 0 1 0-1.06l4-4a.75.75 0 1 1 1.06 1.06L9.31 10l3.47 3.47a.75.75 0 0 1 0 1.06Z" clip-rule="evenodd"/></svg>
-      </button>
     </header>
 
     <section class="space-y-4 px-1">
@@ -95,16 +89,17 @@
       </div>
       <div bind:this={legendPanel} id="legendPanel" class="mt-2 text-sm text-muted"></div>
     </section>
+    <!-- Collapse tab (expanded state) -->
+    <button aria-label="Collapse sidebar" on:click={() => { collapsed = true; invalidateSoon(); }}
+      class="absolute top-1/2 -translate-y-1/2 -right-3 z-50 rounded-md border border-border bg-panel/90 backdrop-blur px-2 py-3 text-muted hover:text-white hover:bg-panel focus:outline-none focus:ring-2 focus:ring-accent/40 shadow">
+      <!-- chevron-left icon -->
+      <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="size-5" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.78 15.53a.75.75 0 0 1-1.06 0l-4-4a.75.75 0 0 1 0-1.06l4-4a.75.75 0 1 1 1.06 1.06L9.31 10l3.47 3.47a.75.75 0 0 1 0 1.06Z" clip-rule="evenodd"/></svg>
+    </button>
   </aside>
 
   <!-- Map -->
   <main id="main" class="relative flex-1 min-w-0">
     <div bind:this={mapDiv} id="map" class="absolute inset-0"></div>
-    <button id="openSidebar"
-      class="hidden absolute top-3 left-3 z-50 rounded-full border border-border bg-panel/80 backdrop-blur px-3 py-2 text-sm text-muted hover:text-white hover:bg-panel/95 focus:outline-none focus:ring-2 focus:ring-accent/40">
-      <!-- bars icon -->
-      <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="size-5" viewBox="0 0 24 24"><path d="M3.75 5.25h16.5v1.5H3.75zM3.75 11.25h16.5v1.5H3.75zM3.75 17.25h16.5v1.5H3.75z"/></svg>
-    </button>
     <a href="/" id="goHome" aria-label="Back to home"
       class="absolute top-3 right-3 z-[1000] rounded-full border border-border bg-panel/95 backdrop-blur px-3 py-2 text-sm text-white hover:bg-panel focus:outline-none focus:ring-2 focus:ring-accent/40 shadow-md flex items-center gap-2">
       <!-- home icon -->
@@ -112,4 +107,13 @@
       <span class="hidden sm:inline">Home</span>
     </a>
   </main>
+
+  <!-- Expand tab (collapsed state) -->
+  {#if collapsed}
+    <button aria-label="Expand sidebar" on:click={() => { collapsed = false; invalidateSoon(); }}
+      class="absolute top-1/2 -translate-y-1/2 left-0 z-50 rounded-md border border-border bg-panel/90 backdrop-blur px-2 py-3 text-muted hover:text-white hover:bg-panel focus:outline-none focus:ring-2 focus:ring-accent/40 shadow">
+      <!-- chevron-right icon -->
+      <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="size-5" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.22 4.47a.75.75 0 0 0 0 1.06L10.69 10l-3.47 3.47a.75.75 0 1 0 1.06 1.06l4-4a.75.75 0 0 0 0-1.06l-4-4a.75.75 0 0 0-1.06 0Z" clip-rule="evenodd"/></svg>
+    </button>
+  {/if}
 </div>

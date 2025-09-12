@@ -4,7 +4,7 @@
   import type { Weather } from '$lib/mockWeather';
   import { fetchWeather } from '$lib/mqss';
 
-  export let data: { w: Weather };
+  export let data: { w: Weather; connected: boolean; source: 'ecowitt' | 'mock' };
   // updatedAt comes as a string from the API; coerce to Date with a proper type
   let w: Omit<Weather, 'updatedAt'> & { updatedAt: Date } = {
     ...data.w,
@@ -20,7 +20,8 @@
   }
 
   let secondsAgo = 0;
-  let offline = false;
+  let offline = !data.connected;
+  let source: 'ecowitt' | 'mock' = data.source;
   onMount(() => {
     const tick = setInterval(() => {
       secondsAgo = Math.floor((now().getTime() - w.updatedAt.getTime()) / 1000);
@@ -30,8 +31,9 @@
     const poll = setInterval(async () => {
       try {
         const latest = await fetchWeather();
-        w = { ...latest, updatedAt: new Date(latest.updatedAt) } as typeof w;
-        offline = false;
+        w = { ...latest.weather, updatedAt: new Date(latest.weather.updatedAt) } as typeof w;
+        offline = !latest.connected;
+        source = latest.source;
       } catch (_) {
         offline = true;
       }
@@ -53,9 +55,9 @@
   <a href="/" class="text-sm text-muted hover:text-white">&larr; Back to home</a>
   <div class="flex items-center gap-3 text-xs">
     <div class="text-muted">Reported {secondsAgo}s ago</div>
-    <span class={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 border ${offline ? 'border-red-400/40 text-red-300 bg-red-400/10' : 'border-green-400/40 text-green-300 bg-green-400/10'}`}>
+    <span class={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 border ${offline ? 'border-red-400/40 text-red-300 bg-red-400/10' : 'border-green-400/40 text-green-300 bg-green-400/10'}`} title={offline ? 'Using mock data' : 'Connected to Ecowitt'}>
       <span class={`size-1.5 rounded-full ${offline ? 'bg-red-400' : 'bg-green-400'}`}></span>
-      {offline ? 'Offline' : 'Live'}
+      {offline ? 'Mock' : 'Live (Ecowitt)'}
     </span>
   </div>
 </header>

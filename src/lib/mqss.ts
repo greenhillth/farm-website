@@ -4,15 +4,19 @@ import { getMockWeather } from './mockWeather';
 /**
  * Fetch full weather payload from the mock MQSS endpoint.
  */
-export async function fetchWeather(fetchFn: typeof fetch = fetch): Promise<Weather> {
+export type WeatherResult = { weather: Weather; connected: boolean; source: 'ecowitt' | 'mock' };
+
+export async function fetchWeather(fetchFn: typeof fetch = fetch): Promise<WeatherResult> {
   try {
     const res = await fetchFn('/api/mqss/weather');
     if (!res.ok) throw new Error(`status ${res.status}`);
     const data = (await res.json()) as Weather;
-    return data;
+    const connected = res.headers.get('x-weather-connected') === 'true';
+    const source = (res.headers.get('x-weather-source') as 'ecowitt' | 'mock') || 'mock';
+    return { weather: data, connected, source };
   } catch (_) {
     // Fallback placeholder when service is unavailable
-    return getMockWeather();
+    return { weather: getMockWeather(), connected: false, source: 'mock' };
   }
 }
 
