@@ -29,6 +29,7 @@ declare module '$env/static/private' {
 	export const EW_APP_KEY: string;
 	export const EW_API_KEY: string;
 	export const EW_DEVICE_MAC: string;
+	export const PYTHON_BASIC_REPL: string;
 	export const LESSOPEN: string;
 	export const CONDA_PROMPT_MODIFIER: string;
 	export const USER: string;
@@ -79,6 +80,7 @@ declare module '$env/static/private' {
 	export const SSL_CERT_DIR: string;
 	export const VSCODE_DEBUGPY_ADAPTER_ENDPOINTS: string;
 	export const LANG: string;
+	export const PYTHONSTARTUP: string;
 	export const LS_COLORS: string;
 	export const VSCODE_GIT_IPC_HANDLE: string;
 	export const TERM_PROGRAM: string;
@@ -137,6 +139,7 @@ declare module '$env/dynamic/private' {
 		EW_APP_KEY: string;
 		EW_API_KEY: string;
 		EW_DEVICE_MAC: string;
+		PYTHON_BASIC_REPL: string;
 		LESSOPEN: string;
 		CONDA_PROMPT_MODIFIER: string;
 		USER: string;
@@ -187,6 +190,7 @@ declare module '$env/dynamic/private' {
 		SSL_CERT_DIR: string;
 		VSCODE_DEBUGPY_ADAPTER_ENDPOINTS: string;
 		LANG: string;
+		PYTHONSTARTUP: string;
 		LS_COLORS: string;
 		VSCODE_GIT_IPC_HANDLE: string;
 		TERM_PROGRAM: string;
