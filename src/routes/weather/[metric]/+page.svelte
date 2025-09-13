@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Weather } from '$lib/weather';
 
-	export let data: { metric: string; w: Weather; log: unknown };
+	export let data: { metric: string; w: Weather; log: Record<string, any>[] };
 	const metric = data.metric;
 	const w = data.w;
 	const log = Array.isArray(data.log) ? data.log : [];
