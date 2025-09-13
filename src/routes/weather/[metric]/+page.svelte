@@ -97,7 +97,7 @@
 						{#each log as row}
 							<tr>
 								{#each headers as h}
-									<td class="border-b px-2 py-1">{row[h]}</td>
+									<td class="border-b px-2 py-1">{row?.[h] ?? ''}</td>
 								{/each}
 							</tr>
 						{/each}
