@@ -1,4 +1,4 @@
-import { getMockWeather, type Weather } from '$lib/mockWeather';
+import { getMockWeather, type Weather } from '$lib/weather';
 
 export type WeatherMeta = { data: Weather; connected: boolean; source: 'ecowitt' | 'mock' };
 
@@ -113,4 +113,3 @@ export async function fetchBackendWeatherMeta(apiBase: string): Promise<WeatherM
     return { data: getMockWeather(), connected: false, source: 'mock' };
   }
 }
-

@@ -1,7 +1,7 @@
 const CONFIG = {
   data: {
     geojson: "/api/data/farm", // backend endpoint (or keep "data/farm.geojson")
-    optima: "/api/data/optima",
+    optima: "/api/data/optimal",
     bounds: "/api/data/bounds",
   },
   tiles: {
@@ -16,4 +16,3 @@ const CONFIG = {
   maxDevFactor: 1.5,
 };
 export default CONFIG;
-
