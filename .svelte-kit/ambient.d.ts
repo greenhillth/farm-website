@@ -26,9 +26,6 @@
  * ```
  */
 declare module '$env/static/private' {
-	export const EW_APP_KEY: string;
-	export const EW_API_KEY: string;
-	export const EW_DEVICE_MAC: string;
 	export const PYTHON_BASIC_REPL: string;
 	export const LESSOPEN: string;
 	export const CONDA_PROMPT_MODIFIER: string;
@@ -137,9 +134,6 @@ declare module '$env/static/public' {
  */
 declare module '$env/dynamic/private' {
 	export const env: {
-		EW_APP_KEY: string;
-		EW_API_KEY: string;
-		EW_DEVICE_MAC: string;
 		PYTHON_BASIC_REPL: string;
 		LESSOPEN: string;
 		CONDA_PROMPT_MODIFIER: string;

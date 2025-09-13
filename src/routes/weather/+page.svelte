@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Panel from '$lib/components/Panel.svelte';
 	import { onMount } from 'svelte';
-	import type { Weather } from '$lib/mockWeather';
+	import type { Weather } from '$lib/weather';
 	import { fetchWeather } from '$lib/weather';
 
 	export let data: { w: Weather; connected: boolean; source: 'ecowitt' | 'mock' };

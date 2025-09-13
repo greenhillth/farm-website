@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Weather } from '$lib/mockWeather';
+	import type { Weather } from '$lib/weather';
 
 	export let data: { metric: string; w: Weather };
 	const metric = data.metric;

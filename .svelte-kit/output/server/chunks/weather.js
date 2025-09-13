@@ -19,7 +19,7 @@ function getMockWeather() {
 }
 async function fetchWeather(fetchFn = fetch) {
   try {
-    const res = await fetchFn(`/svc/weather?_ts=${Date.now()}`);
+    const res = await fetchFn(`/weather/current`);
     if (!res.ok) throw new Error(`status ${res.status}`);
     const data = await res.json();
     const connected = res.headers.get("x-weather-connected") === "true";
