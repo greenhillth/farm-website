@@ -55,6 +55,7 @@ declare module '$env/static/private' {
 	export const npm_config_local_prefix: string;
 	export const PYDEVD_DISABLE_FILE_VALIDATION: string;
 	export const BUNDLED_DEBUGPY_PATH: string;
+	export const VSCODE_PYTHON_AUTOACTIVATE_GUARD: string;
 	export const DBUS_SESSION_BUS_ADDRESS: string;
 	export const npm_config_engine_strict: string;
 	export const COLORTERM: string;
@@ -165,6 +166,7 @@ declare module '$env/dynamic/private' {
 		npm_config_local_prefix: string;
 		PYDEVD_DISABLE_FILE_VALIDATION: string;
 		BUNDLED_DEBUGPY_PATH: string;
+		VSCODE_PYTHON_AUTOACTIVATE_GUARD: string;
 		DBUS_SESSION_BUS_ADDRESS: string;
 		npm_config_engine_strict: string;
 		COLORTERM: string;

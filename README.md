@@ -42,9 +42,8 @@ You can preview the production build with `npm run preview`.
 The weather dashboard now consumes data from a small mock MQSS service. The
 service lives inside the SvelteKit app and exposes two endpoints:
 
-- `/api/mqss/weather` – returns the full payload of the latest weather sample.
-- `/api/mqss/weather/[metric]` – returns a single metric block (e.g. `outdoor`,
-  `wind`).
+- `/svc/weather` – returns the full payload of the latest weather sample (UI shape).
+- `/svc/weather/[metric]` – returns a single metric block (e.g. `outdoor`, `wind`).
 
 These routes currently serve generated demo data from
 `src/lib/mockWeather.ts`. In production they should be replaced with calls to

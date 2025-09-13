@@ -1,12 +1,6 @@
 {
 	"/": [],
 	"/alex": [],
-	"/api/mqss/weather": [
-		"src/routes/api/mqss/weather/+server.ts"
-	],
-	"/api/mqss/weather/[metric]": [
-		"src/routes/api/mqss/weather/[metric]/+server.ts"
-	],
 	"/map": [
 		"src/routes/map/+page.ts"
 	],

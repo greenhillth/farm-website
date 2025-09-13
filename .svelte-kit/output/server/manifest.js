@@ -10,14 +10,17 @@ return {
 	assets: new Set(["img/logo.png","img/tom-and-alex.jpg","robots.txt","video/pysn.mp4"]),
 	mimeTypes: {".png":"image/png",".jpg":"image/jpeg",".txt":"text/plain",".mp4":"video/mp4"},
 	_: {
-		client: {start:"_app/immutable/entry/start.BLXIhdgN.js",app:"_app/immutable/entry/app.ZsmPmL1b.js",imports:["_app/immutable/entry/start.BLXIhdgN.js","_app/immutable/chunks/DyXCNgKf.js","_app/immutable/chunks/BAbRxsGe.js","_app/immutable/chunks/CEDlyOlD.js","_app/immutable/chunks/BR-ZO3Vo.js","_app/immutable/chunks/DR11qvyx.js","_app/immutable/entry/app.ZsmPmL1b.js","_app/immutable/chunks/CEDlyOlD.js","_app/immutable/chunks/BR-ZO3Vo.js","_app/immutable/chunks/DsnmJJEf.js","_app/immutable/chunks/BAbRxsGe.js","_app/immutable/chunks/DR11qvyx.js","_app/immutable/chunks/CH8uQorz.js","_app/immutable/chunks/iXGh358t.js","_app/immutable/chunks/BM_KlDUF.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
+		client: {start:"_app/immutable/entry/start.xlTTIvgk.js",app:"_app/immutable/entry/app.Bm-Gt3Wh.js",imports:["_app/immutable/entry/start.xlTTIvgk.js","_app/immutable/chunks/CmWE_7oP.js","_app/immutable/chunks/DN-rPOIK.js","_app/immutable/chunks/C0ys7KY4.js","_app/immutable/chunks/ClEjLSVY.js","_app/immutable/chunks/qZ6aaTlc.js","_app/immutable/entry/app.Bm-Gt3Wh.js","_app/immutable/chunks/C0ys7KY4.js","_app/immutable/chunks/ClEjLSVY.js","_app/immutable/chunks/DsnmJJEf.js","_app/immutable/chunks/DN-rPOIK.js","_app/immutable/chunks/qZ6aaTlc.js","_app/immutable/chunks/DAHDt1MN.js","_app/immutable/chunks/CBkiyM78.js","_app/immutable/chunks/CuUo-GuR.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
 		nodes: [
 			__memo(() => import('./nodes/0.js')),
 			__memo(() => import('./nodes/1.js')),
 			__memo(() => import('./nodes/2.js')),
 			__memo(() => import('./nodes/3.js')),
 			__memo(() => import('./nodes/4.js')),
-			__memo(() => import('./nodes/5.js'))
+			__memo(() => import('./nodes/5.js')),
+			__memo(() => import('./nodes/6.js')),
+			__memo(() => import('./nodes/7.js')),
+			__memo(() => import('./nodes/8.js'))
 		],
 		remotes: {
 			
@@ -45,10 +48,31 @@ return {
 				endpoint: null
 			},
 			{
+				id: "/paddocks",
+				pattern: /^\/paddocks\/?$/,
+				params: [],
+				page: { layouts: [0,], errors: [1,], leaf: 5 },
+				endpoint: null
+			},
+			{
+				id: "/timesheet",
+				pattern: /^\/timesheet\/?$/,
+				params: [],
+				page: { layouts: [0,], errors: [1,], leaf: 6 },
+				endpoint: null
+			},
+			{
 				id: "/weather",
 				pattern: /^\/weather\/?$/,
 				params: [],
-				page: { layouts: [0,], errors: [1,], leaf: 5 },
+				page: { layouts: [0,], errors: [1,], leaf: 7 },
+				endpoint: null
+			},
+			{
+				id: "/weather/[metric]",
+				pattern: /^\/weather\/([^/]+?)\/?$/,
+				params: [{"name":"metric","optional":false,"rest":false,"chained":false}],
+				page: { layouts: [0,], errors: [1,], leaf: 8 },
 				endpoint: null
 			}
 		],
