@@ -1,9 +1,11 @@
 <script lang="ts">
 	import type { Weather } from '$lib/weather';
 
-	export let data: { metric: string; w: Weather };
+	export let data: { metric: string; w: Weather; log: unknown };
 	const metric = data.metric;
 	const w = data.w;
+	const log = Array.isArray(data.log) ? data.log : [];
+	const headers = log.length ? Object.keys(log[0]) : [];
 
 	const titles: Record<string, string> = {
 		outdoor: 'Outdoor',
@@ -71,5 +73,33 @@
 				<text x="782" y="204" class="fill-muted text-xs">0</text>
 			</g>
 		</svg>
+	</section>
+
+	<section class="mt-8">
+		<h2 class="mb-2 text-lg font-semibold">Recent readings</h2>
+		{#if log.length}
+			<div class="overflow-x-auto">
+				<table class="min-w-full text-left text-sm">
+					<thead>
+						<tr>
+							{#each headers as h}
+								<th class="border-b px-2 py-1 font-medium">{h}</th>
+							{/each}
+						</tr>
+					</thead>
+					<tbody>
+						{#each log as row}
+							<tr>
+								{#each headers as h}
+									<td class="border-b px-2 py-1">{row[h]}</td>
+								{/each}
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		{:else}
+			<p class="text-muted text-sm">No recent readings available.</p>
+		{/if}
 	</section>
 </div>
