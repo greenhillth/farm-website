@@ -5,7 +5,13 @@
 	const metric = data.metric;
 	const w = data.w;
 	const log = Array.isArray(data.log) ? data.log : [];
-	const headers = log.length ? Object.keys(log[0]) : [];
+	const headers =
+		log.length &&
+		log[0] !== null &&
+		typeof log[0] === 'object' &&
+		!Array.isArray(log[0])
+			? Object.keys(log[0])
+			: [];
 
 	const titles: Record<string, string> = {
 		outdoor: 'Outdoor',
