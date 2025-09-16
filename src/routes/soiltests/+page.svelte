@@ -62,6 +62,16 @@
     pH: '',
   };
 
+  const metricPlaceholders: Record<MetricKey, string> = {
+    P: 'e.g. 56.7',
+    K: 'e.g. 562.8',
+    Ca: 'e.g. 2595.7',
+    Mg: 'e.g. 305',
+    S: 'e.g. 26.3',
+    Na: 'e.g. 98.5',
+    pH: 'e.g. 5.9',
+  };
+
   const uploadEndpoints = {
     /**
      * POST /api/tests/manual
@@ -157,21 +167,34 @@
     submitting = true;
     uploadError = null;
     try {
+      const preparedMetrics: Partial<Record<MetricKey, number>> = {};
+      let metricCount = 0;
+      for (const { key, label } of metricColumns) {
+        const raw = manualMetrics[key].trim();
+        if (!raw) continue;
+        const value = Number(raw);
+        if (!Number.isFinite(value)) {
+          uploadError = `Invalid value for ${label}.`;
+          submitting = false;
+          return;
+        }
+        preparedMetrics[key] = value;
+        metricCount += 1;
+      }
+
+      if (metricCount === 0) {
+        uploadError = 'Please enter at least one metric value.';
+        submitting = false;
+        return;
+      }
+
       const payload = {
         fieldId: manualForm.fieldId.trim(),
         sampleName: manualForm.sampleName.trim(),
         sampleId: manualForm.sampleId.trim() || undefined,
         sampleDate: manualForm.sampleDate,
         client: manualForm.client.trim() || undefined,
-        metrics: {
-          P: manualMetrics.P ? Number(manualMetrics.P) : undefined,
-          K: manualMetrics.K ? Number(manualMetrics.K) : undefined,
-          Ca: manualMetrics.Ca ? Number(manualMetrics.Ca) : undefined,
-          Mg: manualMetrics.Mg ? Number(manualMetrics.Mg) : undefined,
-          S: manualMetrics.S ? Number(manualMetrics.S) : undefined,
-          Na: manualMetrics.Na ? Number(manualMetrics.Na) : undefined,
-          pH: manualMetrics.pH ? Number(manualMetrics.pH) : undefined,
-        },
+        metrics: preparedMetrics,
       };
 
       console.info('POST to', uploadEndpoints.manual, payload);
@@ -364,7 +387,7 @@
 
 {#if showUploader}
   <div class="modal-backdrop" role="presentation" on:click|self={closeUploader}>
-    <section class="modal" role="dialog" aria-modal="true" aria-label="Soil test upload">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Soil test upload">
       <header class="modal__header">
         <h2 class="text-lg font-semibold">Add soil test</h2>
         <button type="button" class="modal__close" on:click={closeUploader} aria-label="Close">
@@ -387,15 +410,32 @@
           <div class="grid gap-3 md:grid-cols-2">
             <label class="modal__field">
               <span>Field ID <span class="required">(required)</span></span>
-              <input type="text" bind:value={manualForm.fieldId} required class="modal__input" />
+              <input
+                type="text"
+                bind:value={manualForm.fieldId}
+                required
+                class="modal__input"
+                placeholder="e.g. 4251583"
+              />
             </label>
             <label class="modal__field">
               <span>Sample name <span class="required">(required)</span></span>
-              <input type="text" bind:value={manualForm.sampleName} required class="modal__input" />
+              <input
+                type="text"
+                bind:value={manualForm.sampleName}
+                required
+                class="modal__input"
+                placeholder="e.g. ES30"
+              />
             </label>
             <label class="modal__field">
               <span>Sample ID</span>
-              <input type="text" bind:value={manualForm.sampleId} class="modal__input" />
+              <input
+                type="text"
+                bind:value={manualForm.sampleId}
+                class="modal__input"
+                placeholder="Lab ref (optional)"
+              />
             </label>
             <label class="modal__field">
               <span>Sample date <span class="required">(required)</span></span>
@@ -403,12 +443,18 @@
             </label>
             <label class="modal__field md:col-span-2">
               <span>Client</span>
-              <input type="text" bind:value={manualForm.client} class="modal__input" />
+              <input
+                type="text"
+                bind:value={manualForm.client}
+                class="modal__input"
+                placeholder="e.g. Botanical Resources"
+              />
             </label>
           </div>
 
           <fieldset class="modal__fieldset">
             <legend>Metrics</legend>
+            <p class="modal__hint">Enter at least one metric value.</p>
             <div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
               {#each metricColumns as column}
                 <label class="modal__field">
@@ -422,6 +468,7 @@
                       manualMetrics = { ...manualMetrics, [column.key]: value };
                     }}
                     class="modal__input"
+                    placeholder={metricPlaceholders[column.key]}
                   />
                 </label>
               {/each}
@@ -464,7 +511,7 @@
           </footer>
         </form>
       {/if}
-    </section>
+    </div>
   </div>
 {/if}
 
@@ -569,6 +616,12 @@
     font-size: 0.9rem;
     padding: 0 0.35rem;
     opacity: 0.8;
+  }
+
+  .modal__hint {
+    font-size: 0.75rem;
+    color: rgba(248, 250, 252, 0.6);
+    margin-bottom: 0.5rem;
   }
 
   .modal__dropzone {

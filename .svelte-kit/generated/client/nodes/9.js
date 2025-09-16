@@ -1,3 +1,3 @@
-import * as universal from "../../../../src/routes/weather/[metric]/+page.ts";
+import * as universal from "../../../../src/routes/weather/+page.ts";
 export { universal };
-export { default as component } from "../../../../src/routes/weather/[metric]/+page.svelte";
+export { default as component } from "../../../../src/routes/weather/+page.svelte";

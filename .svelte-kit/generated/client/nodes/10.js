@@ -1,0 +1,3 @@
+import * as universal from "../../../../src/routes/weather/[metric]/+page.ts";
+export { universal };
+export { default as component } from "../../../../src/routes/weather/[metric]/+page.svelte";

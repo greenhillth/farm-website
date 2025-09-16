@@ -1,6 +1,7 @@
 {
 	"/": [],
 	"/alex": [],
+	"/manual": [],
 	"/map": [
 		"src/routes/map/+page.ts"
 	],

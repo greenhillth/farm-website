@@ -70,11 +70,12 @@
       badge: 'Analytics'
     },
     {
-      href: '/map?metric=K',
-      title: 'Potassium (K)',
-      description: 'Check optimal ranges and hotspots.',
-      tags: ['soil', 'K'],
-      image: null
+      href: '/manual',
+      title: 'Operation Instructions',
+      description: 'Instructions for the less technically-savvy.',
+      tags: ['instructions', 'manual'],
+      image: 'img/confused-dad-1.jpg',
+      badge: 'Help'
     }
   ];
 </script>
