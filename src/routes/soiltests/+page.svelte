@@ -286,7 +286,7 @@
             metrics,
           } satisfies SoilTest;
         })
-        .sort((a, b) => {
+        .sort((a: SoilTest, b: SoilTest) => {
           const aDate = a.sampleDate ? new Date(a.sampleDate).getTime() : 0;
           const bDate = b.sampleDate ? new Date(b.sampleDate).getTime() : 0;
           return bDate - aDate;
