@@ -107,6 +107,14 @@ async function fetchWeather() {
   const { data, connected, source } = await fetchBackendWeatherMeta("/api");
   return { weather: data, connected, source };
 }
+async function fetchMetric(metric, fetchFn = fetch) {
+  const res = await fetchFn(`/api/weather/${metric}?_ts=${Date.now()}`);
+  if (!res.ok) {
+    throw new Error(`Unknown metric: ${metric}`);
+  }
+  return res.json();
+}
 export {
+  fetchMetric as a,
   fetchWeather as f
 };

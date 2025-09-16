@@ -1440,14 +1440,26 @@ function apply_adjustments(error) {
 let micro_tasks = [];
 let idle_tasks = [];
 function run_micro_tasks() {
-  var tasks2 = micro_tasks;
+  var tasks = micro_tasks;
   micro_tasks = [];
-  run_all(tasks2);
+  run_all(tasks);
 }
 function run_idle_tasks() {
-  var tasks2 = idle_tasks;
+  var tasks = idle_tasks;
   idle_tasks = [];
-  run_all(tasks2);
+  run_all(tasks);
+}
+function has_pending_tasks() {
+  return micro_tasks.length > 0 || idle_tasks.length > 0;
+}
+function queue_micro_task(fn) {
+  if (micro_tasks.length === 0 && !is_flushing_sync) {
+    var tasks = micro_tasks;
+    queueMicrotask(() => {
+      if (tasks === micro_tasks) run_micro_tasks();
+    });
+  }
+  micro_tasks.push(fn);
 }
 function flush_tasks() {
   if (micro_tasks.length > 0) {
@@ -1513,17 +1525,6 @@ function update_derived(derived) {
 const batches = /* @__PURE__ */ new Set();
 let current_batch = null;
 let effect_pending_updates = /* @__PURE__ */ new Set();
-let tasks = [];
-function dequeue() {
-  const task = (
-    /** @type {() => void} */
-    tasks.shift()
-  );
-  if (tasks.length > 0) {
-    queueMicrotask(dequeue);
-  }
-  task();
-}
 let queued_root_effects = [];
 let last_scheduled_effect = null;
 let is_flushing = false;
@@ -1667,7 +1668,7 @@ class Batch {
           this.#effects.push(effect);
         } else if ((flags & CLEAN) === 0) {
           if ((flags & ASYNC) !== 0) {
-            var effects = effect.b?.pending ? this.#boundary_async_effects : this.#async_effects;
+            var effects = effect.b?.is_pending() ? this.#boundary_async_effects : this.#async_effects;
             effects.push(effect);
           } else if (is_dirty(effect)) {
             if ((effect.f & BLOCK_EFFECT) !== 0) this.#block_effects.push(effect);
@@ -1797,10 +1798,7 @@ class Batch {
   }
   /** @param {() => void} task */
   static enqueue(task) {
-    if (tasks.length === 0) {
-      queueMicrotask(dequeue);
-    }
-    tasks.unshift(task);
+    queue_micro_task(task);
   }
 }
 function flushSync(fn) {
@@ -1811,7 +1809,7 @@ function flushSync(fn) {
     if (fn) ;
     while (true) {
       flush_tasks();
-      if (queued_root_effects.length === 0) {
+      if (queued_root_effects.length === 0 && !has_pending_tasks()) {
         current_batch?.flush();
         if (queued_root_effects.length === 0) {
           last_scheduled_effect = null;
@@ -3340,7 +3338,7 @@ const options = {
 		<div class="error">
 			<span class="status">` + status + '</span>\n			<div class="message">\n				<h1>' + message + "</h1>\n			</div>\n		</div>\n	</body>\n</html>\n"
   },
-  version_hash: "18bspd"
+  version_hash: "114q71z"
 };
 async function get_hooks() {
   let handle;
@@ -4125,6 +4123,7 @@ async function render_endpoint(event, event_state, mod, state) {
       return new Response(void 0, { status: 204 });
     }
   }
+  event_state.is_endpoint_request = true;
   try {
     const response = await with_request_store(
       { event, state: event_state },
@@ -4539,56 +4538,65 @@ function create_async_iterator() {
 }
 function server_data_serializer(event, event_state, options2) {
   let promise_id = 1;
+  let max_nodes = -1;
   const iterator = create_async_iterator();
   const global = get_global_name(options2);
-  function replacer(thing) {
-    if (typeof thing?.then === "function") {
-      const id = promise_id++;
-      const promise = thing.then(
-        /** @param {any} data */
-        (data) => ({ data })
-      ).catch(
-        /** @param {any} error */
-        async (error2) => ({
-          error: await handle_error_and_jsonify(event, event_state, options2, error2)
-        })
-      ).then(
-        /**
-         * @param {{data: any; error: any}} result
-         */
-        async ({ data, error: error2 }) => {
-          let str;
-          try {
-            str = uneval(error2 ? [, error2] : [data], replacer);
-          } catch {
-            error2 = await handle_error_and_jsonify(
-              event,
-              event_state,
-              options2,
-              new Error(`Failed to serialize promise while rendering ${event.route.id}`)
-            );
-            data = void 0;
-            str = uneval([, error2], replacer);
+  function get_replacer(index) {
+    return function replacer(thing) {
+      if (typeof thing?.then === "function") {
+        const id = promise_id++;
+        const promise = thing.then(
+          /** @param {any} data */
+          (data) => ({ data })
+        ).catch(
+          /** @param {any} error */
+          async (error2) => ({
+            error: await handle_error_and_jsonify(event, event_state, options2, error2)
+          })
+        ).then(
+          /**
+           * @param {{data: any; error: any}} result
+           */
+          async ({ data, error: error2 }) => {
+            let str;
+            try {
+              str = uneval(error2 ? [, error2] : [data], replacer);
+            } catch {
+              error2 = await handle_error_and_jsonify(
+                event,
+                event_state,
+                options2,
+                new Error(`Failed to serialize promise while rendering ${event.route.id}`)
+              );
+              data = void 0;
+              str = uneval([, error2], replacer);
+            }
+            return {
+              index,
+              str: `${global}.resolve(${id}, ${str.includes("app.decode") ? `(app) => ${str}` : `() => ${str}`})`
+            };
           }
-          return `${global}.resolve(${id}, ${str.includes("app.decode") ? `(app) => ${str}` : `() => ${str}`})`;
-        }
-      );
-      iterator.add(promise);
-      return `${global}.defer(${id})`;
-    } else {
-      for (const key2 in options2.hooks.transport) {
-        const encoded = options2.hooks.transport[key2].encode(thing);
-        if (encoded) {
-          return `app.decode('${key2}', ${uneval(encoded, replacer)})`;
+        );
+        iterator.add(promise);
+        return `${global}.defer(${id})`;
+      } else {
+        for (const key2 in options2.hooks.transport) {
+          const encoded = options2.hooks.transport[key2].encode(thing);
+          if (encoded) {
+            return `app.decode('${key2}', ${uneval(encoded, replacer)})`;
+          }
         }
       }
-    }
+    };
   }
   const strings = (
     /** @type {string[]} */
     []
   );
   return {
+    set_max_nodes(i) {
+      max_nodes = i;
+    },
     add_node(i, node) {
       try {
         if (!node) {
@@ -4597,7 +4605,7 @@ function server_data_serializer(event, event_state, options2) {
         }
         const payload = { type: "data", data: node.data, uses: serialize_uses(node) };
         if (node.slash) payload.slash = node.slash;
-        strings[i] = uneval(payload, replacer);
+        strings[i] = uneval(payload, get_replacer(i));
       } catch (e) {
         e.path = e.path.slice(1);
         throw new Error(clarify_devalue_error(
@@ -4612,8 +4620,13 @@ function server_data_serializer(event, event_state, options2) {
       const close = `<\/script>
 `;
       return {
-        data: `[${strings.join(",")}]`,
-        chunks: promise_id > 1 ? iterator.iterate((str) => open + str + close) : null
+        data: `[${compact(max_nodes > -1 ? strings.slice(0, max_nodes) : strings).join(",")}]`,
+        chunks: promise_id > 1 ? iterator.iterate(({ index, str }) => {
+          if (max_nodes > -1 && index >= max_nodes) {
+            return "";
+          }
+          return open + str + close;
+        }) : null
       };
     }
   };
@@ -5759,22 +5772,6 @@ async function render_response({
 							try_to_resolve();
 						}`);
     }
-    const { remote_data } = event_state;
-    if (remote_data) {
-      const remote = {};
-      for (const key2 in remote_data) {
-        remote[key2] = await remote_data[key2];
-      }
-      const replacer = (thing) => {
-        for (const key2 in options2.hooks.transport) {
-          const encoded = options2.hooks.transport[key2].encode(thing);
-          if (encoded) {
-            return `app.decode('${key2}', ${uneval(encoded, replacer)})`;
-          }
-        }
-      };
-      properties.push(`data: ${uneval(remote, replacer)}`);
-    }
     blocks.push(`${global} = {
 						${properties.join(",\n						")}
 					};`);
@@ -5819,15 +5816,34 @@ ${indent}	${hydrate.join(`,
 ${indent}	`)}
 ${indent}}`);
     }
+    const { remote_data } = event_state;
+    let serialized_remote_data = "";
+    if (remote_data) {
+      const remote = {};
+      for (const key2 in remote_data) {
+        remote[key2] = await remote_data[key2];
+      }
+      const replacer = (thing) => {
+        for (const key2 in options2.hooks.transport) {
+          const encoded = options2.hooks.transport[key2].encode(thing);
+          if (encoded) {
+            return `app.decode('${key2}', ${uneval(encoded, replacer)})`;
+          }
+        }
+      };
+      serialized_remote_data = `${global}.data = ${uneval(remote, replacer)};
+
+						`;
+    }
     const boot = client.inline ? `${client.inline.script}
 
-					__sveltekit_${options2.version_hash}.app.start(${args.join(", ")});` : client.app ? `Promise.all([
+					${serialized_remote_data}${global}.app.start(${args.join(", ")});` : client.app ? `Promise.all([
 						import(${s(prefixed(client.start))}),
 						import(${s(prefixed(client.app))})
 					]).then(([kit, app]) => {
-						kit.start(app, ${args.join(", ")});
+						${serialized_remote_data}kit.start(app, ${args.join(", ")});
 					});` : `import(${s(prefixed(client.start))}).then((app) => {
-						app.start(${args.join(", ")})
+						${serialized_remote_data}app.start(${args.join(", ")})
 					});`;
     if (load_env_eagerly) {
       blocks.push(`import(${s(`${base$1}/${app_dir}/env.js`)}).then(({ env }) => {
@@ -6125,7 +6141,7 @@ async function handle_remote_call_internal(event, state, options2, manifest, id)
   const remotes = manifest._.remotes;
   if (!remotes[hash2]) error(404);
   const module = await remotes[hash2]();
-  const fn = module[name];
+  const fn = module.default[name];
   if (!fn) error(404);
   const info = fn.__;
   const transport = options2.hooks.transport;
@@ -6135,18 +6151,58 @@ async function handle_remote_call_internal(event, state, options2, manifest, id)
   });
   let form_client_refreshes;
   try {
+    if (info.type === "query_batch") {
+      if (event.request.method !== "POST") {
+        throw new SvelteKitError(
+          405,
+          "Method Not Allowed",
+          `\`query.batch\` functions must be invoked via POST request, not ${event.request.method}`
+        );
+      }
+      const { payloads } = await event.request.json();
+      const args = payloads.map((payload2) => parse_remote_arg(payload2, transport));
+      const get_result = await with_request_store({ event, state }, () => info.run(args));
+      const results = await Promise.all(
+        args.map(async (arg, i) => {
+          try {
+            return { type: "result", data: get_result(arg, i) };
+          } catch (error2) {
+            return {
+              type: "error",
+              error: await handle_error_and_jsonify(event, state, options2, error2),
+              status: error2 instanceof HttpError || error2 instanceof SvelteKitError ? error2.status : 500
+            };
+          }
+        })
+      );
+      return json(
+        /** @type {RemoteFunctionResponse} */
+        {
+          type: "result",
+          result: stringify(results, transport)
+        }
+      );
+    }
     if (info.type === "form") {
+      if (event.request.method !== "POST") {
+        throw new SvelteKitError(
+          405,
+          "Method Not Allowed",
+          `\`form\` functions must be invoked via POST request, not ${event.request.method}`
+        );
+      }
       if (!is_form_content_type(event.request)) {
         throw new SvelteKitError(
           415,
           "Unsupported Media Type",
-          `Form actions expect form-encoded data — received ${event.request.headers.get(
+          `\`form\` functions expect form-encoded data — received ${event.request.headers.get(
             "content-type"
           )}`
         );
       }
       const form_data = await event.request.formData();
-      form_client_refreshes = JSON.parse(
+      form_client_refreshes = /** @type {string[]} */
+      JSON.parse(
         /** @type {string} */
         form_data.get("sveltekit:remote_refreshes") ?? "[]"
       );
@@ -6158,10 +6214,7 @@ async function handle_remote_call_internal(event, state, options2, manifest, id)
         {
           type: "result",
           result: stringify(data2, transport),
-          refreshes: await serialize_refreshes(
-            /** @type {string[]} */
-            form_client_refreshes
-          )
+          refreshes: await serialize_refreshes(form_client_refreshes)
         }
       );
     }
@@ -6196,20 +6249,27 @@ async function handle_remote_call_internal(event, state, options2, manifest, id)
     );
   } catch (error2) {
     if (error2 instanceof Redirect) {
-      return json({
-        type: "redirect",
-        location: error2.location,
-        refreshes: await serialize_refreshes(form_client_refreshes ?? [])
-      });
+      return json(
+        /** @type {RemoteFunctionResponse} */
+        {
+          type: "redirect",
+          location: error2.location,
+          refreshes: await serialize_refreshes(form_client_refreshes ?? [])
+        }
+      );
     }
+    const status = error2 instanceof HttpError || error2 instanceof SvelteKitError ? error2.status : 500;
     return json(
       /** @type {RemoteFunctionResponse} */
       {
         type: "error",
         error: await handle_error_and_jsonify(event, state, options2, error2),
-        status: error2 instanceof HttpError || error2 instanceof SvelteKitError ? error2.status : 500
+        status
       },
       {
+        // By setting a non-200 during prerendering we fail the prerender process (unless handleHttpError handles it).
+        // Errors at runtime will be passed to the client and are handled there
+        status: state.prerendering ? status : void 0,
         headers: {
           "cache-control": "private, no-store"
         }
@@ -6217,15 +6277,12 @@ async function handle_remote_call_internal(event, state, options2, manifest, id)
     );
   }
   async function serialize_refreshes(client_refreshes) {
-    const refreshes = (
-      /** @type {Record<string, Promise<any>>} */
-      state.refreshes
-    );
+    const refreshes = state.refreshes ?? {};
     for (const key2 of client_refreshes) {
       if (refreshes[key2] !== void 0) continue;
       const [hash3, name2, payload] = key2.split("/");
       const loader = manifest._.remotes[hash3];
-      const fn2 = (await loader?.())?.[name2];
+      const fn2 = (await loader?.())?.default?.[name2];
       if (!fn2) error(400, "Bad Request");
       refreshes[key2] = with_request_store(
         { event, state },
@@ -6264,7 +6321,7 @@ async function handle_remote_form_post_internal(event, state, manifest, id) {
   const module = await remotes[hash2]?.();
   let form = (
     /** @type {RemoteForm<any>} */
-    module?.[name]
+    module?.default[name]
   );
   if (!form) {
     event.setHeaders({
@@ -6417,7 +6474,9 @@ async function render_page(event, event_state, page, options2, manifest, state, 
               return data;
             }
           });
-          data_serializer.add_node(i, server_data);
+          if (node) {
+            data_serializer.add_node(i, server_data);
+          }
           data_serializer_json?.add_node(i, server_data);
           return server_data;
         } catch (e) {
@@ -6492,6 +6551,7 @@ async function render_page(event, event_state, page, options2, manifest, state, 
               const node2 = await manifest._.nodes[index]();
               let j = i;
               while (!branch[j]) j -= 1;
+              data_serializer.set_max_nodes(j + 1);
               const layouts = compact(branch.slice(0, j + 1));
               const nodes2 = new PageNodes(layouts.map((layout) => layout.node));
               return await render_response({
@@ -6513,7 +6573,7 @@ async function render_page(event, event_state, page, options2, manifest, state, 
                   server_data: null
                 }),
                 fetched,
-                data_serializer: server_data_serializer(event, event_state, options2)
+                data_serializer
               });
             }
           }
@@ -6551,7 +6611,7 @@ async function render_page(event, event_state, page, options2, manifest, state, 
       branch: ssr === false ? [] : compact(branch),
       action_result,
       fetched,
-      data_serializer
+      data_serializer: ssr === false ? server_data_serializer(event, event_state, options2) : data_serializer
     });
   } catch (e) {
     return await respond_with_error({
@@ -7357,7 +7417,7 @@ async function internal_respond(request, options2, manifest, state) {
     return response;
   } catch (e) {
     if (e instanceof Redirect) {
-      const response = is_data_request ? redirect_json_response(e) : route?.page && is_action_json_request(event) ? action_json_redirect(e) : redirect_response(e.status, e.location);
+      const response = is_data_request || remote_id ? redirect_json_response(e) : route?.page && is_action_json_request(event) ? action_json_redirect(e) : redirect_response(e.status, e.location);
       add_cookies_to_headers(response.headers, new_cookies.values());
       return response;
     }

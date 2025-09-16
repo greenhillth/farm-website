@@ -3,15 +3,15 @@
   import L from 'leaflet';
   import 'leaflet/dist/leaflet.css';
   import CONFIG from '$lib/config';
-  import { buildMetricLayer } from '$lib/layers';
-  import { renderMetricNav, setActiveMetric, renderLegend } from '$lib/ui';
+  import { buildBaseLayer } from '$lib/layers';
+  import { renderMetricNav } from '$lib/ui';
 
   let mapDiv: HTMLDivElement;
   let sidebar: HTMLElement;
   let metricNav: HTMLElement;
-  let legendPanel: HTMLElement;
   let collapsed = false;
   let map: L.Map;
+  let baseBounds: L.LatLngBounds | null = null;
 
   function invalidateSoon(delay = 320) {
     // Wait until CSS transition completes, then tell Leaflet to recalc size
@@ -22,43 +22,37 @@
 
   onMount(async () => {
     // Init map
-    map = L.map(mapDiv).setView([-41.2, 146.4], 14); // start coords
+    map = L.map(mapDiv).setView([-41.2, 146.4], 14);
     L.tileLayer(CONFIG.tiles.url, CONFIG.tiles).addTo(map);
 
-    // Load data
-    const [bounds, geojson, optima] = await Promise.all([
-      fetch(CONFIG.data.bounds).then(r => r.json()).catch(() => null),
-      fetch(CONFIG.data.geojson).then(r => r.json()).catch(() => null),
-      fetch(CONFIG.data.optima).then(r => r.json()).catch(() => null),
-    ]);
+    // Render soil metric dropdown (placeholder options for future datasets)
+    const defaultMetric = CONFIG.soilMetrics[0]?.id ?? '';
+    renderMetricNav(metricNav, CONFIG.soilMetrics, defaultMetric, () => {});
 
-    if (!geojson || !optima) return;
+    try {
+      const response = await fetch(CONFIG.data.farm);
+      if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+      const geojson = await response.json();
 
-    // Active metric
-    let active = CONFIG.defaultMetric;
-    let { layer, legend } = buildMetricLayer(geojson, active, optima, CONFIG, L);
-    layer.addTo(map);
-    renderLegend(legendPanel, legend);
-    renderMetricNav(metricNav, CONFIG.metrics, active, (m) => {
-      active = m;
-      map.removeLayer(layer);
-      const result = buildMetricLayer(geojson, active, optima, CONFIG, L);
-      layer = result.layer;
-      legend = result.legend;
-      layer.addTo(map);
-      renderLegend(legendPanel, legend);
-      setActiveMetric(metricNav, active);
-    });
+      const baseLayer = buildBaseLayer(geojson, L);
+      baseLayer.addTo(map);
 
-    // Fit bounds
-    if (bounds) map.fitBounds(bounds);
-    document.getElementById('fitBounds')?.addEventListener('click', () => {
-      if (bounds) map.fitBounds(bounds);
-    });
+      const bounds = baseLayer.getBounds();
+      if (bounds.isValid()) {
+        baseBounds = bounds;
+        map.fitBounds(bounds);
+      }
+    } catch (err) {
+      console.error('Failed to load farm data', err);
+    }
 
     // Ensure first render has correct size
     invalidateSoon(50);
   });
+
+  function resetView() {
+    if (baseBounds) map?.fitBounds(baseBounds);
+  }
 </script>
 
 <div id="app" class="relative flex h-dvh">
@@ -77,17 +71,15 @@
 
     <section class="space-y-4 px-1">
       <nav aria-label="Layers">
-        <div class="text-sm text-muted mb-2 px-3">Soil Data</div>
-        <div bind:this={metricNav} id="metricNav" class="space-y-1"></div>
+        <div bind:this={metricNav} id="metricNav"></div>
       </nav>
       <label class="inline-flex items-center gap-2 text-sm">
         <input type="checkbox" id="showLabels" class="accent-accent" checked />
         <span>Show field labels</span>
       </label>
       <div class="flex gap-2 text-sm">
-        <button id="fitBounds" class="border border-border rounded px-2 py-1">Reset view</button>
+        <button on:click={resetView} class="border border-border rounded px-2 py-1">Reset view</button>
       </div>
-      <div bind:this={legendPanel} id="legendPanel" class="mt-2 text-sm text-muted"></div>
     </section>
     <!-- Collapse tab (expanded state) -->
     <button aria-label="Collapse sidebar" on:click={() => { collapsed = true; invalidateSoon(); }}

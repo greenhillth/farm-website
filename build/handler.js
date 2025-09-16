@@ -1,7 +1,7 @@
 import './shims.js';
 import * as fs from 'node:fs';
 import fs__default, { readdirSync, statSync, createReadStream } from 'node:fs';
-import path, { resolve, join, normalize } from 'node:path';
+import path, { resolve, join, sep, normalize } from 'node:path';
 import process from 'node:process';
 import * as qs from 'node:querystring';
 import { fileURLToPath } from 'node:url';
@@ -540,7 +540,10 @@ function viaLocal(dir, isEtag, uri, extns) {
 	let i=0, arr=toAssume(uri, extns);
 	let abs, stats, name, headers;
 	for (; i < arr.length; i++) {
-		abs = normalize(join(dir, name=arr[i]));
+		abs = normalize(
+			join(dir, name=arr[i])
+		);
+
 		if (abs.startsWith(dir) && fs.existsSync(abs)) {
 			stats = fs.statSync(abs);
 			if (stats.isDirectory()) continue;
@@ -662,7 +665,7 @@ function sirv (dir, opts={}) {
 		});
 	}
 
-	let lookup = opts.dev ? viaLocal.bind(0, dir, isEtag) : viaCache.bind(0, FILES);
+	let lookup = opts.dev ? viaLocal.bind(0, dir + sep, isEtag) : viaCache.bind(0, FILES);
 
 	return function (req, res, next) {
 		let extns = [''];

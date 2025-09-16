@@ -86,3 +86,17 @@ export function buildMetricLayer(
   };
   return { layer, legend };
 }
+
+export function buildBaseLayer(
+  geojson: any,
+  L: typeof import("leaflet")
+) {
+  return L.geoJSON(geojson, {
+    style: () => ({
+      color: "#374151",
+      weight: 1,
+      fillColor: "#6b7280",
+      fillOpacity: 0.85,
+    }),
+  });
+}
