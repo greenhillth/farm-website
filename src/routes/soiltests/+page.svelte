@@ -62,6 +62,13 @@
     pH: '',
   };
 
+  let manualMetricCount = 0;
+
+  $: manualMetricCount = metricColumns.reduce((count, { key }) => {
+    const value = manualMetrics[key];
+    return value && value.trim() ? count + 1 : count;
+  }, 0);
+
   const metricPlaceholders: Record<MetricKey, string> = {
     P: 'e.g. 56.7',
     K: 'e.g. 562.8',
@@ -286,7 +293,7 @@
             metrics,
           } satisfies SoilTest;
         })
-        .sort((a, b) => {
+        .sort((a: SoilTest, b: SoilTest) => {
           const aDate = a.sampleDate ? new Date(a.sampleDate).getTime() : 0;
           const bDate = b.sampleDate ? new Date(b.sampleDate).getTime() : 0;
           return bDate - aDate;
@@ -454,7 +461,7 @@
 
           <fieldset class="modal__fieldset">
             <legend>Metrics</legend>
-            <p class="modal__hint">Enter at least one metric value.</p>
+            <p class="modal__hint">Enter at least one metric value (currently {manualMetricCount} selected).</p>
             <div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
               {#each metricColumns as column}
                 <label class="modal__field">
@@ -481,7 +488,12 @@
 
           <footer class="modal__footer">
             <button type="button" on:click={closeUploader} class="modal__secondary">Cancel</button>
-            <button type="submit" class="modal__primary" disabled={submitting}>
+            <button
+              type="submit"
+              class="modal__primary"
+              disabled={submitting || manualMetricCount === 0}
+              title={manualMetricCount === 0 ? 'Add at least one metric to save' : undefined}
+            >
               {submitting ? 'Saving…' : 'Save test'}
             </button>
           </footer>
