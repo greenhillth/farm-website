@@ -4,7 +4,7 @@
   import 'leaflet/dist/leaflet.css';
   import CONFIG from '$lib/config';
   import { buildBaseLayer } from '$lib/layers';
-  import { renderMetricNav } from '$lib/ui';
+  import { renderMetricNav, setActiveMetric } from '$lib/ui';
 
   let mapDiv: HTMLDivElement;
   let sidebar: HTMLElement;
@@ -12,6 +12,8 @@
   let collapsed = false;
   let map: L.Map;
   let baseBounds: L.LatLngBounds | null = null;
+  let activeMetric = CONFIG.soilMetrics[0]?.id ?? 'none';
+  let metricLayer: L.Layer | null = null;
 
   function invalidateSoon(delay = 320) {
     // Wait until CSS transition completes, then tell Leaflet to recalc size
@@ -26,8 +28,15 @@
     L.tileLayer(CONFIG.tiles.url, CONFIG.tiles).addTo(map);
 
     // Render soil metric dropdown (placeholder options for future datasets)
-    const defaultMetric = CONFIG.soilMetrics[0]?.id ?? '';
-    renderMetricNav(metricNav, CONFIG.soilMetrics, defaultMetric, () => {});
+    renderMetricNav(metricNav, CONFIG.soilMetrics, activeMetric, (metric) => {
+      activeMetric = metric;
+      if (metricLayer) {
+        map.removeLayer(metricLayer);
+        metricLayer = null;
+      }
+      setActiveMetric(metricNav, activeMetric);
+      // Future: when metric overlays are available, build them here unless activeMetric === 'none'
+    });
 
     try {
       const response = await fetch(CONFIG.data.farm);
@@ -109,3 +118,25 @@
     </button>
   {/if}
 </div>
+
+<style>
+  :global(.paddock-tooltip) {
+    background-color: rgba(17, 24, 39, 0.94);
+    color: #f9fafb;
+    border-radius: 0.375rem;
+    padding: 0.35rem 0.55rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.35);
+  }
+
+  :global(.paddock-tooltip strong) {
+    font-weight: 600;
+    display: block;
+    margin-bottom: 0.1rem;
+  }
+
+  :global(.paddock-tooltip div:last-child) {
+    font-size: 0.75rem;
+    opacity: 0.85;
+  }
+</style>

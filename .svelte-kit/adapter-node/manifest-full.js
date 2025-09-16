@@ -10,7 +10,7 @@ return {
 	assets: new Set(["img/logo.png","img/tom-and-alex.jpg","robots.txt","video/pysn.mp4"]),
 	mimeTypes: {".png":"image/png",".jpg":"image/jpeg",".txt":"text/plain",".mp4":"video/mp4"},
 	_: {
-		client: {start:"_app/immutable/entry/start.n_CktSZ2.js",app:"_app/immutable/entry/app.r0u0xaYl.js",imports:["_app/immutable/entry/start.n_CktSZ2.js","_app/immutable/chunks/DyQhhm0m.js","_app/immutable/chunks/CYB-70ru.js","_app/immutable/chunks/CzOZ74WA.js","_app/immutable/chunks/ClbvZk9Z.js","_app/immutable/chunks/BZM75AQp.js","_app/immutable/entry/app.r0u0xaYl.js","_app/immutable/chunks/CzOZ74WA.js","_app/immutable/chunks/ClbvZk9Z.js","_app/immutable/chunks/DsnmJJEf.js","_app/immutable/chunks/CYB-70ru.js","_app/immutable/chunks/BZM75AQp.js","_app/immutable/chunks/DWD2Y0Zj.js","_app/immutable/chunks/D_0hGWiV.js","_app/immutable/chunks/EeQyfODi.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
+		client: {start:"_app/immutable/entry/start.CkNzATNI.js",app:"_app/immutable/entry/app.DCBXBAuU.js",imports:["_app/immutable/entry/start.CkNzATNI.js","_app/immutable/chunks/Cqe1jwgo.js","_app/immutable/chunks/i2KPoIqR.js","_app/immutable/chunks/CdmsYw1U.js","_app/immutable/chunks/BUMWtct1.js","_app/immutable/chunks/Ckc-z1rI.js","_app/immutable/entry/app.DCBXBAuU.js","_app/immutable/chunks/CdmsYw1U.js","_app/immutable/chunks/BUMWtct1.js","_app/immutable/chunks/DsnmJJEf.js","_app/immutable/chunks/i2KPoIqR.js","_app/immutable/chunks/Ckc-z1rI.js","_app/immutable/chunks/Bdri3CNH.js","_app/immutable/chunks/Bpw-ON10.js","_app/immutable/chunks/DNrX4qGI.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
 		nodes: [
 			__memo(() => import('./nodes/0.js')),
 			__memo(() => import('./nodes/1.js')),
@@ -20,7 +20,8 @@ return {
 			__memo(() => import('./nodes/5.js')),
 			__memo(() => import('./nodes/6.js')),
 			__memo(() => import('./nodes/7.js')),
-			__memo(() => import('./nodes/8.js'))
+			__memo(() => import('./nodes/8.js')),
+			__memo(() => import('./nodes/9.js'))
 		],
 		remotes: {
 			
@@ -55,24 +56,31 @@ return {
 				endpoint: null
 			},
 			{
+				id: "/soiltests",
+				pattern: /^\/soiltests\/?$/,
+				params: [],
+				page: { layouts: [0,], errors: [1,], leaf: 6 },
+				endpoint: null
+			},
+			{
 				id: "/timesheet",
 				pattern: /^\/timesheet\/?$/,
 				params: [],
-				page: { layouts: [0,], errors: [1,], leaf: 6 },
+				page: { layouts: [0,], errors: [1,], leaf: 7 },
 				endpoint: null
 			},
 			{
 				id: "/weather",
 				pattern: /^\/weather\/?$/,
 				params: [],
-				page: { layouts: [0,], errors: [1,], leaf: 7 },
+				page: { layouts: [0,], errors: [1,], leaf: 8 },
 				endpoint: null
 			},
 			{
 				id: "/weather/[metric]",
 				pattern: /^\/weather\/([^/]+?)\/?$/,
 				params: [{"name":"metric","optional":false,"rest":false,"chained":false}],
-				page: { layouts: [0,], errors: [1,], leaf: 8 },
+				page: { layouts: [0,], errors: [1,], leaf: 9 },
 				endpoint: null
 			}
 		],

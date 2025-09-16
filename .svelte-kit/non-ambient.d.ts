@@ -27,7 +27,7 @@ export {};
 
 declare module "$app/types" {
 	export interface AppTypes {
-		RouteId(): "/" | "/alex" | "/map" | "/paddocks" | "/timesheet" | "/weather" | "/weather/[metric]";
+		RouteId(): "/" | "/alex" | "/map" | "/paddocks" | "/soiltests" | "/timesheet" | "/weather" | "/weather/[metric]";
 		RouteParams(): {
 			"/weather/[metric]": { metric: string }
 		};
@@ -36,11 +36,12 @@ declare module "$app/types" {
 			"/alex": Record<string, never>;
 			"/map": Record<string, never>;
 			"/paddocks": Record<string, never>;
+			"/soiltests": Record<string, never>;
 			"/timesheet": Record<string, never>;
 			"/weather": { metric?: string };
 			"/weather/[metric]": { metric: string }
 		};
-		Pathname(): "/" | "/alex" | "/alex/" | "/map" | "/map/" | "/paddocks" | "/paddocks/" | "/timesheet" | "/timesheet/" | "/weather" | "/weather/" | `/weather/${string}` & {} | `/weather/${string}/` & {};
+		Pathname(): "/" | "/alex" | "/alex/" | "/map" | "/map/" | "/paddocks" | "/paddocks/" | "/soiltests" | "/soiltests/" | "/timesheet" | "/timesheet/" | "/weather" | "/weather/" | `/weather/${string}` & {} | `/weather/${string}/` & {};
 		ResolvedPathname(): `${"" | `/${string}`}${ReturnType<AppTypes['Pathname']>}`;
 		Asset(): "/img/logo.png" | "/img/tom-and-alex.jpg" | "/robots.txt" | "/video/pysn.mp4" | string & {};
 	}

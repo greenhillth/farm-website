@@ -17,8 +17,8 @@
       title: 'Interactive Farm Map',
       description: 'Explore fields, soil metrics and optimal ranges.',
       tags: ['map', 'leaflet'],
-      image: '/img/logo.png',
-      imageAlt: 'Farm logo',
+      image: '/img/aerial-map.jpg',
+      imageAlt: 'Aerial view of farm map',
       badge: 'Featured'
     },
     {
@@ -26,7 +26,15 @@
       title: 'Paddock Manager',
       description: 'Manage paddocks, notes, and field tasks.',
       tags: ['paddocks'],
-      image: null,
+      image: '/img/tractor-1.jpg',
+      badge: 'New'
+    },
+    {
+      href: '/soiltests',
+      title: 'Soil Tests',
+      description: 'Manage soil tests and analysis.',
+      tags: ['soil', 'tests'],
+      image: 'img/soil.jpg',
       badge: 'New'
     },
     {
@@ -42,7 +50,7 @@
       title: 'Weather Station',
       description: 'Live outdoor/indoor, wind, rainfall, solar and more.',
       tags: ['weather'],
-      image: null,
+      image: 'img/weather-station.webp',
       badge: 'Dashboard'
     },
     // {
@@ -71,15 +79,48 @@
   ];
 </script>
 
-<main class="container mx-auto px-4 py-8">
-  <header class="mb-6 flex items-center justify-between gap-4">
-    <h1 class="text-xl md:text-2xl font-semibold">Greenhill Bros Farm</h1>
-    <a href="/map" class="text-sm text-muted hover:text-white">Open map →</a>
-  </header>
+<div class="home-shell">
+  <div class="home-shell__bg" aria-hidden="true"></div>
+  <main class="container mx-auto px-4 py-8 relative">
+    <header class="mb-6 flex items-center justify-between gap-4">
+      <h1 class="text-xl md:text-2xl font-semibold">Greenhill Bros Farm</h1>
+      <a href="/map" class="text-sm text-muted hover:text-white">Open map →</a>
+    </header>
 
-  <section class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-    {#each items as i}
-      <Card {...i} />
-    {/each}
-  </section>
-</main>
+    <section class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {#each items as i}
+        <Card {...i} />
+      {/each}
+    </section>
+  </main>
+</div>
+
+<style>
+  .home-shell {
+    position: relative;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .home-shell__bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(
+        to bottom,
+        rgba(7, 11, 23, 0.2),
+        rgba(7, 11, 23, 0.55) 65%,
+        rgba(7, 11, 23, 0.8)
+      ),
+      url('/img/paddock-4.jpg');
+    background-size: cover;
+    background-position: center;
+    opacity: 0.55;
+    filter: saturate(90%);
+  }
+
+  .home-shell main {
+    position: relative;
+    z-index: 1;
+  }
+</style>

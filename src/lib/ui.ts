@@ -12,7 +12,7 @@ export function renderMetricNav(
   container.innerHTML = `
     <details class="group">
       <summary class="flex items-center justify-between rounded-md px-3 py-2 text-sm text-white/90 bg-white/5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40">
-        <span>Soil Data</span>
+        <span>Soil Data Overlay</span>
         <span class="text-xs text-muted" data-active-label>${activeLabel}</span>
       </summary>
       <div class="mt-2 space-y-1 rounded-md border border-border bg-panel/80 p-2">

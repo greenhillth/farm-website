@@ -120,7 +120,7 @@
       "_index.js"
     ],
     "css": [
-      "_app/immutable/assets/_layout.BCVWDXSA.css"
+      "_app/immutable/assets/_layout.WQdVrl_G.css"
     ]
   },
   "src/routes/+page.svelte": {
@@ -151,7 +151,7 @@
       "_index.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.CIGW-MKW.css"
+      "_app/immutable/assets/_page.CF1J4gj_.css"
     ]
   },
   "src/routes/map/+page.ts": {
@@ -164,6 +164,16 @@
     "file": "entries/pages/paddocks/_page.svelte.js",
     "name": "entries/pages/paddocks/_page.svelte",
     "src": "src/routes/paddocks/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_Panel.js"
+    ]
+  },
+  "src/routes/soiltests/+page.svelte": {
+    "file": "entries/pages/soiltests/_page.svelte.js",
+    "name": "entries/pages/soiltests/_page.svelte",
+    "src": "src/routes/soiltests/+page.svelte",
     "isEntry": true,
     "imports": [
       "_index.js",

@@ -5,6 +5,7 @@
 		"src/routes/map/+page.ts"
 	],
 	"/paddocks": [],
+	"/soiltests": [],
 	"/timesheet": [],
 	"/weather": [
 		"src/routes/weather/+page.ts"

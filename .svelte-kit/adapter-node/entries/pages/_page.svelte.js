@@ -68,6 +68,14 @@ function _page($$payload) {
       badge: "New"
     },
     {
+      href: "/soiltests",
+      title: "Soil Tests",
+      description: "Manage soil tests and analysis.",
+      tags: ["soil", "tests"],
+      image: null,
+      badge: "New"
+    },
+    {
       href: "/timesheet",
       title: "Timesheets",
       description: "Log hours and activities across the farm.",

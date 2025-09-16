@@ -1,5 +1,5 @@
 import { env } from '$env/dynamic/private';
-import { getMockWeather, type Weather } from '$lib/mockWeather';
+import { getMockWeather, type Weather } from '$lib/weather';
 
 function computeVPD_c_kPa(tempC: number, rh: number): number {
   const es = 0.6108 * Math.exp((17.27 * tempC) / (tempC + 237.3));

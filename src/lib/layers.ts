@@ -91,12 +91,45 @@ export function buildBaseLayer(
   geojson: any,
   L: typeof import("leaflet")
 ) {
+  const baseStyle = {
+    color: "#374151",
+    weight: 1,
+    fillColor: "#6b7280",
+    fillOpacity: 0.85,
+  };
+  const hoverStyle = {
+    weight: 2,
+    fillOpacity: 0.95,
+  };
   return L.geoJSON(geojson, {
-    style: () => ({
-      color: "#374151",
-      weight: 1,
-      fillColor: "#6b7280",
-      fillOpacity: 0.85,
-    }),
+    style: () => ({ ...baseStyle }),
+    onEachFeature: (feature: any, layer: any) => {
+      const props = feature?.properties ?? {};
+      const name =
+        props.FIELDNAME ?? props.fieldName ?? props.FIELD_NAME ?? "Unnamed paddock";
+      const id = props.ADSFLDID ?? props.fieldID ?? props.id ?? "–";
+
+      const tooltip = `<div><strong>${name}</strong></div><div>ID: ${id}</div>`;
+      if ("bindTooltip" in layer && typeof (layer as any).bindTooltip === "function") {
+        (layer as any).bindTooltip(tooltip, {
+          sticky: true,
+          direction: "top",
+          className: "paddock-tooltip",
+          opacity: 0.95,
+        });
+      }
+
+      if ("setStyle" in layer && typeof (layer as any).setStyle === "function") {
+        layer.on("mouseover", () => {
+          (layer as any).setStyle(hoverStyle);
+          if ("bringToFront" in layer && typeof (layer as any).bringToFront === "function") {
+            (layer as any).bringToFront();
+          }
+        });
+        layer.on("mouseout", () => {
+          (layer as any).setStyle(baseStyle);
+        });
+      }
+    },
   });
 }

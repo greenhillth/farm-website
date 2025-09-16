@@ -2,6 +2,7 @@ const CONFIG = {
   data: {
     farm: "/api/data/farm",
     geojson: "/api/data/farm",
+    tests: "/api/data/tests",
   },
   tiles: {
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -10,6 +11,7 @@ const CONFIG = {
     maxZoom: 20,
   },
   soilMetrics: [
+    { id: "none", label: "None" },
     { id: "K", label: "K" },
     { id: "pH", label: "pH" },
   ],
