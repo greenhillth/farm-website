@@ -1,20 +1,24 @@
 // @ts-nocheck
 import type { PageLoad } from './$types';
-import { fetchMetric, fetchWeather } from '$lib/weather';
+import { fetchWeather, fetchWeatherHistory } from '$lib/weather';
+import type { WeatherHistoryRow } from '$lib/weather';
 
 export const load = async ({ params, fetch }: Parameters<PageLoad>[0]) => {
 	const res = await fetchWeather();
-	let log: unknown = [];
+	const now = Math.floor(Date.now() / 1000);
+	const from = now - 24 * 60 * 60;
+	let history: WeatherHistoryRow[] = [];
 	try {
-		log = await fetchMetric(params.metric, fetch);
+		history = await fetchWeatherHistory(from, now, fetch);
 	} catch (_) {
-		log = [];
+		history = [];
 	}
 	return {
 		metric: params.metric,
 		w: res.weather,
 		connected: res.connected,
 		source: res.source,
-		log
+		history,
+		range: { from, to: now }
 	};
 };

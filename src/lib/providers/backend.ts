@@ -16,6 +16,27 @@ type WeatherReading = {
   solar_wm2?: number | null;
 };
 
+function coerceUtcIsoString(value?: string): string {
+  if (!value) {
+    return new Date().toISOString();
+  }
+
+  const trimmed = value.trim();
+  const hasTz = /[zZ]|[+-]\d{2}:?\d{2}$/.test(trimmed);
+  const normalized = trimmed.replace(' ', 'T');
+  const stamped = hasTz ? normalized : `${normalized}Z`;
+  const parsed = new Date(stamped);
+
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString();
+  }
+
+  const fallback = new Date(trimmed);
+  return Number.isNaN(fallback.getTime())
+    ? new Date().toISOString()
+    : fallback.toISOString();
+}
+
 function computeVPD_c_kPa(tempC: number, rh: number): number {
   const es = 0.6108 * Math.exp((17.27 * tempC) / (tempC + 237.3));
   const ea = (rh / 100) * es;
@@ -24,7 +45,7 @@ function computeVPD_c_kPa(tempC: number, rh: number): number {
 
 function mapReadingToWeather(r: WeatherReading): Weather {
   const mock = getMockWeather();
-  const updatedAt = new Date(r.timestamp_utc ?? new Date().toISOString()).toISOString();
+  const updatedAt = coerceUtcIsoString(r.timestamp_utc);
 
   const tempC = r.temp_c ?? undefined;
   const rh = r.humidity_pct ?? undefined;

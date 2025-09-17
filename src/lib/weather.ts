@@ -69,10 +69,30 @@ export async function fetchWeather(): Promise<WeatherResult> {
 /**
  * Fetch a single weather metric from the app's weather API endpoint.
  */
-export async function fetchMetric(metric: string, fetchFn: typeof fetch = fetch): Promise<unknown> {
-	const res = await fetchFn(`/api/weather/${metric}?_ts=${Date.now()}`);
+export type WeatherHistoryRow = {
+	timestamp_utc: string;
+	tz?: string | null;
+	temp_c?: number | null;
+	humidity_pct?: number | null;
+	pressure_hpa?: number | null;
+	wind_avg_ms?: number | null;
+	wind_gust_ms?: number | null;
+	wind_dir_deg?: number | null;
+	rain_1h_mm?: number | null;
+	rain_24h_mm?: number | null;
+	solar_wm2?: number | null;
+};
+
+export async function fetchWeatherHistory(
+	from: number,
+	to: number,
+	fetchFn: typeof fetch = fetch
+): Promise<WeatherHistoryRow[]> {
+	const res = await fetchFn(`/api/weather/history?from=${from}&to=${to}&_ts=${Date.now()}`);
 	if (!res.ok) {
-		throw new Error(`Unknown metric: ${metric}`);
+		throw new Error(`Unable to fetch history: ${res.status}`);
 	}
-	return res.json();
+	const json = await res.json();
+	const rows = Array.isArray(json?.data) ? (json.data as WeatherHistoryRow[]) : [];
+	return rows;
 }

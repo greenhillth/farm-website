@@ -1,17 +1,55 @@
 <script lang="ts">
-	import type { Weather } from '$lib/weather';
+	import type { Weather, WeatherHistoryRow } from '$lib/weather';
 
-	export let data: { metric: string; w: Weather; log: Record<string, any>[] };
+	export let data: {
+		metric: string;
+		w: Weather;
+		history: WeatherHistoryRow[];
+		range: { from: number; to: number };
+	};
 	const metric = data.metric;
 	const w = data.w;
-	const log = Array.isArray(data.log) ? data.log : [];
-	const headers =
-		log.length &&
-		log[0] !== null &&
-		typeof log[0] === 'object' &&
-		!Array.isArray(log[0])
-			? Object.keys(log[0])
-			: [];
+	const history = Array.isArray(data.history) ? data.history : [];
+
+	const metricFields: Record<string, string[]> = {
+		outdoor: ['temp_c', 'humidity_pct'],
+		indoor: [],
+		solar: ['solar_wm2'],
+		rain: ['rain_1h_mm', 'rain_24h_mm'],
+		wind: ['wind_avg_ms', 'wind_gust_ms', 'wind_dir_deg'],
+		pressure: ['pressure_hpa'],
+		battery: []
+	};
+
+	const selectedFields = metricFields[metric] ?? [];
+	const baseColumns = selectedFields.length ? ['timestamp_utc', ...selectedFields] : ['timestamp_utc'];
+	const columns =
+		selectedFields.length > 0
+			? baseColumns
+			: history.length && typeof history[0] === 'object'
+				? ['timestamp_utc', ...Object.keys(history[0]).filter((k) => k !== 'timestamp_utc')]
+				: baseColumns;
+	const rangeHours = Math.max(1, Math.round((data.range.to - data.range.from) / 3600));
+
+	const parseUtc = (value: string) => {
+		const trimmed = value.trim();
+		const hasTz = /[zZ]|[+-]\d{2}:?\d{2}$/.test(trimmed);
+		const normalized = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T');
+		const stamped = hasTz ? normalized : `${normalized}Z`;
+		return new Date(stamped);
+	};
+
+	const formatValue = (key: string, value: unknown) => {
+		if (value === null || value === undefined) return '';
+		if (key === 'timestamp_utc' && typeof value === 'string') {
+			const parsed = parseUtc(value);
+			return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+		}
+		if (typeof value === 'number') {
+			return Number.isInteger(value) ? value.toString() : value.toFixed(2);
+		}
+		return String(value);
+	};
 
 	const titles: Record<string, string> = {
 		outdoor: 'Outdoor',
@@ -82,22 +120,25 @@
 	</section>
 
 	<section class="mt-8">
-		<h2 class="mb-2 text-lg font-semibold">Recent readings</h2>
-		{#if log.length}
+		<h2 class="mb-1 text-lg font-semibold">Recent readings</h2>
+		<p class="text-muted mb-2 text-xs">Showing last {rangeHours}h of data.</p>
+		{#if history.length}
 			<div class="overflow-x-auto">
 				<table class="min-w-full text-left text-sm">
 					<thead>
 						<tr>
-							{#each headers as h}
-								<th class="border-b px-2 py-1 font-medium">{h}</th>
+							{#each columns as h}
+								<th class="border-b px-2 py-1 font-medium">
+									{h === 'timestamp_utc' ? 'Timestamp' : h}
+								</th>
 							{/each}
 						</tr>
 					</thead>
 					<tbody>
-						{#each log as row}
+						{#each history as row}
 							<tr>
-								{#each headers as h}
-									<td class="border-b px-2 py-1">{row?.[h] ?? ''}</td>
+								{#each columns as h}
+									<td class="border-b px-2 py-1">{formatValue(h, row?.[h])}</td>
 								{/each}
 							</tr>
 						{/each}

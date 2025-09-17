@@ -205,7 +205,11 @@
       };
 
       console.info('POST to', uploadEndpoints.manual, payload);
-      // TODO: await fetch(uploadEndpoints.manual, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      await fetch(uploadEndpoints.manual, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
       closeUploader();
     } catch (err) {
       uploadError = err instanceof Error ? err.message : 'Failed to submit sample';
