@@ -1,6 +1,6 @@
 ## API contracts
 
-### `POST /api/tests/import`
+### `POST /api/soil-tests/import`
 
 - **Purpose**: accept the CSV and enqueue a background import job.
 - **Request**:
@@ -26,7 +26,7 @@
   - `413` – file exceeds limit.
   - `500` – storage or job queue failure (include `detail`).
 
-### `GET /api/tests/import/{jobId}/status`
+### `GET /api/soil-tests/import/{jobId}/status`
 
 - **Purpose**: return the latest import progress snapshot for the requested job.
 - **Response**: `200 OK`
@@ -49,7 +49,7 @@
   - `410` – job record has been purged; advise the UI to stop polling.
 - **Headers**: optional `Cache-Control: no-store` and `Retry-After: {pollAfterMs}` to hint the polling cadence.
 
-### `DELETE /api/tests/import/{jobId}` (optional)
+### `DELETE /api/soil-tests/import/{jobId}` (optional)
 
 - **Purpose**: cancel a running import if the user closes the dialog.
 - **Response**: `202 Accepted` when the cancellation was requested, `404` for unknown job, `409` when job already finished.
@@ -88,7 +88,7 @@ Store the status in a durable cache (Redis, database table, or in-process map gu
 - After the `POST` response arrives, replace the TODO section with code that:
   1. Reads `jobId` from the response (fall back to the locally generated ID if the server omits it).
   2. Immediately calls `handleCsvProgressUpdate` with the payload.
-  3. Starts `pollProgress(jobId)` which fetches `GET /api/tests/import/{jobId}/status` every `pollAfterMs` (default 2000ms).
+  3. Starts `pollProgress(jobId)` which fetches `GET /api/soil-tests/import/{jobId}/status` every `pollAfterMs` (default 2000ms).
   4. Pipes each response into `handleCsvProgressUpdate`. Stop polling when the stage is `complete` or `error`.
 - When `complete`, trigger a soil test list refresh (re-run the existing `fetch(CONFIG.data.tests)` logic) so the new data appears automatically.【F:src/routes/soiltests/+page.svelte†L222-L321】
 

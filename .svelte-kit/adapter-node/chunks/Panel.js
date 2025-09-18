@@ -1,5 +1,4 @@
-import { K as attr_class, z as escape_html, N as slot, G as bind_props } from "./index.js";
-import { j as fallback } from "./utils2.js";
+import { K as fallback, Q as attr_class, G as escape_html, T as slot, N as bind_props } from "./index2.js";
 function Panel($$payload, $$props) {
   let title = $$props["title"];
   let className = fallback($$props["className"], "");

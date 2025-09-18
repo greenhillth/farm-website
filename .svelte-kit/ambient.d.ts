@@ -26,18 +26,19 @@
  * ```
  */
 declare module '$env/static/private' {
+	export const PORT: string;
+	export const ORIGIN: string;
+	export const API_URL: string;
 	export const PYTHON_BASIC_REPL: string;
 	export const LESSOPEN: string;
 	export const CONDA_PROMPT_MODIFIER: string;
 	export const USER: string;
-	export const SSH_CLIENT: string;
 	export const npm_config_user_agent: string;
-	export const XDG_SESSION_TYPE: string;
 	export const GIT_ASKPASS: string;
 	export const npm_node_execpath: string;
 	export const SHLVL: string;
-	export const BROWSER: string;
 	export const npm_config_noproxy: string;
+	export const MOTD_SHOWN: string;
 	export const HOME: string;
 	export const CONDA_SHLVL: string;
 	export const TERM_PROGRAM_VERSION: string;
@@ -47,7 +48,6 @@ declare module '$env/static/private' {
 	export const NVM_INC: string;
 	export const VSCODE_GIT_ASKPASS_MAIN: string;
 	export const VSCODE_GIT_ASKPASS_NODE: string;
-	export const SSL_CERT_FILE: string;
 	export const npm_config_userconfig: string;
 	export const npm_config_local_prefix: string;
 	export const PYDEVD_DISABLE_FILE_VALIDATION: string;
@@ -57,17 +57,19 @@ declare module '$env/static/private' {
 	export const npm_config_engine_strict: string;
 	export const COLORTERM: string;
 	export const _CE_M: string;
+	export const WSL_DISTRO_NAME: string;
 	export const _CONDA_ROOT: string;
 	export const COLOR: string;
 	export const NVM_DIR: string;
-	export const DEBUGINFOD_URLS: string;
+	export const WAYLAND_DISPLAY: string;
 	export const LOGNAME: string;
+	export const NAME: string;
+	export const WSL_INTEROP: string;
+	export const PULSE_SERVER: string;
 	export const _: string;
 	export const npm_config_prefix: string;
 	export const npm_config_npm_version: string;
-	export const XDG_SESSION_CLASS: string;
 	export const TERM: string;
-	export const XDG_SESSION_ID: string;
 	export const npm_config_cache: string;
 	export const _CE_CONDA: string;
 	export const npm_config_node_gyp: string;
@@ -75,7 +77,7 @@ declare module '$env/static/private' {
 	export const NODE: string;
 	export const npm_package_name: string;
 	export const XDG_RUNTIME_DIR: string;
-	export const SSL_CERT_DIR: string;
+	export const DISPLAY: string;
 	export const VSCODE_DEBUGPY_ADAPTER_ENDPOINTS: string;
 	export const LANG: string;
 	export const PYTHONSTARTUP: string;
@@ -96,12 +98,14 @@ declare module '$env/static/private' {
 	export const PWD: string;
 	export const npm_execpath: string;
 	export const CONDA_EXE: string;
-	export const SSH_CONNECTION: string;
 	export const NVM_CD_FLAGS: string;
 	export const XDG_DATA_DIRS: string;
 	export const npm_config_global_prefix: string;
 	export const npm_command: string;
 	export const CONDA_PREFIX: string;
+	export const WSL2_GUI_APPS_ENABLED: string;
+	export const HOSTTYPE: string;
+	export const WSLENV: string;
 	export const INIT_CWD: string;
 	export const EDITOR: string;
 	export const NODE_ENV: string;
@@ -134,18 +138,19 @@ declare module '$env/static/public' {
  */
 declare module '$env/dynamic/private' {
 	export const env: {
+		PORT: string;
+		ORIGIN: string;
+		API_URL: string;
 		PYTHON_BASIC_REPL: string;
 		LESSOPEN: string;
 		CONDA_PROMPT_MODIFIER: string;
 		USER: string;
-		SSH_CLIENT: string;
 		npm_config_user_agent: string;
-		XDG_SESSION_TYPE: string;
 		GIT_ASKPASS: string;
 		npm_node_execpath: string;
 		SHLVL: string;
-		BROWSER: string;
 		npm_config_noproxy: string;
+		MOTD_SHOWN: string;
 		HOME: string;
 		CONDA_SHLVL: string;
 		TERM_PROGRAM_VERSION: string;
@@ -155,7 +160,6 @@ declare module '$env/dynamic/private' {
 		NVM_INC: string;
 		VSCODE_GIT_ASKPASS_MAIN: string;
 		VSCODE_GIT_ASKPASS_NODE: string;
-		SSL_CERT_FILE: string;
 		npm_config_userconfig: string;
 		npm_config_local_prefix: string;
 		PYDEVD_DISABLE_FILE_VALIDATION: string;
@@ -165,17 +169,19 @@ declare module '$env/dynamic/private' {
 		npm_config_engine_strict: string;
 		COLORTERM: string;
 		_CE_M: string;
+		WSL_DISTRO_NAME: string;
 		_CONDA_ROOT: string;
 		COLOR: string;
 		NVM_DIR: string;
-		DEBUGINFOD_URLS: string;
+		WAYLAND_DISPLAY: string;
 		LOGNAME: string;
+		NAME: string;
+		WSL_INTEROP: string;
+		PULSE_SERVER: string;
 		_: string;
 		npm_config_prefix: string;
 		npm_config_npm_version: string;
-		XDG_SESSION_CLASS: string;
 		TERM: string;
-		XDG_SESSION_ID: string;
 		npm_config_cache: string;
 		_CE_CONDA: string;
 		npm_config_node_gyp: string;
@@ -183,7 +189,7 @@ declare module '$env/dynamic/private' {
 		NODE: string;
 		npm_package_name: string;
 		XDG_RUNTIME_DIR: string;
-		SSL_CERT_DIR: string;
+		DISPLAY: string;
 		VSCODE_DEBUGPY_ADAPTER_ENDPOINTS: string;
 		LANG: string;
 		PYTHONSTARTUP: string;
@@ -204,12 +210,14 @@ declare module '$env/dynamic/private' {
 		PWD: string;
 		npm_execpath: string;
 		CONDA_EXE: string;
-		SSH_CONNECTION: string;
 		NVM_CD_FLAGS: string;
 		XDG_DATA_DIRS: string;
 		npm_config_global_prefix: string;
 		npm_command: string;
 		CONDA_PREFIX: string;
+		WSL2_GUI_APPS_ENABLED: string;
+		HOSTTYPE: string;
+		WSLENV: string;
 		INIT_CWD: string;
 		EDITOR: string;
 		NODE_ENV: string;

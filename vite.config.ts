@@ -12,7 +12,7 @@ export default defineConfig({
 	},
 	server: {
 		host: true,
-		port: 4000,
+		port: 4001,
 		strictPort: true,
 		allowedHosts: ['farm.greenhill.net.au'],
 		proxy: {
@@ -24,7 +24,7 @@ export default defineConfig({
 	},
 	preview: {
 		host: true,
-		port: 4001,
+		port: 4002,
 		strictPort: true
 	}
 });

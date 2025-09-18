@@ -1,4 +1,4 @@
-import { z as escape_html, x as attr, F as ensure_array_like, G as bind_props, v as pop, t as push } from "../../../../chunks/index.js";
+import { G as escape_html, E as attr, M as ensure_array_like, N as bind_props, B as pop, z as push } from "../../../../chunks/index2.js";
 function _page($$payload, $$props) {
   push();
   let data = $$props["data"];
@@ -14,12 +14,12 @@ function _page($$payload, $$props) {
     pressure: ["pressure_hpa"],
     battery: []
   };
-  const selectedFields = metricFields[metric] ?? [];
-  const baseColumns = selectedFields.length ? ["timestamp_utc", ...selectedFields] : ["timestamp_utc"];
-  const columns = selectedFields.length > 0 ? baseColumns : history.length && typeof history[0] === "object" ? [
-    "timestamp_utc",
-    ...Object.keys(history[0]).filter((k) => k !== "timestamp_utc")
-  ] : baseColumns;
+  const metricKey = metric;
+  const selectedFields = metricFields[metricKey] ?? [];
+  const timestampColumn = "timestamp_utc";
+  const baseColumns = selectedFields.length ? [timestampColumn, ...selectedFields] : [timestampColumn];
+  const dynamicColumns = history.length && typeof history[0] === "object" ? Object.keys(history[0]).filter((key) => key !== timestampColumn) : [];
+  const columns = selectedFields.length ? baseColumns : [timestampColumn, ...dynamicColumns];
   const rangeHours = Math.max(1, Math.round((data.range.to - data.range.from) / 3600));
   const parseUtc = (value) => {
     const trimmed = value.trim();

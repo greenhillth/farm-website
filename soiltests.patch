@@ -1,0 +1,817 @@
+diff --git a/soil-edit.md b/soil-edit.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..d393b3f399e0087ab5c0cbf515eb5b478d0ef9e6
+--- /dev/null
++++ b/soil-edit.md
+@@ -0,0 +1,89 @@
++# Soil test bulk edit backend requirements
++
++## Scope and frontend expectations
++- The soil tests page introduces an edit mode with checkbox selection and a destructive confirmation modal. The frontend owns the edit-mode state (`isEditMode`), the selection set (`selectedIds`), and the delete confirmation flow, so the backend only has to expose a bulk-deletion API that accepts a list of soil test identifiers and reports which rows were removed.【F:src/routes/soiltests/+page.svelte†L39-L156】
++- The fetch helper currently targets `DELETE /api/soil-tests/bulk` with a JSON body shaped as `{ "ids": [...] }`. It sets `Content-Type: application/json` and is prepared to handle either a success payload, an error payload, or a partial-success payload surfaced through HTTP 207.【F:src/routes/soiltests/+page.svelte†L157-L213】
++- Other soil-test write operations already live under `/api/soil-tests/...` (`manual` and `import` endpoints). To stay consistent while the frontend is stabilising, expose the canonical route at `/api/soil-tests/bulk-delete` and add `/api/soil-tests/bulk` as a temporary alias (or update the frontend constant once the backend path is finalised).【F:src/routes/soiltests/+page.svelte†L324-L343】【F:src/routes/soiltests/+page.svelte†L46-L166】
++
++## API contract – `DELETE /api/soil-tests/bulk-delete`
++
++### Purpose
++Delete multiple soil test records in a single transaction, returning information the frontend needs to reconcile its local list and toast notifications.
++
++### Request
++- **Method & Path**: `DELETE /api/soil-tests/bulk-delete`
++- **Headers**: `Content-Type: application/json`
++- **Body schema**:
++  ```json
++  {
++    "ids": [1, 2, 3]
++  }
++  ```
++- **Validation rules**:
++  1. `ids` must be provided as an array of unique identifiers (integers or UUID strings). Reject empty arrays with HTTP 400 and `{ "message": "ids must contain at least one value" }`.
++  2. Reject requests whose payload exceeds the maximum supported selection count (recommend 200 IDs; tune for your DB limits). Return HTTP 413 with a descriptive message if exceeded.
++  3. Coerce numeric strings, trim whitespace, and drop falsy entries before hitting the database. If any element cannot be parsed into a valid identifier, respond with HTTP 400 and flag the bad values.
++  4. Authenticate the caller and confirm they have delete rights to the relevant tenant/farm.
++
++### Success response – `200 OK`
++Send when every requested ID was deleted successfully.
++```json
++{
++  "deleted": 3,
++  "ids": [1, 2, 3],
++  "failedIds": []
++}
++```
++- `deleted`: integer rowcount from the DELETE statement.
++- `ids`: the subset that was actually removed (useful if the backend canonicalises/filters IDs).
++- `failedIds`: include an empty array for consistency, or omit the field entirely.
++
++### Partial success – `207 Multi-Status`
++Return HTTP 207 when at least one ID failed to delete (foreign-key constraint, missing row, authorisation failure, etc.), but at least one ID succeeded. Shape the JSON to match the frontend expectations:
++```json
++{
++  "deleted": 2,
++  "ids": [1, 2, 3],
++  "failedIds": [3]
++}
++```
++- Populate `failedIds` with the identifiers that remain in the database. The frontend will keep those in its selection and show a warning toast.【F:src/routes/soiltests/+page.svelte†L182-L213】
++- Ensure the response still lists all IDs that were processed in `ids` so the UI can infer which subset succeeded.【F:src/routes/soiltests/+page.svelte†L195-L205】
++
++### Error responses
++- `400 Bad Request` – missing/empty `ids`, malformed body, or identifiers that do not belong to the authenticated tenant.
++- `401/403` – unauthorised or forbidden.
++- `404 Not Found` – every ID was unknown; alternatively you can respond with HTTP 200 and `deleted: 0`, but align the behaviour with your global API conventions.
++- `409 Conflict` – deletion blocked by foreign-key constraints (e.g., downstream recommendations referencing the soil test) when none of the requested rows could be removed.
++- `413 Payload Too Large` – the `ids` array exceeds configured limits.
++- `500 Internal Server Error` – unexpected database failure (return `{ "message": "..." }` so the frontend can display it when debugging).【F:src/routes/soiltests/+page.svelte†L168-L221】
++
++### Headers & caching
++- Respond with `Cache-Control: no-store`.
++- If you support soft-deletion with asynchronous clean-up, include a `Retry-After` header to tell the UI when to re-fetch the list.
++
++## Endpoint alias – `DELETE /api/soil-tests/bulk`
++Keep this route wired to the same handler during the transition period so the existing frontend integration works without modification. Once both sides agree on the canonical path, remove the alias and update the frontend constant at the same time.【F:src/routes/soiltests/+page.svelte†L46-L218】
++
++## Database & transactional behaviour
++1. Enable foreign keys (`PRAGMA foreign_keys = ON`) before running the delete statement, matching the CSV import guidance.
++2. Wrap the operation in a transaction to guarantee that either all eligible rows are deleted or the request fails cleanly. Commit only after computing success/failure sets.
++3. Use a parameterised `DELETE FROM soil_tests WHERE id IN (:ids...) AND tenant_id = :tenant` statement (add tenant scoping columns as needed).
++4. Collect the list of IDs that matched the WHERE clause (`SELECT id FROM soil_tests WHERE id IN (:ids...)`) before deleting to distinguish between "not found" and "delete failed" cases.
++5. When referential integrity blocks a subset, roll back, split the IDs, and retry deleting only the independent subset so you can honour the partial success contract. Alternatively, attempt per-ID deletions inside the transaction while capturing failures.
++6. Cascade-delete dependent rows (e.g., lab metric tables) or prevent deletion with a `409` depending on your data model. Document the policy alongside the handler.
++
++## Concurrency, idempotency, and auditing
++- Treat the endpoint as idempotent: deleting the same IDs twice should return `deleted: 0` and list `failedIds` equal to the attempted IDs if nothing remained.
++- Serialise deletes per tenant or rely on row-level locking to avoid race conditions with other writers (imports, edits). If an ID disappears between validation and deletion, count it as a success (already gone) and include it in `ids`.
++- Log each request with the user ID, tenant, and result counts for audit trails.
++- Emit metrics (`soil_tests.delete.bulk.request`, `...success`, `...partial`, `...failure`) so operations can monitor error spikes.
++
++## Testing checklist
++1. **Unit tests** – cover happy path, empty `ids`, exceeding max selection size, unknown IDs, foreign-key violations, and mixed-success scenarios.
++2. **Integration tests** – seed the database with at least five soil tests, delete a subset, and confirm the remaining rows are untouched.
++3. **Authorisation tests** – ensure users cannot delete soil tests belonging to other tenants/farms.
++4. **Performance tests** – benchmark deletes of 50, 100, 200 IDs to confirm latency stays within acceptable bounds (<500 ms recommended) so the frontend spinner duration feels responsive.
++5. **Smoke test with frontend** – trigger the Svelte flow, verify the confirmation modal behaviour, toast messages, and list reconciliation when the backend returns 200, 207, and error status codes.【F:src/routes/soiltests/+page.svelte†L157-L223】
++
++By following the contract above, the backend service will integrate seamlessly with the new edit-mode UX and mirror the message structures already used for CSV import progress and other soil test APIs.
+diff --git a/src/lib/components/ConfirmModal.svelte b/src/lib/components/ConfirmModal.svelte
+new file mode 100644
+index 0000000000000000000000000000000000000000..062acdb4805a3882f1a9601e726d28dd69d3c60c
+--- /dev/null
++++ b/src/lib/components/ConfirmModal.svelte
+@@ -0,0 +1,200 @@
++<script lang="ts">
++	import { createEventDispatcher, tick } from 'svelte';
++
++	const randomId = () => Math.random().toString(36).slice(2);
++
++	export let open = false;
++	export let title = '';
++	export let confirmText = 'Confirm';
++	export let cancelText = 'Cancel';
++	export let loading = false;
++	export let disableConfirm = false;
++
++	const dispatch = createEventDispatcher<{ confirm: void; cancel: void }>();
++
++	let dialog: HTMLDivElement | null = null;
++	let titleId = `confirm-modal-${randomId()}`;
++
++	$: if (open) {
++		titleId = `confirm-modal-${randomId()}`;
++		tick().then(() => {
++			dialog?.focus();
++		});
++	}
++
++	function handleBackdropClick() {
++		if (loading) return;
++		dispatch('cancel');
++	}
++
++	function handleKeydown(event: KeyboardEvent) {
++		if (!open || loading) return;
++		if (event.key === 'Escape') {
++			event.preventDefault();
++			event.stopPropagation();
++			dispatch('cancel');
++		}
++	}
++</script>
++
++<svelte:window on:keydown={handleKeydown} />
++
++{#if open}
++	<div class="confirm-backdrop" role="presentation" on:click|self={handleBackdropClick}>
++		<div
++			class="confirm-modal"
++			role="dialog"
++			aria-modal="true"
++			aria-labelledby={titleId}
++			tabindex="-1"
++			bind:this={dialog}
++		>
++			<h2 class="confirm-title" id={titleId}>{title}</h2>
++			<div class="confirm-body">
++				<slot />
++			</div>
++			<div class="confirm-actions">
++				<button
++					type="button"
++					class="confirm-secondary"
++					on:click={() => dispatch('cancel')}
++					disabled={loading}
++				>
++					{cancelText}
++				</button>
++				<button
++					type="button"
++					class="confirm-primary"
++					on:click={() => dispatch('confirm')}
++					disabled={loading || disableConfirm}
++				>
++					{#if loading}
++						<svg class="confirm-spinner" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
++							<circle
++								class="confirm-spinner-track"
++								cx="12"
++								cy="12"
++								r="10"
++								fill="none"
++								stroke-width="4"
++							/>
++							<path
++								class="confirm-spinner-head"
++								d="M4 12a8 8 0 018-8"
++								fill="none"
++								stroke-linecap="round"
++								stroke-width="4"
++							/>
++						</svg>
++					{/if}
++					{confirmText}
++				</button>
++			</div>
++		</div>
++	</div>
++{/if}
++
++<style>
++	.confirm-backdrop {
++		position: fixed;
++		inset: 0;
++		background: rgba(15, 23, 42, 0.65);
++		backdrop-filter: blur(6px);
++		display: flex;
++		align-items: center;
++		justify-content: center;
++		padding: 1.5rem;
++		z-index: 2100;
++	}
++
++	.confirm-modal {
++		background: rgba(15, 23, 42, 0.95);
++		border: 1px solid rgba(255, 255, 255, 0.08);
++		border-radius: 0.75rem;
++		width: min(100%, 26rem);
++		padding: 1.5rem;
++		color: #f9fafb;
++		box-shadow: 0 25px 60px rgba(15, 23, 42, 0.45);
++		display: flex;
++		flex-direction: column;
++		gap: 1rem;
++	}
++
++	.confirm-title {
++		font-size: 1.1rem;
++		font-weight: 600;
++	}
++
++	.confirm-body {
++		font-size: 0.95rem;
++		color: rgba(248, 250, 252, 0.85);
++		display: flex;
++		flex-direction: column;
++		gap: 0.5rem;
++	}
++
++	.confirm-actions {
++		display: flex;
++		justify-content: flex-end;
++		gap: 0.75rem;
++	}
++
++	.confirm-secondary,
++	.confirm-primary {
++		border-radius: 0.5rem;
++		padding: 0.55rem 1.15rem;
++		font-size: 0.9rem;
++		border: 1px solid transparent;
++		cursor: pointer;
++	}
++
++	.confirm-secondary {
++		background: transparent;
++		border-color: rgba(255, 255, 255, 0.15);
++		color: rgba(248, 250, 252, 0.85);
++	}
++
++	.confirm-primary {
++		display: inline-flex;
++		align-items: center;
++		gap: 0.45rem;
++		background: rgba(248, 113, 113, 0.85);
++		border-color: rgba(248, 113, 113, 0.85);
++		color: #fff;
++	}
++
++	.confirm-primary:focus,
++	.confirm-secondary:focus {
++		outline: 2px solid rgba(248, 250, 252, 0.15);
++		outline-offset: 2px;
++	}
++
++	.confirm-primary[disabled],
++	.confirm-secondary[disabled] {
++		opacity: 0.6;
++		cursor: not-allowed;
++	}
++
++	.confirm-spinner {
++		width: 1rem;
++		height: 1rem;
++		animation: confirm-spin 0.9s linear infinite;
++	}
++
++	.confirm-spinner-track {
++		stroke: rgba(255, 255, 255, 0.25);
++	}
++
++	.confirm-spinner-head {
++		stroke: currentColor;
++	}
++
++	@keyframes confirm-spin {
++		from {
++			transform: rotate(0deg);
++		}
++		to {
++			transform: rotate(360deg);
++		}
++	}
++</style>
+diff --git a/src/routes/soiltests/+page.svelte b/src/routes/soiltests/+page.svelte
+index 77a1cee4c87ec8e03a04cba1576e52d9a0a952d3..25d9dcd94fb7597a3a0c3044c8c6249730c2730a 100644
+--- a/src/routes/soiltests/+page.svelte
++++ b/src/routes/soiltests/+page.svelte
+@@ -1,62 +1,249 @@
+ <script lang="ts">
+-	import { onMount } from 'svelte';
++	import { onDestroy, onMount } from 'svelte';
+ 	import Panel from '$lib/components/Panel.svelte';
++	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
+ 	import CONFIG from '$lib/config';
+ 
+ 	const metricColumns = [
+ 		{ key: 'P', label: 'P' },
+ 		{ key: 'K', label: 'K' },
+ 		{ key: 'Ca', label: 'Ca' },
+ 		{ key: 'Mg', label: 'Mg' },
+ 		{ key: 'S', label: 'S' },
+ 		{ key: 'Na', label: 'Na' },
+ 		{ key: 'pH', label: 'pH (H2O)' }
+ 	] as const;
+ 
+ 	type MetricKey = (typeof metricColumns)[number]['key'];
+ 
+ 	type SoilTest = {
+ 		id: number;
+ 		fieldId: string;
+ 		paddockName: string;
+ 		farm?: string;
+ 		sampleId?: string | null;
+ 		sampleName?: string | null;
+ 		sampleDate?: string | null;
+ 		client?: string | null;
+ 		metrics: Partial<Record<MetricKey, number>>;
+ 	};
+ 
+ 	let tests: SoilTest[] = [];
+ 	let q = '';
+ 	let loading = true;
+ 	let error: string | null = null;
+ 	let showUploader = false;
+ 	let uploadMode: 'manual' | 'csv' = 'manual';
+ 	let uploadError: string | null = null;
+ 	let submitting = false;
++	let isEditMode = false;
++	let showDeleteConfirm = false;
++	let deletingTests = false;
++	let selectedIds: Set<SoilTest['id']> = new Set();
++	let selectedCount = 0;
++	$: selectedCount = selectedIds.size;
++
++	const BULK_DELETE_ENDPOINT = '/api/soil-tests/bulk';
++
++	type ToastVariant = 'success' | 'error' | 'warning';
++	type Toast = { id: number; message: string; variant: ToastVariant };
++
++	let toasts: Toast[] = [];
++	let toastCounter = 0;
++	const toastTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
++	const toastClassByVariant: Record<ToastVariant, string> = {
++		success: 'border-green-400/40 bg-green-500/10 text-green-100',
++		warning: 'border-amber-400/40 bg-amber-500/15 text-amber-100',
++		error: 'border-red-500/50 bg-red-500/15 text-red-100'
++	};
++
++	function dismissToast(id: number) {
++		const timeout = toastTimeouts.get(id);
++		if (timeout) {
++			clearTimeout(timeout);
++			toastTimeouts.delete(id);
++		}
++		toasts = toasts.filter((toast) => toast.id !== id);
++	}
++
++	function showToast(message: string, variant: ToastVariant = 'success') {
++		const id = ++toastCounter;
++		toasts = [...toasts, { id, message, variant }];
++		const timeout = setTimeout(() => dismissToast(id), 4000);
++		toastTimeouts.set(id, timeout);
++	}
++
++	onDestroy(() => {
++		toastTimeouts.forEach((timeout) => clearTimeout(timeout));
++		toastTimeouts.clear();
++	});
++
++	function clearSelection() {
++		selectedIds = new Set();
++	}
++
++	function enterEditMode() {
++		if (isEditMode) return;
++		isEditMode = true;
++		clearSelection();
++	}
++
++	function exitEditMode() {
++		if (!isEditMode) return;
++		isEditMode = false;
++		showDeleteConfirm = false;
++		clearSelection();
++	}
++
++	function toggleEditMode() {
++		if (isEditMode) {
++			exitEditMode();
++		} else {
++			enterEditMode();
++		}
++	}
++
++	function handleSelectionChange(id: SoilTest['id'], checked: boolean) {
++		const next = new Set(selectedIds);
++		if (checked) {
++			next.add(id);
++		} else {
++			next.delete(id);
++		}
++		selectedIds = next;
++	}
++
++	function getSelectionLabel(test: SoilTest) {
++		if (test.sampleDate) {
++			const labelDate = formatDate(test.sampleDate);
++			if (labelDate && labelDate !== '-') {
++				return `Select soil test ${labelDate}`;
++			}
++		}
++		return `Select soil test ${test.id}`;
++	}
++
++	function confirmDelete() {
++		if (selectedCount === 0) return;
++		showDeleteConfirm = true;
++	}
++
++	function cancelDelete() {
++		if (deletingTests) return;
++		showDeleteConfirm = false;
++	}
++
++	function removeTestsById(ids: SoilTest['id'][]) {
++		if (!ids.length) return;
++		const removalSet = new Set(ids);
++		tests = tests.filter((test) => !removalSet.has(test.id));
++	}
++
++	function handleGlobalKeydown(event: KeyboardEvent) {
++		if (event.key !== 'Escape') return;
++		if (showDeleteConfirm) return;
++		if (showUploader) return;
++		if (isEditMode) {
++			exitEditMode();
++		}
++	}
++
++	type BulkDeleteResponse = {
++		deleted?: number;
++		ids?: SoilTest['id'][];
++		failedIds?: SoilTest['id'][];
++	};
++
++	async function doBulkDelete() {
++		if (selectedCount === 0 || deletingTests) return;
++		deletingTests = true;
++		const ids = Array.from(selectedIds);
++		try {
++			const response = await fetch(BULK_DELETE_ENDPOINT, {
++				method: 'DELETE',
++				headers: { 'Content-Type': 'application/json' },
++				body: JSON.stringify({ ids })
++			});
++
++			let result: BulkDeleteResponse | null = null;
++			const contentType = response.headers.get('content-type') ?? '';
++			if (contentType.includes('application/json')) {
++				result = (await response.json()) as BulkDeleteResponse;
++			}
++
++			if (!response.ok && response.status !== 207) {
++				throw new Error(
++					result && 'message' in result
++						? String((result as Record<string, unknown>).message)
++						: `Delete failed (${response.status})`
++				);
++			}
++
++			const failedSet = new Set<SoilTest['id']>(
++				Array.isArray(result?.failedIds)
++					? ((result.failedIds as SoilTest['id'][] | undefined) ?? [])
++					: []
++			);
++
++			if (response.status === 207 && failedSet.size === 0) {
++				const deletedCount = typeof result?.deleted === 'number' ? result.deleted : undefined;
++				if (deletedCount !== undefined && deletedCount < ids.length) {
++					ids.forEach((id) => failedSet.add(id));
++				}
++			}
++
++			const responseIds = Array.isArray(result?.ids) ? (result.ids as SoilTest['id'][]) : ids;
++			const successfulIds = responseIds.filter((id) => !failedSet.has(id));
++
++			if (successfulIds.length > 0) {
++				removeTestsById(successfulIds);
++				showToast(
++					`Deleted ${successfulIds.length} test record${successfulIds.length === 1 ? '' : 's'}.`,
++					'success'
++				);
++			}
++
++			if (failedSet.size > 0) {
++				showToast(
++					`Failed to delete ${failedSet.size} test record${failedSet.size === 1 ? '' : 's'}.`,
++					'warning'
++				);
++				selectedIds = new Set(failedSet);
++				showDeleteConfirm = false;
++				return;
++			}
++
++			clearSelection();
++			showDeleteConfirm = false;
++		} catch (err) {
++			console.error('Bulk delete failed', err);
++			showToast("Couldn't delete tests. Please try again.", 'error');
++		} finally {
++			deletingTests = false;
++		}
++	}
+ 
+ 	let csvFile: File | null = null;
+ 	let csvFileName: string | null = null;
+ 	let csvFileInput: HTMLInputElement | null = null;
+ 	let csvUploadForm: HTMLFormElement | null = null;
+ 
+ 	type CsvProgressStage =
+ 		| 'idle'
+ 		| 'uploading'
+ 		| 'queued'
+ 		| 'parsing'
+ 		| 'importing'
+ 		| 'complete'
+ 		| 'error';
+ 
+ 	type CsvProgressState = {
+ 		visible: boolean;
+ 		stage: CsvProgressStage;
+ 		percent: number;
+ 		message: string;
+ 		detail?: string | null;
+ 	};
+ 
+ 	type CsvProgressUpdate = {
+ 		jobId?: string;
+@@ -482,99 +669,178 @@
+ 		} catch (err: unknown) {
+ 			error = err instanceof Error ? err.message : 'Failed loading soil tests';
+ 		} finally {
+ 			loading = false;
+ 		}
+ 	});
+ 
+ 	onMount(() => {
+ 		const handler = (event: Event) => onCsvProgressEvent(event);
+ 		window.addEventListener(CSV_PROGRESS_EVENT_NAME, handler);
+ 		return () => {
+ 			window.removeEventListener(CSV_PROGRESS_EVENT_NAME, handler);
+ 		};
+ 	});
+ 
+ 	$: filtered = q
+ 		? tests.filter((test) => {
+ 				const haystack = `${test.paddockName} ${test.fieldId} ${test.sampleName ?? ''} ${
+ 					test.sampleId ?? ''
+ 				} ${test.farm ?? ''}`.toLowerCase();
+ 				return haystack.includes(q.toLowerCase());
+ 			})
+ 		: tests;
+ </script>
+ 
++<svelte:window on:keydown={handleGlobalKeydown} />
++
++{#if toasts.length}
++	<div
++		class="pointer-events-none fixed top-4 right-4 z-[2100] flex max-w-sm flex-col gap-2"
++		aria-live="polite"
++	>
++		{#each toasts as toast (toast.id)}
++			<div
++				class={`pointer-events-auto flex items-start gap-3 rounded-md border px-3 py-2 text-sm shadow-lg backdrop-blur-sm ${toastClassByVariant[toast.variant]}`}
++				role={toast.variant === 'error' ? 'alert' : 'status'}
++			>
++				<span class="flex-1">{toast.message}</span>
++				<button
++					class="ml-2 text-xs text-current opacity-70 transition hover:opacity-100 focus:ring-2 focus:ring-current/40 focus:outline-none"
++					type="button"
++					on:click={() => dismissToast(toast.id)}
++					aria-label="Dismiss notification"
++				>
++					×
++				</button>
++			</div>
++		{/each}
++	</div>
++{/if}
++
+ <header class="container mx-auto flex items-center justify-between gap-4 px-4 py-4">
+ 	<a href="/" class="text-muted text-sm hover:text-white">&larr; Back to home</a>
+ 	<div class="text-muted text-xs">Soil Tests</div>
+ </header>
+ 
+ <main class="container mx-auto space-y-5 px-4 pb-8">
+ 	<Panel title="Soil tests">
+ 		<div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+ 			<input
+ 				placeholder="Search by paddock or sample…"
+ 				bind:value={q}
+ 				class="border-border focus:ring-accent/40 w-full rounded-md border bg-white/5 px-3 py-2 text-sm outline-none focus:ring-2 sm:max-w-md"
+ 			/>
+ 			<div class="text-muted flex flex-wrap items-center gap-3 text-xs">
+ 				<span>Showing {filtered.length} of {tests.length} samples</span>
++				<div class="flex items-center gap-2">
++					<button
++						type="button"
++						on:click={() => openUploader('manual')}
++						class="border-border focus:ring-accent/40 rounded-md border bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/20 focus:ring-2 focus:outline-none"
++					>
++						Add soil test
++					</button>
++					<button
++						type="button"
++						class="border-border focus:ring-accent/40 rounded-md border bg-red-500/20 px-3 py-2 text-sm text-red-300 transition hover:bg-red-500/30 focus:ring-2 focus:outline-none"
++						on:click={toggleEditMode}
++						aria-pressed={isEditMode}
++					>
++						{isEditMode ? 'Done' : 'Edit tests'}
++					</button>
++				</div>
++			</div>
++		</div>
++
++		{#if isEditMode}
++			<div class="mb-4 flex flex-wrap items-center gap-2 text-sm">
++				<button
++					type="button"
++					class="rounded-md border border-white/20 bg-transparent px-3 py-2 text-white/80 transition hover:bg-white/10 focus:ring-2 focus:ring-white/30 focus:outline-none"
++					on:click={exitEditMode}
++				>
++					Exit
++				</button>
+ 				<button
+ 					type="button"
+-					on:click={() => openUploader('manual')}
+-					class="border-border focus:ring-accent/40 rounded-md border bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/20 focus:ring-2 focus:outline-none"
++					class="rounded-md border border-red-500/50 bg-red-500/20 px-3 py-2 text-red-200 transition hover:bg-red-500/30 focus:ring-2 focus:ring-red-400/40 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
++					on:click={confirmDelete}
++					disabled={selectedCount === 0}
+ 				>
+-					Add soil test
++					Delete ({selectedCount})
+ 				</button>
+ 			</div>
+-		</div>
++		{/if}
+ 
+ 		{#if loading}
+ 			<div class="text-muted text-sm">Loading soil tests…</div>
+ 		{:else if error}
+ 			<div class="text-sm text-red-400">{error}</div>
+ 		{:else if filtered.length === 0}
+ 			<div class="text-muted text-sm">No samples match your search.</div>
+ 		{:else}
+ 			<div class="overflow-x-auto">
+ 				<table class="w-full text-sm">
+ 					<thead class="text-muted border-border/60 border-b text-left">
+ 						<tr>
++							<th class="w-10 py-2 pr-2">
++								{#if isEditMode}
++									<span class="sr-only">Select soil test</span>
++								{/if}
++							</th>
+ 							<th class="py-2 pr-4">Sample</th>
+ 							<th class="py-2 pr-4">Paddock</th>
+ 							<th class="py-2 pr-4">Farm</th>
+ 							<th class="py-2 pr-4">Sample date</th>
+ 							<th class="py-2 pr-4">Client</th>
+ 							{#each metricColumns as column}
+ 								<th class="py-2 pr-2 text-right">{column.label}</th>
+ 							{/each}
+ 						</tr>
+ 					</thead>
+ 					<tbody>
+ 						{#each filtered as test}
+-							<tr class="border-border/40 border-b hover:bg-white/5">
++							<tr
++								class="border-border/40 border-b transition-colors hover:bg-white/5"
++								class:selected-row={selectedIds.has(test.id)}
++							>
++								<td class="w-10 py-2 pr-2 align-top">
++									{#if isEditMode}
++										<input
++											type="checkbox"
++											class="size-4 rounded-full border border-red-400/60 bg-transparent accent-red-500"
++											checked={selectedIds.has(test.id)}
++											on:change={(event) =>
++												handleSelectionChange(
++													test.id,
++													(event.currentTarget as HTMLInputElement).checked
++												)}
++											aria-label={getSelectionLabel(test)}
++										/>
++									{/if}
++								</td>
+ 								<td class="py-2 pr-4">
+ 									<div class="flex flex-col text-sm">
+ 										<span class="font-medium text-white">{test.sampleName ?? 'Unnamed sample'}</span
+ 										>
+ 										{#if test.sampleId}
+ 											<span class="text-muted text-xs">Sample ID {test.sampleId}</span>
+ 										{/if}
+ 									</div>
+ 								</td>
+ 								<td class="py-2 pr-4">
+ 									<div class="flex flex-col">
+ 										<span>{test.paddockName}</span>
+ 										<span class="text-muted text-xs">Field ID {test.fieldId}</span>
+ 									</div>
+ 								</td>
+ 								<td class="py-2 pr-4">{test.farm ?? '-'}</td>
+ 								<td class="py-2 pr-4">{formatDate(test.sampleDate)}</td>
+ 								<td class="py-2 pr-4">{test.client ?? '-'}</td>
+ 								{#each metricColumns as column}
+ 									<td class="py-2 text-right">{formatNumber(test.metrics[column.key])}</td>
+ 								{/each}
+ 							</tr>
+ 						{/each}
+ 					</tbody>
+ 				</table>
+@@ -745,51 +1011,76 @@
+ 								<span>{Math.round(csvProgressPercent)}%</span>
+ 							</div>
+ 							<div class="modal__progress-bar" aria-hidden="true">
+ 								<div class="modal__progress-value" style={`width: ${csvProgressPercent}%`}></div>
+ 							</div>
+ 							{#if csvProgress.detail}
+ 								<div class="modal__progress-detail">{csvProgress.detail}</div>
+ 							{/if}
+ 						</div>
+ 					{/if}
+ 					{#if uploadError}
+ 						<div class="modal__error">{uploadError}</div>
+ 					{/if}
+ 					<footer class="modal__footer">
+ 						<button type="button" on:click={closeUploader} class="modal__secondary">Cancel</button>
+ 						<button type="submit" class="modal__primary" disabled={submitting || !csvFile}>
+ 							{submitting ? 'Uploading…' : 'Upload CSV'}
+ 						</button>
+ 					</footer>
+ 				</form>
+ 			{/if}
+ 		</div>
+ 	</div>
+ {/if}
+ 
++<ConfirmModal
++	open={showDeleteConfirm}
++	title="Delete soil test records?"
++	confirmText="Delete"
++	cancelText="Cancel"
++	loading={deletingTests}
++	disableConfirm={selectedCount === 0}
++	on:confirm={doBulkDelete}
++	on:cancel={cancelDelete}
++>
++	<p class="text-sm text-slate-200">
++		You are about to delete {selectedCount} test record{selectedCount === 1 ? '' : 's'}. Are you
++		sure?
++	</p>
++	<p class="text-sm font-semibold text-red-300">This action cannot be undone.</p>
++</ConfirmModal>
++
+ <style>
++	tr.selected-row {
++		background: rgba(248, 113, 113, 0.12);
++	}
++
++	tr.selected-row:hover {
++		background: rgba(248, 113, 113, 0.18);
++	}
++
+ 	.modal-backdrop {
+ 		position: fixed;
+ 		inset: 0;
+ 		background: rgba(15, 23, 42, 0.65);
+ 		backdrop-filter: blur(6px);
+ 		display: flex;
+ 		align-items: center;
+ 		justify-content: center;
+ 		padding: 1.5rem;
+ 		z-index: 2000;
+ 	}
+ 
+ 	.modal {
+ 		background: rgba(15, 23, 42, 0.95);
+ 		border: 1px solid rgba(255, 255, 255, 0.08);
+ 		border-radius: 0.75rem;
+ 		max-width: 42rem;
+ 		width: min(100%, 42rem);
+ 		box-shadow: 0 25px 60px rgba(15, 23, 42, 0.45);
+ 		color: #f9fafb;
+ 		display: flex;
+ 		flex-direction: column;
+ 		max-height: min(90dvh, 46rem);
+ 	}
+ 

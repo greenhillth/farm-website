@@ -293,6 +293,78 @@ const EMPTY_LEGEND_DETAILS: LegendDetails = {
 		return `${shown}, +${fields.length - limit} more`;
 	}
 
+	function keepTooltipInView(node: HTMLElement) {
+		const owner = node.parentElement ?? node;
+		const boundary = owner.closest('[data-tooltip-boundary]') as HTMLElement | null;
+		let frame = 0;
+		let observingResize = false;
+
+		const resetTransform = () => {
+			node.style.setProperty('--tw-translate-x', 'calc(-50% + 0px)');
+		};
+
+		const updatePosition = () => {
+			resetTransform();
+			const rect = node.getBoundingClientRect();
+			if (rect.width === 0 && rect.height === 0) return;
+			const padding = 8;
+			const boundaryRect = boundary?.getBoundingClientRect();
+			const minX = (boundaryRect?.left ?? 0) + padding;
+			const maxX = (boundaryRect?.right ?? window.innerWidth) - padding;
+			const leftOverflow = minX - rect.left;
+			const rightOverflow = rect.right - maxX;
+			let shift = 0;
+			if (leftOverflow > 0) {
+				shift = leftOverflow;
+			} else if (rightOverflow > 0) {
+				shift = -rightOverflow;
+			}
+			node.style.setProperty('--tw-translate-x', `calc(-50% + ${shift}px)`);
+		};
+
+		const scheduleUpdate = () => {
+			cancelAnimationFrame(frame);
+			frame = requestAnimationFrame(() => {
+				requestAnimationFrame(updatePosition);
+				if (!observingResize) {
+					window.addEventListener('resize', updatePosition, { passive: true });
+					boundary?.addEventListener('scroll', updatePosition, { passive: true });
+					observingResize = true;
+				}
+			});
+		};
+
+		const handleHide = () => {
+			cancelAnimationFrame(frame);
+			if (observingResize) {
+				window.removeEventListener('resize', updatePosition);
+				boundary?.removeEventListener('scroll', updatePosition);
+				observingResize = false;
+			}
+			resetTransform();
+		};
+
+		const onMouseEnter: EventListener = () => scheduleUpdate();
+		const onFocus: EventListener = () => scheduleUpdate();
+		const onMouseLeave: EventListener = () => handleHide();
+		const onBlur: EventListener = () => handleHide();
+
+		owner.addEventListener('mouseenter', onMouseEnter, { passive: true });
+		owner.addEventListener('focus', onFocus);
+		owner.addEventListener('mouseleave', onMouseLeave, { passive: true });
+		owner.addEventListener('blur', onBlur);
+
+		return {
+			destroy() {
+				owner.removeEventListener('mouseenter', onMouseEnter);
+				owner.removeEventListener('focus', onFocus);
+				owner.removeEventListener('mouseleave', onMouseLeave);
+				owner.removeEventListener('blur', onBlur);
+				handleHide();
+			}
+		};
+	}
+
 	function setLayerBaseStyle(layer: any, style: Partial<PathOptions>) {
 		if (!layer || typeof layer.setStyle !== 'function') return;
 		const nextStyle = {
@@ -904,11 +976,12 @@ const EMPTY_LEGEND_DETAILS: LegendDetails = {
 		on:transitionend={handleNavTransition}
 	>
 		<div
-			class={`sidebar-panel bg-panel/95 text-muted flex h-full w-full flex-col gap-6 border-r border-white/10 text-sm transition-[padding,opacity] duration-300 ease-in-out ${navOpen ? 'pointer-events-auto overflow-y-auto px-6 py-6 opacity-100' : 'pointer-events-none overflow-hidden px-0 py-0 opacity-0'}`}
+			data-tooltip-boundary
+			class={`sidebar-panel bg-panel/95 text-muted flex h-full w-full flex-col gap-6 border-r border-white/10 text-sm transition-[padding,opacity] duration-300 ease-in-out ${navOpen ? 'pointer-events-auto overflow-y-auto overflow-x-visible px-6 py-6 opacity-100' : 'pointer-events-none overflow-hidden px-0 py-0 opacity-0'}`}
 			aria-hidden={!navOpen}
 		>
 			<header class="flex items-start gap-4 text-white">
-				<div class="flex items-center gap-3">
+				<a href='/' class="flex items-center gap-3">
 					<img
 						src="/img/logo.png"
 						alt="Greenhill Bros logo"
@@ -918,7 +991,7 @@ const EMPTY_LEGEND_DETAILS: LegendDetails = {
 						<p class="text-muted/70 text-xs tracking-wider uppercase">Greenhill Bros Farm</p>
 						<h1 class="text-lg font-semibold">Interactive map</h1>
 					</div>
-				</div>
+				</a>
 				<div class="ml-auto">
 					<button
 						class="border-border/80 text-muted focus:ring-accent/40 rounded-md border bg-white/5 p-2 hover:bg-white/10 hover:text-white focus:ring-2 focus:outline-none"
@@ -1027,21 +1100,22 @@ const EMPTY_LEGEND_DETAILS: LegendDetails = {
 										aria-label={`Optimal range ${formatLegendTick(details.opt.range?.[0])}${unitSuffix} to ${formatLegendTick(details.opt.range?.[1])}${unitSuffix}`}
 									>
 										<div class="pointer-events-none absolute inset-0 rounded-full bg-white/30"></div>
-										<div
-											class="pointer-events-none absolute -top-24 left-1/2 hidden w-60 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block"
-											role="tooltip"
-										>
-											<div class="font-semibold">
-												Optimal {formatLegendTick(details.opt.range?.[0])}{unitSuffix} – {formatLegendTick(details.opt.range?.[1])}{unitSuffix}
-											</div>
-											{#if details.opt.within.total > 0}
-												<div class="mt-1 text-[10px] text-slate-200/80">
-													{details.opt.within.count} of {details.opt.within.total} paddocks ({formatPercent(details.opt.within.pct)})
-												</div>
-											{:else}
-												<div class="mt-1 text-[10px] text-slate-200/80">No sampled paddocks yet</div>
-											{/if}
+									<div
+										use:keepTooltipInView
+										class="pointer-events-none absolute -top-24 left-1/2 hidden w-60 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block"
+										role="tooltip"
+									>
+										<div class="font-semibold">
+											Optimal {formatLegendTick(details.opt.range?.[0])}{unitSuffix} – {formatLegendTick(details.opt.range?.[1])}{unitSuffix}
 										</div>
+										{#if details.opt.within.total > 0}
+											<div class="mt-1 text-[10px] text-slate-200/80">
+												{details.opt.within.count} of {details.opt.within.total} paddocks ({formatPercent(details.opt.within.pct)})
+											</div>
+										{:else}
+											<div class="mt-1 text-[10px] text-slate-200/80">No sampled paddocks yet</div>
+										{/if}
+									</div>
 									</button>
 								{/if}
 								<button
@@ -1052,6 +1126,7 @@ const EMPTY_LEGEND_DETAILS: LegendDetails = {
 								>
 									<div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div>
 									<div
+										use:keepTooltipInView
 										class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block"
 										role="tooltip"
 									>
@@ -1071,6 +1146,7 @@ const EMPTY_LEGEND_DETAILS: LegendDetails = {
 								>
 									<div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div>
 									<div
+										use:keepTooltipInView
 										class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block"
 										role="tooltip"
 									>
@@ -1084,12 +1160,11 @@ const EMPTY_LEGEND_DETAILS: LegendDetails = {
 								</button>
 							</div>
 							<div class="flex justify-between text-[11px] text-muted/60">
-								<span>{formatLegendTick(cmin)}{unitSuffix}</span>
-								<span>{formatLegendTick(cmax)}{unitSuffix}</span>
+								<span>{formatLegendTick(cmin)}</span>
+								<span>{formatLegendTick(cmax)}</span>
 							</div>
 							<div class="flex justify-between text-[10px] text-muted/60">
-								<span>Samples {formatLegendTick(stats.min)}{unitSuffix} – {formatLegendTick(stats.max)}{unitSuffix}</span>
-								<span>Median {formatLegendTick(stats.median)}{unitSuffix}</span>
+								<span>Median: <span class="font-semibold">{formatLegendTick(stats.median)}{unitSuffix}</span></span>
 							</div>
 							{#if details.opt.range}
 								<div class="text-[10px] text-emerald-200/90">
@@ -1191,7 +1266,11 @@ const EMPTY_LEGEND_DETAILS: LegendDetails = {
 
 		{#if !navOpen}
 			<button
-				class="border-border/80 bg-panel/90 text-muted hover:bg-panel focus:ring-accent/40 absolute top-3 left-4 z-[1200] rounded-md border px-3 py-2 text-sm backdrop-blur transition hover:text-white focus:ring-2 focus:outline-none"
+				class={`border-border/80 bg-panel/90 text-muted hover:bg-panel focus:ring-accent/40 absolute top-3 left-4 z-[1200] rounded-md border px-3 py-2 text-sm backdrop-blur transition hover:text-white focus:ring-2 focus:outline-none ${
+        					isStreetsBase
+						? 'border-white/50 bg-slate-950/95 text-slate-200 shadow-black/40'
+						: 'border-border/80 bg-panel/80 text-muted'
+				}`}
 				on:click={() => toggleNav()}
 			>
 				Open controls

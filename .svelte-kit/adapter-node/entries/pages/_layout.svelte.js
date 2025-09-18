@@ -1,4 +1,4 @@
-import { w as head, x as attr } from "../../chunks/index.js";
+import { D as head, E as attr } from "../../chunks/index2.js";
 const favicon = "/_app/immutable/assets/favicon.DRH03K5g.svg";
 function _layout($$payload, $$props) {
   let { children } = $$props;

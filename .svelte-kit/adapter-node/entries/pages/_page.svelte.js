@@ -1,5 +1,4 @@
-import { x as attr, z as escape_html, F as ensure_array_like, G as bind_props, v as pop, t as push, J as spread_props } from "../../chunks/index.js";
-import { j as fallback } from "../../chunks/utils2.js";
+import { K as fallback, E as attr, G as escape_html, M as ensure_array_like, N as bind_props, B as pop, z as push, O as spread_props } from "../../chunks/index2.js";
 function Card($$payload, $$props) {
   push();
   let href = $$props["href"];
@@ -133,7 +132,7 @@ function _page($$payload) {
     }
   ];
   const each_array = ensure_array_like(items);
-  $$payload.out.push(`<div class="home-shell svelte-1j7pcr4"><div class="home-shell__bg svelte-1j7pcr4" aria-hidden="true"></div> <main class="relative container mx-auto px-4 py-8 svelte-1j7pcr4"><header class="mb-6 flex items-center justify-between gap-4"><h1 class="text-xl font-semibold md:text-2xl">Greenhill Bros Farm</h1> <a href="/map" class="text-muted text-sm hover:text-white">Open map →</a></header> <section class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"><!--[-->`);
+  $$payload.out.push(`<div class="home-shell svelte-1uha8ag"><div class="home-shell__bg svelte-1uha8ag" aria-hidden="true"></div> <main class="relative container mx-auto px-4 py-8 svelte-1uha8ag"><header class="mb-6 flex items-center justify-between gap-4"><h1 class="text-xl font-semibold md:text-2xl">Greenhill Bros Farm</h1> <a href="/map" class="text-muted text-sm hover:text-white">Open map →</a></header> <section class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"><!--[-->`);
   for (let $$index = 0, $$length = each_array.length; $$index < $$length; $$index++) {
     let i = each_array[$$index];
     Card($$payload, spread_props([i]));

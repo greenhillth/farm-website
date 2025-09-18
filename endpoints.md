@@ -2,7 +2,7 @@
 
 The frontend soil test uploader expects two POST endpoints. Both live under the same base API path the frontend already uses (`/api`) but you can mount them anywhere that makes sense for your FastAPI app.
 
-## 1. Manual Entry Endpoint – `POST /api/tests/manual`
+## 1. Manual Entry Endpoint – `POST /api/soil-tests/manual`
 
 ### Purpose
 Persist a single soil test that the user entered through the manual form. The frontend already validates mandatory fields (field id, sample name, sample date) and ensures at least one metric value is provided, but the backend must still repeat validation.
@@ -106,7 +106,7 @@ class ManualTestPayload(BaseModel):
 * `400 Bad Request` – invalid JSON, missing required fields, no metrics, invalid metric value, unknown fieldId.
 * `409 Conflict` – existing sample with same `sampleId` and `fieldId`; decide whether to allow duplicates or enforce uniqueness.
 
-## 2. CSV Upload Endpoint – `POST /api/tests/import`
+## 2. CSV Upload Endpoint – `POST /api/soil-tests/import`
 
 ### Purpose
 Accept a CSV file exported from the lab, parse every row into soil test records, and insert them. The frontend sends the file in a multipart form with field name `file`.

@@ -1,4 +1,4 @@
-import { w as head, F as ensure_array_like, x as attr, z as escape_html } from "../../../chunks/index.js";
+import { D as head, M as ensure_array_like, E as attr, G as escape_html } from "../../../chunks/index2.js";
 import { P as Panel } from "../../../chunks/Panel.js";
 function _page($$payload) {
   const quickLinks = [

@@ -1,10 +1,13 @@
+const api = 'http://localhost:8000/api';
+
 const CONFIG = {
+	api: 'http://localhost:8000/api',
 	data: {
-		farm: '/api/data/farm',
-		geojson: '/api/data/farm',
-		tests: '/api/data/tests'
+		farm: `${api}/data/farm`,
+		geojson: `${api}/data/farm`,
+		tests: `${api}/data/tests`
 	},
-	tiles: {
+	map: {
 		url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
 		attribution: 'Imagery © Esri, Maxar, Earthstar Geographics, and the GIS community',
 		maxZoom: 20
