@@ -1,19 +1,22 @@
 const CONFIG = {
-  data: {
-    farm: "/api/data/farm",
-    geojson: "/api/data/farm",
-    tests: "/api/data/tests",
-  },
-  tiles: {
-    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attribution:
-      "Imagery © Esri, Maxar, Earthstar Geographics, and the GIS community",
-    maxZoom: 20,
-  },
-  soilMetrics: [
-    { id: "none", label: "None" },
-    { id: "K", label: "K" },
-    { id: "pH", label: "pH" },
-  ],
+	data: {
+		farm: '/api/data/farm',
+		geojson: '/api/data/farm',
+		tests: '/api/data/tests'
+	},
+	tiles: {
+		url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+		attribution: 'Imagery © Esri, Maxar, Earthstar Geographics, and the GIS community',
+		maxZoom: 20
+	},
+	soilMetrics: [
+		{ id: 'none', label: 'None' },
+		{ id: 'OM', label: 'Organic Matter' },
+		{ id: 'P', label: 'Phosphorus' },
+		{ id: 'K', label: 'Potassium' },
+		{ id: 'M', label: 'Magnesium' },
+		{ id: 'Ca', label: 'Calcium' },
+		{ id: 'pH', label: 'Soil pH' }
+	]
 };
 export default CONFIG;

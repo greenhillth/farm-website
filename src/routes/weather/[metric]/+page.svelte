@@ -11,24 +11,32 @@
 	const w = data.w;
 	const history = Array.isArray(data.history) ? data.history : [];
 
-	const metricFields: Record<string, string[]> = {
-		outdoor: ['temp_c', 'humidity_pct'],
-		indoor: [],
-		solar: ['solar_wm2'],
-		rain: ['rain_1h_mm', 'rain_24h_mm'],
-		wind: ['wind_avg_ms', 'wind_gust_ms', 'wind_dir_deg'],
-		pressure: ['pressure_hpa'],
-		battery: []
-	};
+        const metricFields = {
+                outdoor: ['temp_c', 'humidity_pct'],
+                indoor: [],
+                solar: ['solar_wm2'],
+                rain: ['rain_1h_mm', 'rain_24h_mm'],
+                wind: ['wind_avg_ms', 'wind_gust_ms', 'wind_dir_deg'],
+                pressure: ['pressure_hpa'],
+                battery: []
+        } as const satisfies Partial<Record<string, (keyof WeatherHistoryRow)[]>>;
 
-	const selectedFields = metricFields[metric] ?? [];
-	const baseColumns = selectedFields.length ? ['timestamp_utc', ...selectedFields] : ['timestamp_utc'];
-	const columns =
-		selectedFields.length > 0
-			? baseColumns
-			: history.length && typeof history[0] === 'object'
-				? ['timestamp_utc', ...Object.keys(history[0]).filter((k) => k !== 'timestamp_utc')]
-				: baseColumns;
+        const metricKey = metric as keyof typeof metricFields;
+        const selectedFields: (keyof WeatherHistoryRow)[] =
+                metricFields[metricKey] ?? ([] as (keyof WeatherHistoryRow)[]);
+        const timestampColumn: keyof WeatherHistoryRow = 'timestamp_utc';
+        const baseColumns: (keyof WeatherHistoryRow)[] = selectedFields.length
+                ? [timestampColumn, ...selectedFields]
+                : [timestampColumn];
+        const dynamicColumns: (keyof WeatherHistoryRow)[] =
+                history.length && typeof history[0] === 'object'
+                        ? (Object.keys(history[0]) as (keyof WeatherHistoryRow)[]).filter(
+                                  (key) => key !== timestampColumn
+                          )
+                        : [];
+        const columns: (keyof WeatherHistoryRow)[] = selectedFields.length
+                ? baseColumns
+                : [timestampColumn, ...dynamicColumns];
 	const rangeHours = Math.max(1, Math.round((data.range.to - data.range.from) / 3600));
 
 	const parseUtc = (value: string) => {
@@ -39,7 +47,7 @@
 		return new Date(stamped);
 	};
 
-	const formatValue = (key: string, value: unknown) => {
+        const formatValue = (key: keyof WeatherHistoryRow, value: unknown) => {
 		if (value === null || value === undefined) return '';
 		if (key === 'timestamp_utc' && typeof value === 'string') {
 			const parsed = parseUtc(value);
