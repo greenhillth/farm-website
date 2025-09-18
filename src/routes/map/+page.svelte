@@ -47,25 +47,43 @@
 		count: number;
 	};
 
-	type LegendPercents = {
-		lowPct: number;
-		highPct: number;
-		showOpt: boolean;
-		optLoPct: number;
-		optHiPct: number;
-		optWidth: number;
-		optMidPct: number;
-	};
+type LegendPercents = {
+	lowPct: number;
+	highPct: number;
+	showOpt: boolean;
+	optLoPct: number;
+	optHiPct: number;
+	optWidth: number;
+	optMidPct: number;
+};
 
-	const EMPTY_LEGEND_PERCENTS: LegendPercents = {
-		lowPct: 0,
-		highPct: 0,
-		showOpt: false,
-		optLoPct: 0,
-		optHiPct: 0,
-		optWidth: 0,
-		optMidPct: 0
+const EMPTY_LEGEND_PERCENTS: LegendPercents = {
+	lowPct: 0,
+	highPct: 0,
+	showOpt: false,
+	optLoPct: 0,
+	optHiPct: 0,
+	optWidth: 0,
+	optMidPct: 0
+};
+
+type LegendDetails = {
+	min: { value: number | null; fields: string[] };
+	max: { value: number | null; fields: string[] };
+	opt: {
+		range: [number, number] | null;
+		within: { count: number; pct: number; total: number };
 	};
+};
+
+const EMPTY_LEGEND_DETAILS: LegendDetails = {
+	min: { value: null, fields: [] },
+	max: { value: null, fields: [] },
+	opt: {
+		range: null,
+		within: { count: 0, pct: 0, total: 0 }
+	}
+};
 
 	const VIRIDIS_STOPS = ['#440154', '#414487', '#2a788e', '#22a884', '#7ad151', '#fde725'];
 	const VIRIDIS_GRADIENT = `linear-gradient(to right, ${VIRIDIS_STOPS.map((color, index) => {
@@ -229,6 +247,10 @@
 		maximumFractionDigits: 2,
 		minimumFractionDigits: 0
 	});
+	const percentFormatter = new Intl.NumberFormat('en-AU', {
+		maximumFractionDigits: 1,
+		minimumFractionDigits: 0
+	});
 
 	function formatLegendTick(value: number | null | undefined): string {
 		if (value === null || value === undefined || Number.isNaN(value)) return '–';
@@ -257,6 +279,18 @@
 			month: 'short',
 			day: 'numeric'
 		});
+	}
+
+	function formatPercent(value: number | null | undefined): string {
+		if (value === null || value === undefined || Number.isNaN(value)) return '0%';
+		return `${percentFormatter.format(value)}%`;
+	}
+
+	function formatFieldList(fields: string[], limit = 5): string {
+		if (!fields || fields.length === 0) return 'None';
+		if (fields.length <= limit) return fields.join(', ');
+		const shown = fields.slice(0, limit).join(', ');
+		return `${shown}, +${fields.length - limit} more`;
 	}
 
 	function setLayerBaseStyle(layer: any, style: Partial<PathOptions>) {
@@ -349,6 +383,8 @@
 	let metricScaleReady = false;
 	let isStreetsBase = activeBaseLayer === 'streets';
 	let legendPercents: LegendPercents = EMPTY_LEGEND_PERCENTS;
+	let legendDetails: LegendDetails = EMPTY_LEGEND_DETAILS;
+	let paddockIdentities = new Map<string, { name: string; displayId: string }>();
 
 	// Derived active metric object + message (no O(n) lookups on render)
 	$: activeMetricObj = metricsById.get(activeMetric)!; // safe due to guards below
@@ -360,6 +396,12 @@
 		activeMetricObj.c_max > activeMetricObj.c_min;
 	$: activeMetricStats = computeMetricStats(activeMetricObj, soilMetricsVersion);
 	$: legendPercents = computeLegendPercents(activeMetricObj, activeMetricStats, metricScaleReady);
+	$: legendDetails = computeLegendDetails(
+		activeMetricObj,
+		activeMetricStats,
+		soilMetricsByField,
+		paddockIdentities
+	);
 	$: isStreetsBase = activeBaseLayer === 'streets';
 	$: if (paddockLayer && styleUpdateMarker) {
 		applySoilMetricStyles();
@@ -412,6 +454,19 @@
 			const geojson = await response.json();
 			farmData = geojson;
 			paddockCount = Array.isArray(geojson?.features) ? geojson.features.length : 0;
+			paddockIdentities = new Map();
+			if (Array.isArray(geojson?.features)) {
+				for (const feature of geojson.features) {
+					const props = (feature?.properties ?? {}) as Record<string, unknown>;
+					const identity = derivePaddockIdentity(props);
+					if (identity.fieldId) {
+						paddockIdentities.set(identity.fieldId, {
+							name: identity.name,
+							displayId: identity.displayId
+						});
+					}
+				}
+			}
 
 			if (paddockLayer && map.hasLayer(paddockLayer)) {
 				map.removeLayer(paddockLayer);
@@ -599,6 +654,77 @@
 		const median = values[Math.floor(values.length / 2)];
 		const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
 		return { min, max, median, mean, count: values.length };
+	}
+
+	function getFieldDisplayName(
+		fieldId: string,
+		sample: NormalisedSoilSample | undefined,
+		identities: Map<string, { name: string; displayId: string }>
+	): string {
+		const identity = identities.get(fieldId);
+		if (identity?.name && identity.name !== 'Unnamed paddock') return identity.name;
+		if (identity?.displayId && identity.displayId !== '–') return identity.displayId;
+		if (sample?.sampleName) return sample.sampleName;
+		return fieldId || 'Unknown paddock';
+	}
+
+	function computeLegendDetails(
+		metric: MetricOption,
+		stats: MetricStats | null,
+		samples: Map<string, NormalisedSoilSample>,
+		identities: Map<string, { name: string; displayId: string }>
+	): LegendDetails {
+		if (!stats || metric.id === 'none') return EMPTY_LEGEND_DETAILS;
+		const tolerance = 1e-6;
+		const minValue = stats.min;
+		const maxValue = stats.max;
+		const minFields: string[] = [];
+		const maxFields: string[] = [];
+		let total = 0;
+		let withinCount = 0;
+		const [optLoRaw, optHiRaw] = metric.range_optimal ?? [undefined, undefined];
+		const hasOptRange =
+			typeof optLoRaw === 'number' &&
+			typeof optHiRaw === 'number' &&
+			optHiRaw > optLoRaw;
+		const optRange = hasOptRange ? ([optLoRaw, optHiRaw] as [number, number]) : null;
+
+		samples.forEach((sample, fieldId) => {
+			const value = sample.metrics[metric.id];
+			if (typeof value !== 'number' || !Number.isFinite(value)) return;
+			total += 1;
+			if (Math.abs(value - minValue) <= tolerance) {
+				minFields.push(getFieldDisplayName(fieldId, sample, identities));
+			}
+			if (Math.abs(value - maxValue) <= tolerance) {
+				maxFields.push(getFieldDisplayName(fieldId, sample, identities));
+			}
+			if (optRange) {
+				const [optLo, optHi] = optRange;
+				if (value >= optLo - tolerance && value <= optHi + tolerance) {
+					withinCount += 1;
+				}
+			}
+		});
+
+		return {
+			min: {
+				value: minFields.length ? minValue : null,
+				fields: minFields
+			},
+			max: {
+				value: maxFields.length ? maxValue : null,
+				fields: maxFields
+			},
+			opt: {
+				range: optRange,
+				within: {
+					count: withinCount,
+					pct: total > 0 ? (withinCount / total) * 100 : 0,
+					total
+				}
+			}
+		};
 	}
 
 	function computeLegendPercents(
@@ -877,63 +1003,101 @@
 							</button>
 						{:else if !metricScaleReady}
 							<p>We don't have a colour scale configured for {activeMetricObj.label} yet.</p>
-						{:else if activeMetricStats}
-							{@const stats = activeMetricStats!}
-							{@const perc = legendPercents}
-							{@const cmin =
-								typeof activeMetricObj.c_min === 'number' ? activeMetricObj.c_min : null}
-							{@const cmax =
-								typeof activeMetricObj.c_max === 'number' ? activeMetricObj.c_max : null}
-							<p>
-								Colouring {activeMetricPaddockCount} paddock{activeMetricPaddockCount === 1
-									? ''
-									: 's'} using {activeMetricObj.label}.
-							</p>
-							<div
-								class="text-muted/70 space-y-2 rounded-md border border-white/10 bg-white/5 p-3 text-[11px]"
-							>
-								<div class="text-center font-semibold">
-									Scale{activeMetricObj.unit ? ` (${activeMetricObj.unit})` : ''}
-								</div>
-								<div class="relative h-2 w-full overflow-hidden rounded-full">
-									<div class="absolute inset-0" style={`background: ${VIRIDIS_GRADIENT};`}></div>
-									{#if perc.showOpt}
-										<div
-											class="absolute inset-y-0 rounded-full bg-white/30"
-											style={`left:${perc.optLoPct}%; width:${perc.optWidth}%`}
-											aria-hidden="true"
-										></div>
-									{/if}
-									<div
-										class="absolute -top-1 h-4 w-px rounded-full bg-white/85"
-										style={`left:${perc.lowPct}%`}
-										aria-hidden="true"
-									></div>
-									<div
-										class="absolute -top-1 h-4 w-px rounded-full bg-white/85"
-										style={`left:${perc.highPct}%`}
-										aria-hidden="true"
-									></div>
-								</div>
-								<div class="text-muted/60 flex justify-between text-[11px]">
-									<span>{formatLegendTick(cmin)}</span>
-									<span>{formatLegendTick(cmax)}</span>
-								</div>
-								{#if perc.showOpt}
-									<div class="text-[10px] text-emerald-200/90">
-										Optimal {formatLegendTick(
-											activeMetricObj.range_optimal?.[0]
-										)}–{formatLegendTick(activeMetricObj.range_optimal?.[1])}{activeMetricObj.unit
-											? ` ${activeMetricObj.unit}`
-											: ''}
-									</div>
-								{/if}
-								<div class="text-muted/60 flex justify-between text-[10px]">
-									<span>Samples {formatLegendTick(stats.min)}–{formatLegendTick(stats.max)}</span>
-									<span>Median {formatLegendTick(stats.median)}</span>
-								</div>
+					{:else if activeMetricStats}
+						{@const stats = activeMetricStats!}
+						{@const perc = legendPercents}
+						{@const details = legendDetails}
+						{@const cmin = typeof activeMetricObj.c_min === 'number' ? activeMetricObj.c_min : null}
+						{@const cmax = typeof activeMetricObj.c_max === 'number' ? activeMetricObj.c_max : null}
+						{@const unitSuffix = activeMetricObj.unit ? ` ${activeMetricObj.unit}` : ''}
+						<p>
+							Colouring {activeMetricPaddockCount} paddock{activeMetricPaddockCount === 1 ? '' : 's'} using {activeMetricObj.label}.
+						</p>
+						<div class="space-y-2 rounded-md border border-white/10 bg-white/5 p-3 text-[11px] text-muted/70">
+							<div class="text-center font-semibold">
+								Scale{unitSuffix ? ` (${activeMetricObj.unit})` : ''}
 							</div>
-						{:else}
+							<div class="relative h-2 w-full rounded-full">
+								<div class="pointer-events-none absolute inset-0 rounded-full" style={`background: ${VIRIDIS_GRADIENT};`}></div>
+								{#if perc.showOpt}
+									<button
+										type="button"
+										class="group absolute inset-y-[-6px] flex items-center justify-center bg-transparent p-0 focus:outline-none"
+										style={`left:${perc.optLoPct}%; width:${perc.optWidth}%`}
+										aria-label={`Optimal range ${formatLegendTick(details.opt.range?.[0])}${unitSuffix} to ${formatLegendTick(details.opt.range?.[1])}${unitSuffix}`}
+									>
+										<div class="pointer-events-none absolute inset-0 rounded-full bg-white/30"></div>
+										<div
+											class="pointer-events-none absolute -top-24 left-1/2 hidden w-60 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block"
+											role="tooltip"
+										>
+											<div class="font-semibold">
+												Optimal {formatLegendTick(details.opt.range?.[0])}{unitSuffix} – {formatLegendTick(details.opt.range?.[1])}{unitSuffix}
+											</div>
+											{#if details.opt.within.total > 0}
+												<div class="mt-1 text-[10px] text-slate-200/80">
+													{details.opt.within.count} of {details.opt.within.total} paddocks ({formatPercent(details.opt.within.pct)})
+												</div>
+											{:else}
+												<div class="mt-1 text-[10px] text-slate-200/80">No sampled paddocks yet</div>
+											{/if}
+										</div>
+									</button>
+								{/if}
+								<button
+									type="button"
+									class="group absolute -top-3 flex h-8 w-8 -translate-x-1/2 cursor-default items-end justify-center bg-transparent p-0 focus:outline-none"
+									style={`left:${perc.lowPct}%`}
+									aria-label={`Minimum value ${formatLegendTick(details.min.value)}${unitSuffix}`}
+								>
+									<div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div>
+									<div
+										class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block"
+										role="tooltip"
+									>
+										<div class="font-semibold">
+											Min {formatLegendTick(details.min.value)}{unitSuffix}
+										</div>
+										<div class="mt-1 text-[10px] text-slate-200/80">
+											Paddocks: {formatFieldList(details.min.fields)}
+										</div>
+									</div>
+								</button>
+								<button
+									type="button"
+									class="group absolute -top-3 flex h-8 w-8 -translate-x-1/2 cursor-default items-end justify-center bg-transparent p-0 focus:outline-none"
+									style={`left:${perc.highPct}%`}
+									aria-label={`Maximum value ${formatLegendTick(details.max.value)}${unitSuffix}`}
+								>
+									<div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div>
+									<div
+										class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block"
+										role="tooltip"
+									>
+										<div class="font-semibold">
+											Max {formatLegendTick(details.max.value)}{unitSuffix}
+										</div>
+										<div class="mt-1 text-[10px] text-slate-200/80">
+											Paddocks: {formatFieldList(details.max.fields)}
+										</div>
+									</div>
+								</button>
+							</div>
+							<div class="flex justify-between text-[11px] text-muted/60">
+								<span>{formatLegendTick(cmin)}{unitSuffix}</span>
+								<span>{formatLegendTick(cmax)}{unitSuffix}</span>
+							</div>
+							<div class="flex justify-between text-[10px] text-muted/60">
+								<span>Samples {formatLegendTick(stats.min)}{unitSuffix} – {formatLegendTick(stats.max)}{unitSuffix}</span>
+								<span>Median {formatLegendTick(stats.median)}{unitSuffix}</span>
+							</div>
+							{#if details.opt.range}
+								<div class="text-[10px] text-emerald-200/90">
+									{details.opt.within.count} of {details.opt.within.total} paddocks within optimal ({formatPercent(details.opt.within.pct)})
+								</div>
+							{/if}
+						</div>
+					{:else}
 							<p>No paddocks have recent samples for {activeMetricObj.label} yet.</p>
 						{/if}
 					</div>
