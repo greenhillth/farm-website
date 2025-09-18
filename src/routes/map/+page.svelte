@@ -311,6 +311,7 @@ import { DEFAULT_PADDOCK_STYLE, buildBaseLayer } from '$lib/layers';
 	let activeMetricPaddockCount = 0;
 	let styleUpdateMarker = '';
 	let metricScaleReady = false;
+	let isStreetsBase = activeBaseLayer === 'streets';
 
 	// Derived active metric object + message (no O(n) lookups on render)
 	$: activeMetricObj = metricsById.get(activeMetric)!; // safe due to guards below
@@ -321,6 +322,7 @@ import { DEFAULT_PADDOCK_STYLE, buildBaseLayer } from '$lib/layers';
 		typeof activeMetricObj.c_max === 'number' &&
 		activeMetricObj.c_max > activeMetricObj.c_min;
 	$: activeMetricStats = computeMetricStats(activeMetricObj, soilMetricsVersion);
+	$: isStreetsBase = activeBaseLayer === 'streets';
 	$: if (paddockLayer && styleUpdateMarker) {
 		applySoilMetricStyles();
 	}
@@ -916,10 +918,16 @@ import { DEFAULT_PADDOCK_STYLE, buildBaseLayer } from '$lib/layers';
 		<!-- Floating info panel: use activeMetricObj and fix class interpolation -->
 		{#if activeMetricObj.id !== defaultMetric}
 			<div
-				class={`border-border/80 bg-panel/80 text-muted pointer-events-none absolute ${navOpen ? 'top-3' : 'top-15'} left-4 z-[1100] max-w-xs rounded-xl border px-4 py-3 text-xs shadow-lg backdrop-blur`}
+				class={`pointer-events-none absolute ${navOpen ? 'top-3' : 'top-15'} left-4 z-[1100] max-w-xs rounded-xl border px-4 py-3 text-xs shadow-lg backdrop-blur ${
+					isStreetsBase
+						? 'border-white/50 bg-slate-950/95 text-slate-200 shadow-black/40'
+						: 'border-border/80 bg-panel/80 text-muted'
+				}`}
 			>
 				<div class="text-sm font-semibold text-white">{activeMetricObj.label}</div>
-				<p class="mt-1 leading-relaxed">{activeMetricObj.description}</p>
+				<p class={`mt-1 leading-relaxed ${isStreetsBase ? 'text-slate-100' : 'text-muted'}`}>
+					{activeMetricObj.description}
+				</p>
 			</div>
 		{/if}
 
@@ -947,7 +955,11 @@ import { DEFAULT_PADDOCK_STYLE, buildBaseLayer } from '$lib/layers';
 
 		<a
 			href="/"
-			class="map-home bg-panel/95 focus-visible:ring-accent/40 absolute top-4 right-4 z-[1000] inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-white shadow-lg transition hover:border-white/30 hover:text-white focus:outline-none focus-visible:ring-2"
+			class={`map-home focus-visible:ring-accent/40 absolute top-4 right-4 z-[1000] inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition hover:text-white focus:outline-none focus-visible:ring-2 ${
+				isStreetsBase
+					? 'border-white/60 bg-slate-950/95 text-white shadow-xl hover:border-white/80'
+					: 'border-white/10 bg-panel/95 text-white shadow-lg hover:border-white/30'
+			}`}
 			aria-label="Back to home"
 		>
 			<svg
