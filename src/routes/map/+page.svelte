@@ -47,6 +47,26 @@
 		count: number;
 	};
 
+	type LegendPercents = {
+		lowPct: number;
+		highPct: number;
+		showOpt: boolean;
+		optLoPct: number;
+		optHiPct: number;
+		optWidth: number;
+		optMidPct: number;
+	};
+
+	const EMPTY_LEGEND_PERCENTS: LegendPercents = {
+		lowPct: 0,
+		highPct: 0,
+		showOpt: false,
+		optLoPct: 0,
+		optHiPct: 0,
+		optWidth: 0,
+		optMidPct: 0
+	};
+
 	const VIRIDIS_STOPS = ['#440154', '#414487', '#2a788e', '#22a884', '#7ad151', '#fde725'];
 	const VIRIDIS_GRADIENT = `linear-gradient(to right, ${VIRIDIS_STOPS.map((color, index) => {
 		const pct = (100 * index) / (VIRIDIS_STOPS.length - 1);
@@ -149,8 +169,20 @@
 		]);
 	}
 
-	function clamp(value: number, min: number, max: number): number {
+	function clamp(value: number, min = 0, max = 1): number {
+		if (Number.isNaN(value)) return min;
+		if (max < min) {
+			const tmp = min;
+			min = max;
+			max = tmp;
+		}
 		return Math.max(min, Math.min(max, value));
+	}
+
+	function toPct(value: number, min: number, max: number): number {
+		if (!Number.isFinite(value) || !Number.isFinite(min) || !Number.isFinite(max)) return 0;
+		if (max === min) return 0;
+		return clamp(((value - min) / (max - min)) * 100, 0, 100);
 	}
 
 	function viridisColor(value: number, min: number, max: number): string {
@@ -316,6 +348,7 @@
 	let styleUpdateMarker = '';
 	let metricScaleReady = false;
 	let isStreetsBase = activeBaseLayer === 'streets';
+	let legendPercents: LegendPercents = EMPTY_LEGEND_PERCENTS;
 
 	// Derived active metric object + message (no O(n) lookups on render)
 	$: activeMetricObj = metricsById.get(activeMetric)!; // safe due to guards below
@@ -326,6 +359,7 @@
 		typeof activeMetricObj.c_max === 'number' &&
 		activeMetricObj.c_max > activeMetricObj.c_min;
 	$: activeMetricStats = computeMetricStats(activeMetricObj, soilMetricsVersion);
+	$: legendPercents = computeLegendPercents(activeMetricObj, activeMetricStats, metricScaleReady);
 	$: isStreetsBase = activeBaseLayer === 'streets';
 	$: if (paddockLayer && styleUpdateMarker) {
 		applySoilMetricStyles();
@@ -567,6 +601,55 @@
 		return { min, max, median, mean, count: values.length };
 	}
 
+	function computeLegendPercents(
+		metric: MetricOption,
+		stats: MetricStats | null,
+		scaleReady: boolean
+	): LegendPercents {
+		if (!scaleReady || !stats) return EMPTY_LEGEND_PERCENTS;
+		const { c_min: cMinRaw, c_max: cMaxRaw } = metric;
+		if (typeof cMinRaw !== 'number' || typeof cMaxRaw !== 'number') {
+			return EMPTY_LEGEND_PERCENTS;
+		}
+
+		const cmin = cMinRaw;
+		const cmax = cMaxRaw;
+		const lowPct = toPct(stats.min, cmin, cmax);
+		const highPct = toPct(stats.max, cmin, cmax);
+
+		const [optLoRaw, optHiRaw] = metric.range_optimal ?? [undefined, undefined];
+		const showOpt =
+			Number.isFinite(optLoRaw) &&
+			Number.isFinite(optHiRaw) &&
+			typeof optLoRaw === 'number' &&
+			typeof optHiRaw === 'number' &&
+			optHiRaw > optLoRaw;
+
+		let optLoPct = 0;
+		let optHiPct = 0;
+		let optWidth = 0;
+		let optMidPct = 0;
+
+		if (showOpt) {
+			const optLo = optLoRaw as number;
+			const optHi = optHiRaw as number;
+			optLoPct = toPct(optLo, cmin, cmax);
+			optHiPct = toPct(optHi, cmin, cmax);
+			optWidth = Math.max(0, optHiPct - optLoPct);
+			optMidPct = (optLoPct + optHiPct) / 2;
+		}
+
+		return {
+			lowPct,
+			highPct,
+			showOpt,
+			optLoPct,
+			optHiPct,
+			optWidth,
+			optMidPct
+		};
+	}
+
 	function resetView() {
 		if (map && baseBounds && baseBounds.isValid()) {
 			map.fitBounds(baseBounds, { padding: [24, 24] });
@@ -796,6 +879,11 @@
 							<p>We don't have a colour scale configured for {activeMetricObj.label} yet.</p>
 						{:else if activeMetricStats}
 							{@const stats = activeMetricStats!}
+							{@const perc = legendPercents}
+							{@const cmin =
+								typeof activeMetricObj.c_min === 'number' ? activeMetricObj.c_min : null}
+							{@const cmax =
+								typeof activeMetricObj.c_max === 'number' ? activeMetricObj.c_max : null}
 							<p>
 								Colouring {activeMetricPaddockCount} paddock{activeMetricPaddockCount === 1
 									? ''
@@ -804,40 +892,45 @@
 							<div
 								class="text-muted/70 space-y-2 rounded-md border border-white/10 bg-white/5 p-3 text-[11px]"
 							>
-								<div class="text-center font-medium font-semibold">
+								<div class="text-center font-semibold">
 									Scale{activeMetricObj.unit ? ` (${activeMetricObj.unit})` : ''}
 								</div>
-								<div
-									class="h-2 w-full rounded-full"
-									style={`background: ${VIRIDIS_GRADIENT};`}
-								></div>
-								<div class="text-muted/60 flex justify-between">
-									<span>
-										{formatLegendTick(activeMetricObj.c_min)}
-									</span>
-									<span>
-										{formatLegendTick(activeMetricObj.c_max)}
-									</span>
+								<div class="relative h-2 w-full overflow-hidden rounded-full">
+									<div class="absolute inset-0" style={`background: ${VIRIDIS_GRADIENT};`}></div>
+									{#if perc.showOpt}
+										<div
+											class="absolute inset-y-0 rounded-full bg-white/30"
+											style={`left:${perc.optLoPct}%; width:${perc.optWidth}%`}
+											aria-hidden="true"
+										></div>
+									{/if}
+									<div
+										class="absolute -top-1 h-4 w-px rounded-full bg-white/85"
+										style={`left:${perc.lowPct}%`}
+										aria-hidden="true"
+									></div>
+									<div
+										class="absolute -top-1 h-4 w-px rounded-full bg-white/85"
+										style={`left:${perc.highPct}%`}
+										aria-hidden="true"
+									></div>
 								</div>
-								<div class="text-muted/50 flex justify-between">
-									<span>
-										Samples {formatLegendTick(stats.min)}{activeMetricObj.unit
+								<div class="text-muted/60 flex justify-between text-[11px]">
+									<span>{formatLegendTick(cmin)}</span>
+									<span>{formatLegendTick(cmax)}</span>
+								</div>
+								{#if perc.showOpt}
+									<div class="text-[10px] text-emerald-200/90">
+										Optimal {formatLegendTick(
+											activeMetricObj.range_optimal?.[0]
+										)}–{formatLegendTick(activeMetricObj.range_optimal?.[1])}{activeMetricObj.unit
 											? ` ${activeMetricObj.unit}`
 											: ''}
-									</span>
-									<span>
-										{formatLegendTick(stats.max)}{activeMetricObj.unit
-											? ` ${activeMetricObj.unit}`
-											: ''}
-									</span>
-								</div>
-								<div class="text-muted/50 flex justify-between">
-									<span
-										>Median {formatLegendTick(stats.median)}{activeMetricObj.unit
-											? ` ${activeMetricObj.unit}`
-											: ''}</span
-									>
-									<span>n = {stats.count}</span>
+									</div>
+								{/if}
+								<div class="text-muted/60 flex justify-between text-[10px]">
+									<span>Samples {formatLegendTick(stats.min)}–{formatLegendTick(stats.max)}</span>
+									<span>Median {formatLegendTick(stats.median)}</span>
 								</div>
 							</div>
 						{:else}
