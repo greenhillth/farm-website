@@ -1,10 +1,10 @@
-import * as universal from '../entries/pages/weather/_metric_/_page.ts.js';
+import * as universal from '../entries/pages/weather/_page.ts.js';
 
 export const index = 9;
 let component_cache;
-export const component = async () => component_cache ??= (await import('../entries/pages/weather/_metric_/_page.svelte.js')).default;
+export const component = async () => component_cache ??= (await import('../entries/pages/weather/_page.svelte.js')).default;
 export { universal };
-export const universal_id = "src/routes/weather/[metric]/+page.ts";
-export const imports = ["_app/immutable/nodes/9.D4f1KgeO.js","_app/immutable/chunks/CY139KZX.js","_app/immutable/chunks/DsnmJJEf.js","_app/immutable/chunks/CCFGYCSD.js","_app/immutable/chunks/CdmsYw1U.js","_app/immutable/chunks/BUMWtct1.js","_app/immutable/chunks/Bdri3CNH.js","_app/immutable/chunks/Bfj5he0d.js","_app/immutable/chunks/CJH7hj5q.js","_app/immutable/chunks/CQWZqjad.js","_app/immutable/chunks/DNrX4qGI.js"];
+export const universal_id = "src/routes/weather/+page.ts";
+export const imports = ["_app/immutable/nodes/9.DLOBUVPD.js","_app/immutable/chunks/zRQxpyKE.js","_app/immutable/chunks/DsnmJJEf.js","_app/immutable/chunks/CqJAwCt_.js","_app/immutable/chunks/CthTPqsi.js","_app/immutable/chunks/SMSclcs1.js","_app/immutable/chunks/CNYzTQXq.js","_app/immutable/chunks/BkQ9GEEK.js","_app/immutable/chunks/CCVHFpir.js","_app/immutable/chunks/DeAsnCzY.js","_app/immutable/chunks/5_-TE14Q.js","_app/immutable/chunks/BbaiMmwp.js","_app/immutable/chunks/8ZPSmxhP.js"];
 export const stylesheets = [];
 export const fonts = [];

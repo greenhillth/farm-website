@@ -1,6 +1,9 @@
 {
 	"/": [],
 	"/alex": [],
+	"/api/[...path]": [
+		"src/routes/api/[...path]/+server.ts"
+	],
 	"/manual": [],
 	"/map": [
 		"src/routes/map/+page.ts"

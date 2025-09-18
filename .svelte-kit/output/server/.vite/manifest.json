@@ -6,7 +6,8 @@
     "isEntry": true,
     "imports": [
       "_internal.js",
-      "_environment.js"
+      "_environment.js",
+      "_shared-server.js"
     ]
   },
   "_Panel.js": {
@@ -52,8 +53,16 @@
       "_false.js",
       "_utils2.js",
       "_equality.js",
-      "_environment.js"
+      "_environment.js",
+      "_shared-server.js"
+    ],
+    "dynamicImports": [
+      "src/hooks.server.ts"
     ]
+  },
+  "_shared-server.js": {
+    "file": "chunks/shared-server.js",
+    "name": "shared-server"
   },
   "_shared.js": {
     "file": "chunks/shared.js",
@@ -107,9 +116,23 @@
       "_environment.js",
       "_exports.js",
       "_utils.js",
-      "_internal.js",
-      "_shared.js"
+      "_shared-server.js",
+      "_shared.js",
+      "_internal.js"
     ]
+  },
+  "src/hooks.server.ts": {
+    "file": "chunks/hooks.server.js",
+    "name": "hooks.server",
+    "src": "src/hooks.server.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_shared-server.js"
+    ]
+  },
+  "src/lib/assets/favicon.svg": {
+    "file": "_app/immutable/assets/favicon.DRH03K5g.svg",
+    "src": "src/lib/assets/favicon.svg"
   },
   "src/routes/+layout.svelte": {
     "file": "entries/pages/_layout.svelte.js",
@@ -120,7 +143,10 @@
       "_index.js"
     ],
     "css": [
-      "_app/immutable/assets/_layout.WQdVrl_G.css"
+      "_app/immutable/assets/_layout.CFlUHbfp.css"
+    ],
+    "assets": [
+      "_app/immutable/assets/favicon.DRH03K5g.svg"
     ]
   },
   "src/routes/+page.svelte": {
@@ -131,6 +157,9 @@
     "imports": [
       "_index.js",
       "_utils2.js"
+    ],
+    "css": [
+      "_app/immutable/assets/_page.DIOkHWvZ.css"
     ]
   },
   "src/routes/alex/+page.svelte": {
@@ -140,6 +169,25 @@
     "isEntry": true,
     "imports": [
       "_index.js"
+    ]
+  },
+  "src/routes/api/[...path]/+server.ts": {
+    "file": "entries/endpoints/api/_...path_/_server.ts.js",
+    "name": "entries/endpoints/api/_...path_/_server.ts",
+    "src": "src/routes/api/[...path]/+server.ts",
+    "isEntry": true,
+    "imports": [
+      "_shared-server.js"
+    ]
+  },
+  "src/routes/manual/+page.svelte": {
+    "file": "entries/pages/manual/_page.svelte.js",
+    "name": "entries/pages/manual/_page.svelte",
+    "src": "src/routes/manual/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index.js",
+      "_Panel.js"
     ]
   },
   "src/routes/map/+page.svelte": {
@@ -178,6 +226,9 @@
     "imports": [
       "_index.js",
       "_Panel.js"
+    ],
+    "css": [
+      "_app/immutable/assets/_page.DnhUtBmu.css"
     ]
   },
   "src/routes/timesheet/+page.svelte": {

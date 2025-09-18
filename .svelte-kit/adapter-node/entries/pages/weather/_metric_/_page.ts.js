@@ -1,18 +1,21 @@
-import { f as fetchWeather, a as fetchMetric } from "../../../../chunks/weather.js";
+import { f as fetchWeather, a as fetchWeatherHistory } from "../../../../chunks/weather.js";
 const load = async ({ params, fetch }) => {
   const res = await fetchWeather();
-  let log = [];
+  const now = Math.floor(Date.now() / 1e3);
+  const from = now - 24 * 60 * 60;
+  let history = [];
   try {
-    log = await fetchMetric(params.metric, fetch);
+    history = await fetchWeatherHistory(from, now, fetch);
   } catch (_) {
-    log = [];
+    history = [];
   }
   return {
     metric: params.metric,
     w: res.weather,
     connected: res.connected,
     source: res.source,
-    log
+    history,
+    range: { from, to: now }
   };
 };
 export {

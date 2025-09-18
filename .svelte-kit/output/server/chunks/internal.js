@@ -4,12 +4,7 @@ import { d as define_property, r as run_all, a as deferred, o as object_prototyp
 import { s as safe_equals, e as equals } from "./equality.js";
 import "clsx";
 import "./environment.js";
-let public_env = {};
-function set_private_env(environment) {
-}
-function set_public_env(environment) {
-  public_env = environment;
-}
+import "./shared-server.js";
 function effect_update_depth_exceeded() {
   {
     throw new Error(`https://svelte.dev/e/effect_update_depth_exceeded`);
@@ -144,26 +139,14 @@ function apply_adjustments(error) {
 let micro_tasks = [];
 let idle_tasks = [];
 function run_micro_tasks() {
-  var tasks = micro_tasks;
+  var tasks2 = micro_tasks;
   micro_tasks = [];
-  run_all(tasks);
+  run_all(tasks2);
 }
 function run_idle_tasks() {
-  var tasks = idle_tasks;
+  var tasks2 = idle_tasks;
   idle_tasks = [];
-  run_all(tasks);
-}
-function has_pending_tasks() {
-  return micro_tasks.length > 0 || idle_tasks.length > 0;
-}
-function queue_micro_task(fn) {
-  if (micro_tasks.length === 0 && !is_flushing_sync) {
-    var tasks = micro_tasks;
-    queueMicrotask(() => {
-      if (tasks === micro_tasks) run_micro_tasks();
-    });
-  }
-  micro_tasks.push(fn);
+  run_all(tasks2);
 }
 function flush_tasks() {
   if (micro_tasks.length > 0) {
@@ -229,6 +212,17 @@ function update_derived(derived) {
 const batches = /* @__PURE__ */ new Set();
 let current_batch = null;
 let effect_pending_updates = /* @__PURE__ */ new Set();
+let tasks = [];
+function dequeue() {
+  const task = (
+    /** @type {() => void} */
+    tasks.shift()
+  );
+  if (tasks.length > 0) {
+    queueMicrotask(dequeue);
+  }
+  task();
+}
 let queued_root_effects = [];
 let last_scheduled_effect = null;
 let is_flushing = false;
@@ -372,7 +366,7 @@ class Batch {
           this.#effects.push(effect);
         } else if ((flags & CLEAN) === 0) {
           if ((flags & ASYNC) !== 0) {
-            var effects = effect.b?.is_pending() ? this.#boundary_async_effects : this.#async_effects;
+            var effects = effect.b?.pending ? this.#boundary_async_effects : this.#async_effects;
             effects.push(effect);
           } else if (is_dirty(effect)) {
             if ((effect.f & BLOCK_EFFECT) !== 0) this.#block_effects.push(effect);
@@ -502,7 +496,10 @@ class Batch {
   }
   /** @param {() => void} task */
   static enqueue(task) {
-    queue_micro_task(task);
+    if (tasks.length === 0) {
+      queueMicrotask(dequeue);
+    }
+    tasks.unshift(task);
   }
 }
 function flushSync(fn) {
@@ -513,7 +510,7 @@ function flushSync(fn) {
     if (fn) ;
     while (true) {
       flush_tasks();
-      if (queued_root_effects.length === 0 && !has_pending_tasks()) {
+      if (queued_root_effects.length === 0) {
         current_batch?.flush();
         if (queued_root_effects.length === 0) {
           last_scheduled_effect = null;
@@ -2044,7 +2041,7 @@ const options = {
 		<div class="error">
 			<span class="status">` + status + '</span>\n			<div class="message">\n				<h1>' + message + "</h1>\n			</div>\n		</div>\n	</body>\n</html>\n"
   },
-  version_hash: "1pp3vsq"
+  version_hash: "1emxzy2"
 };
 async function get_hooks() {
   let handle;
@@ -2052,6 +2049,7 @@ async function get_hooks() {
   let handleError;
   let handleValidationError;
   let init;
+  ({ handle, handleFetch, handleError, handleValidationError, init } = await import("./hooks.server.js"));
   let reroute;
   let transport;
   return {
@@ -2065,12 +2063,9 @@ async function get_hooks() {
   };
 }
 export {
-  set_public_env as a,
-  set_read_implementation as b,
-  set_manifest as c,
+  set_manifest as a,
   get_hooks as g,
   options as o,
-  public_env as p,
   read_implementation as r,
-  set_private_env as s
+  set_read_implementation as s
 };

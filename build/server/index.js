@@ -1,5 +1,6 @@
 import { r as render, L as LEGACY_PROPS, U as UNOWNED, E as ERROR_VALUE, C as COMMENT_NODE, H as HYDRATION_START, a as HYDRATION_ERROR, b as HYDRATION_END, S as STATE_SYMBOL, c as UNINITIALIZED, D as DERIVED, d as DIRTY, e as CLEAN, M as MAYBE_DIRTY, f as DISCONNECTED, B as BROWSER, I as INERT, g as EFFECT, A as ASYNC, h as BLOCK_EFFECT, i as BRANCH_EFFECT, R as ROOT_EFFECT, j as DESTROYED, k as REACTION_IS_UPDATING, l as EFFECT_RAN, m as EFFECT_PRESERVED, n as HEAD_EFFECT, o as BOUNDARY_EFFECT, p as EFFECT_TRANSPARENT, q as INSPECT_EFFECT, s as STALE_REACTION, t as push$1, u as setContext, v as pop$1, w as USER_EFFECT } from './chunks/index-B80co9zT.js';
-import { s as safe_equals, e as equals, t as text_decoder, b as base64_decode, d as decode_pathname, a as decode_params, n as normalize_path, c as disable_search, v as validate_layout_server_exports, f as validate_layout_exports, g as validate_page_server_exports, h as validate_page_exports, i as text_encoder$1, r as resolve, m as make_trackable, j as get_relative_path, k as base64_encode, l as readable, w as writable } from './chunks/utils-BwG_3Cel.js';
+import { t as text_decoder, b as base64_decode, s as safe_equals, e as equals, d as decode_pathname, a as decode_params, n as normalize_path, c as disable_search, v as validate_layout_server_exports, f as validate_layout_exports, g as validate_page_server_exports, h as validate_page_exports, i as text_encoder$1, r as resolve, m as make_trackable, j as get_relative_path, k as base64_encode, l as readable, w as writable } from './chunks/utils-BwG_3Cel.js';
+import { s as set_private_env, a as set_public_env, p as public_env } from './chunks/shared-server-DaWdgxVh.js';
 import { d as define_property, o as object_prototype, a as array_prototype, g as get_descriptor, i as is_extensible, b as array_from, c as get_prototype_of, e as is_array, f as deferred, r as run_all, h as index_of } from './chunks/utils2-Bl_acQ9N.js';
 
 class HttpError {
@@ -1300,12 +1301,542 @@ function stringify_primitive(thing) {
 	return String(thing);
 }
 
-let public_env = {};
-function set_private_env(environment) {
+const INVALIDATED_PARAM = "x-sveltekit-invalidated";
+const TRAILING_SLASH_PARAM = "x-sveltekit-trailing-slash";
+function stringify(data, transport) {
+  const encoders = Object.fromEntries(Object.entries(transport).map(([k, v]) => [k, v.encode]));
+  return stringify$1(data, encoders);
 }
-function set_public_env(environment) {
-  public_env = environment;
+function parse_remote_arg(string, transport) {
+  if (!string) return void 0;
+  const json_string = text_decoder.decode(
+    // no need to add back `=` characters, atob can handle it
+    base64_decode(string.replaceAll("-", "+").replaceAll("_", "/"))
+  );
+  const decoders = Object.fromEntries(Object.entries(transport).map(([k, v]) => [k, v.decode]));
+  return parse(json_string, decoders);
 }
+
+var cookie = {};
+
+/*!
+ * cookie
+ * Copyright(c) 2012-2014 Roman Shtylman
+ * Copyright(c) 2015 Douglas Christopher Wilson
+ * MIT Licensed
+ */
+
+var hasRequiredCookie;
+
+function requireCookie () {
+	if (hasRequiredCookie) return cookie;
+	hasRequiredCookie = 1;
+
+	/**
+	 * Module exports.
+	 * @public
+	 */
+
+	cookie.parse = parse;
+	cookie.serialize = serialize;
+
+	/**
+	 * Module variables.
+	 * @private
+	 */
+
+	var __toString = Object.prototype.toString;
+
+	/**
+	 * RegExp to match field-content in RFC 7230 sec 3.2
+	 *
+	 * field-content = field-vchar [ 1*( SP / HTAB ) field-vchar ]
+	 * field-vchar   = VCHAR / obs-text
+	 * obs-text      = %x80-FF
+	 */
+
+	var fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/;
+
+	/**
+	 * Parse a cookie header.
+	 *
+	 * Parse the given cookie header string into an object
+	 * The object has the various cookies as keys(names) => values
+	 *
+	 * @param {string} str
+	 * @param {object} [options]
+	 * @return {object}
+	 * @public
+	 */
+
+	function parse(str, options) {
+	  if (typeof str !== 'string') {
+	    throw new TypeError('argument str must be a string');
+	  }
+
+	  var obj = {};
+	  var opt = options || {};
+	  var dec = opt.decode || decode;
+
+	  var index = 0;
+	  while (index < str.length) {
+	    var eqIdx = str.indexOf('=', index);
+
+	    // no more cookie pairs
+	    if (eqIdx === -1) {
+	      break
+	    }
+
+	    var endIdx = str.indexOf(';', index);
+
+	    if (endIdx === -1) {
+	      endIdx = str.length;
+	    } else if (endIdx < eqIdx) {
+	      // backtrack on prior semicolon
+	      index = str.lastIndexOf(';', eqIdx - 1) + 1;
+	      continue
+	    }
+
+	    var key = str.slice(index, eqIdx).trim();
+
+	    // only assign once
+	    if (undefined === obj[key]) {
+	      var val = str.slice(eqIdx + 1, endIdx).trim();
+
+	      // quoted values
+	      if (val.charCodeAt(0) === 0x22) {
+	        val = val.slice(1, -1);
+	      }
+
+	      obj[key] = tryDecode(val, dec);
+	    }
+
+	    index = endIdx + 1;
+	  }
+
+	  return obj;
+	}
+
+	/**
+	 * Serialize data into a cookie header.
+	 *
+	 * Serialize the a name value pair into a cookie string suitable for
+	 * http headers. An optional options object specified cookie parameters.
+	 *
+	 * serialize('foo', 'bar', { httpOnly: true })
+	 *   => "foo=bar; httpOnly"
+	 *
+	 * @param {string} name
+	 * @param {string} val
+	 * @param {object} [options]
+	 * @return {string}
+	 * @public
+	 */
+
+	function serialize(name, val, options) {
+	  var opt = options || {};
+	  var enc = opt.encode || encode;
+
+	  if (typeof enc !== 'function') {
+	    throw new TypeError('option encode is invalid');
+	  }
+
+	  if (!fieldContentRegExp.test(name)) {
+	    throw new TypeError('argument name is invalid');
+	  }
+
+	  var value = enc(val);
+
+	  if (value && !fieldContentRegExp.test(value)) {
+	    throw new TypeError('argument val is invalid');
+	  }
+
+	  var str = name + '=' + value;
+
+	  if (null != opt.maxAge) {
+	    var maxAge = opt.maxAge - 0;
+
+	    if (isNaN(maxAge) || !isFinite(maxAge)) {
+	      throw new TypeError('option maxAge is invalid')
+	    }
+
+	    str += '; Max-Age=' + Math.floor(maxAge);
+	  }
+
+	  if (opt.domain) {
+	    if (!fieldContentRegExp.test(opt.domain)) {
+	      throw new TypeError('option domain is invalid');
+	    }
+
+	    str += '; Domain=' + opt.domain;
+	  }
+
+	  if (opt.path) {
+	    if (!fieldContentRegExp.test(opt.path)) {
+	      throw new TypeError('option path is invalid');
+	    }
+
+	    str += '; Path=' + opt.path;
+	  }
+
+	  if (opt.expires) {
+	    var expires = opt.expires;
+
+	    if (!isDate(expires) || isNaN(expires.valueOf())) {
+	      throw new TypeError('option expires is invalid');
+	    }
+
+	    str += '; Expires=' + expires.toUTCString();
+	  }
+
+	  if (opt.httpOnly) {
+	    str += '; HttpOnly';
+	  }
+
+	  if (opt.secure) {
+	    str += '; Secure';
+	  }
+
+	  if (opt.partitioned) {
+	    str += '; Partitioned';
+	  }
+
+	  if (opt.priority) {
+	    var priority = typeof opt.priority === 'string'
+	      ? opt.priority.toLowerCase()
+	      : opt.priority;
+
+	    switch (priority) {
+	      case 'low':
+	        str += '; Priority=Low';
+	        break
+	      case 'medium':
+	        str += '; Priority=Medium';
+	        break
+	      case 'high':
+	        str += '; Priority=High';
+	        break
+	      default:
+	        throw new TypeError('option priority is invalid')
+	    }
+	  }
+
+	  if (opt.sameSite) {
+	    var sameSite = typeof opt.sameSite === 'string'
+	      ? opt.sameSite.toLowerCase() : opt.sameSite;
+
+	    switch (sameSite) {
+	      case true:
+	        str += '; SameSite=Strict';
+	        break;
+	      case 'lax':
+	        str += '; SameSite=Lax';
+	        break;
+	      case 'strict':
+	        str += '; SameSite=Strict';
+	        break;
+	      case 'none':
+	        str += '; SameSite=None';
+	        break;
+	      default:
+	        throw new TypeError('option sameSite is invalid');
+	    }
+	  }
+
+	  return str;
+	}
+
+	/**
+	 * URL-decode string value. Optimized to skip native call when no %.
+	 *
+	 * @param {string} str
+	 * @returns {string}
+	 */
+
+	function decode (str) {
+	  return str.indexOf('%') !== -1
+	    ? decodeURIComponent(str)
+	    : str
+	}
+
+	/**
+	 * URL-encode value.
+	 *
+	 * @param {string} val
+	 * @returns {string}
+	 */
+
+	function encode (val) {
+	  return encodeURIComponent(val)
+	}
+
+	/**
+	 * Determine if value is a Date.
+	 *
+	 * @param {*} val
+	 * @private
+	 */
+
+	function isDate (val) {
+	  return __toString.call(val) === '[object Date]' ||
+	    val instanceof Date
+	}
+
+	/**
+	 * Try decoding a string using a decoding function.
+	 *
+	 * @param {string} str
+	 * @param {function} decode
+	 * @private
+	 */
+
+	function tryDecode(str, decode) {
+	  try {
+	    return decode(str);
+	  } catch (e) {
+	    return str;
+	  }
+	}
+	return cookie;
+}
+
+var cookieExports = requireCookie();
+
+var setCookie = {exports: {}};
+
+var hasRequiredSetCookie;
+
+function requireSetCookie () {
+	if (hasRequiredSetCookie) return setCookie.exports;
+	hasRequiredSetCookie = 1;
+
+	var defaultParseOptions = {
+	  decodeValues: true,
+	  map: false,
+	  silent: false,
+	};
+
+	function isNonEmptyString(str) {
+	  return typeof str === "string" && !!str.trim();
+	}
+
+	function parseString(setCookieValue, options) {
+	  var parts = setCookieValue.split(";").filter(isNonEmptyString);
+
+	  var nameValuePairStr = parts.shift();
+	  var parsed = parseNameValuePair(nameValuePairStr);
+	  var name = parsed.name;
+	  var value = parsed.value;
+
+	  options = options
+	    ? Object.assign({}, defaultParseOptions, options)
+	    : defaultParseOptions;
+
+	  try {
+	    value = options.decodeValues ? decodeURIComponent(value) : value; // decode cookie value
+	  } catch (e) {
+	    console.error(
+	      "set-cookie-parser encountered an error while decoding a cookie with value '" +
+	        value +
+	        "'. Set options.decodeValues to false to disable this feature.",
+	      e
+	    );
+	  }
+
+	  var cookie = {
+	    name: name,
+	    value: value,
+	  };
+
+	  parts.forEach(function (part) {
+	    var sides = part.split("=");
+	    var key = sides.shift().trimLeft().toLowerCase();
+	    var value = sides.join("=");
+	    if (key === "expires") {
+	      cookie.expires = new Date(value);
+	    } else if (key === "max-age") {
+	      cookie.maxAge = parseInt(value, 10);
+	    } else if (key === "secure") {
+	      cookie.secure = true;
+	    } else if (key === "httponly") {
+	      cookie.httpOnly = true;
+	    } else if (key === "samesite") {
+	      cookie.sameSite = value;
+	    } else if (key === "partitioned") {
+	      cookie.partitioned = true;
+	    } else {
+	      cookie[key] = value;
+	    }
+	  });
+
+	  return cookie;
+	}
+
+	function parseNameValuePair(nameValuePairStr) {
+	  // Parses name-value-pair according to rfc6265bis draft
+
+	  var name = "";
+	  var value = "";
+	  var nameValueArr = nameValuePairStr.split("=");
+	  if (nameValueArr.length > 1) {
+	    name = nameValueArr.shift();
+	    value = nameValueArr.join("="); // everything after the first =, joined by a "=" if there was more than one part
+	  } else {
+	    value = nameValuePairStr;
+	  }
+
+	  return { name: name, value: value };
+	}
+
+	function parse(input, options) {
+	  options = options
+	    ? Object.assign({}, defaultParseOptions, options)
+	    : defaultParseOptions;
+
+	  if (!input) {
+	    if (!options.map) {
+	      return [];
+	    } else {
+	      return {};
+	    }
+	  }
+
+	  if (input.headers) {
+	    if (typeof input.headers.getSetCookie === "function") {
+	      // for fetch responses - they combine headers of the same type in the headers array,
+	      // but getSetCookie returns an uncombined array
+	      input = input.headers.getSetCookie();
+	    } else if (input.headers["set-cookie"]) {
+	      // fast-path for node.js (which automatically normalizes header names to lower-case
+	      input = input.headers["set-cookie"];
+	    } else {
+	      // slow-path for other environments - see #25
+	      var sch =
+	        input.headers[
+	          Object.keys(input.headers).find(function (key) {
+	            return key.toLowerCase() === "set-cookie";
+	          })
+	        ];
+	      // warn if called on a request-like object with a cookie header rather than a set-cookie header - see #34, 36
+	      if (!sch && input.headers.cookie && !options.silent) {
+	        console.warn(
+	          "Warning: set-cookie-parser appears to have been called on a request object. It is designed to parse Set-Cookie headers from responses, not Cookie headers from requests. Set the option {silent: true} to suppress this warning."
+	        );
+	      }
+	      input = sch;
+	    }
+	  }
+	  if (!Array.isArray(input)) {
+	    input = [input];
+	  }
+
+	  if (!options.map) {
+	    return input.filter(isNonEmptyString).map(function (str) {
+	      return parseString(str, options);
+	    });
+	  } else {
+	    var cookies = {};
+	    return input.filter(isNonEmptyString).reduce(function (cookies, str) {
+	      var cookie = parseString(str, options);
+	      cookies[cookie.name] = cookie;
+	      return cookies;
+	    }, cookies);
+	  }
+	}
+
+	/*
+	  Set-Cookie header field-values are sometimes comma joined in one string. This splits them without choking on commas
+	  that are within a single set-cookie field-value, such as in the Expires portion.
+
+	  This is uncommon, but explicitly allowed - see https://tools.ietf.org/html/rfc2616#section-4.2
+	  Node.js does this for every header *except* set-cookie - see https://github.com/nodejs/node/blob/d5e363b77ebaf1caf67cd7528224b651c86815c1/lib/_http_incoming.js#L128
+	  React Native's fetch does this for *every* header, including set-cookie.
+
+	  Based on: https://github.com/google/j2objc/commit/16820fdbc8f76ca0c33472810ce0cb03d20efe25
+	  Credits to: https://github.com/tomball for original and https://github.com/chrusart for JavaScript implementation
+	*/
+	function splitCookiesString(cookiesString) {
+	  if (Array.isArray(cookiesString)) {
+	    return cookiesString;
+	  }
+	  if (typeof cookiesString !== "string") {
+	    return [];
+	  }
+
+	  var cookiesStrings = [];
+	  var pos = 0;
+	  var start;
+	  var ch;
+	  var lastComma;
+	  var nextStart;
+	  var cookiesSeparatorFound;
+
+	  function skipWhitespace() {
+	    while (pos < cookiesString.length && /\s/.test(cookiesString.charAt(pos))) {
+	      pos += 1;
+	    }
+	    return pos < cookiesString.length;
+	  }
+
+	  function notSpecialChar() {
+	    ch = cookiesString.charAt(pos);
+
+	    return ch !== "=" && ch !== ";" && ch !== ",";
+	  }
+
+	  while (pos < cookiesString.length) {
+	    start = pos;
+	    cookiesSeparatorFound = false;
+
+	    while (skipWhitespace()) {
+	      ch = cookiesString.charAt(pos);
+	      if (ch === ",") {
+	        // ',' is a cookie separator if we have later first '=', not ';' or ','
+	        lastComma = pos;
+	        pos += 1;
+
+	        skipWhitespace();
+	        nextStart = pos;
+
+	        while (pos < cookiesString.length && notSpecialChar()) {
+	          pos += 1;
+	        }
+
+	        // currently special character
+	        if (pos < cookiesString.length && cookiesString.charAt(pos) === "=") {
+	          // we found cookies separator
+	          cookiesSeparatorFound = true;
+	          // pos is inside the next cookie, so back up and return it.
+	          pos = nextStart;
+	          cookiesStrings.push(cookiesString.substring(start, lastComma));
+	          start = pos;
+	        } else {
+	          // in param ',' or param separator ';',
+	          // we continue from that comma
+	          pos = lastComma + 1;
+	        }
+	      } else {
+	        pos += 1;
+	      }
+	    }
+
+	    if (!cookiesSeparatorFound || pos >= cookiesString.length) {
+	      cookiesStrings.push(cookiesString.substring(start, cookiesString.length));
+	    }
+	  }
+
+	  return cookiesStrings;
+	}
+
+	setCookie.exports = parse;
+	setCookie.exports.parse = parse;
+	setCookie.exports.parseString = parseString;
+	setCookie.exports.splitCookiesString = splitCookiesString;
+	return setCookie.exports;
+}
+
+var setCookieExports = /*@__PURE__*/ requireSetCookie();
+
 function effect_update_depth_exceeded() {
   {
     throw new Error(`https://svelte.dev/e/effect_update_depth_exceeded`);
@@ -1440,26 +1971,14 @@ function apply_adjustments(error) {
 let micro_tasks = [];
 let idle_tasks = [];
 function run_micro_tasks() {
-  var tasks = micro_tasks;
+  var tasks2 = micro_tasks;
   micro_tasks = [];
-  run_all(tasks);
+  run_all(tasks2);
 }
 function run_idle_tasks() {
-  var tasks = idle_tasks;
+  var tasks2 = idle_tasks;
   idle_tasks = [];
-  run_all(tasks);
-}
-function has_pending_tasks() {
-  return micro_tasks.length > 0 || idle_tasks.length > 0;
-}
-function queue_micro_task(fn) {
-  if (micro_tasks.length === 0 && !is_flushing_sync) {
-    var tasks = micro_tasks;
-    queueMicrotask(() => {
-      if (tasks === micro_tasks) run_micro_tasks();
-    });
-  }
-  micro_tasks.push(fn);
+  run_all(tasks2);
 }
 function flush_tasks() {
   if (micro_tasks.length > 0) {
@@ -1525,6 +2044,17 @@ function update_derived(derived) {
 const batches = /* @__PURE__ */ new Set();
 let current_batch = null;
 let effect_pending_updates = /* @__PURE__ */ new Set();
+let tasks = [];
+function dequeue() {
+  const task = (
+    /** @type {() => void} */
+    tasks.shift()
+  );
+  if (tasks.length > 0) {
+    queueMicrotask(dequeue);
+  }
+  task();
+}
 let queued_root_effects = [];
 let last_scheduled_effect = null;
 let is_flushing = false;
@@ -1668,7 +2198,7 @@ class Batch {
           this.#effects.push(effect);
         } else if ((flags & CLEAN) === 0) {
           if ((flags & ASYNC) !== 0) {
-            var effects = effect.b?.is_pending() ? this.#boundary_async_effects : this.#async_effects;
+            var effects = effect.b?.pending ? this.#boundary_async_effects : this.#async_effects;
             effects.push(effect);
           } else if (is_dirty(effect)) {
             if ((effect.f & BLOCK_EFFECT) !== 0) this.#block_effects.push(effect);
@@ -1798,7 +2328,10 @@ class Batch {
   }
   /** @param {() => void} task */
   static enqueue(task) {
-    queue_micro_task(task);
+    if (tasks.length === 0) {
+      queueMicrotask(dequeue);
+    }
+    tasks.unshift(task);
   }
 }
 function flushSync(fn) {
@@ -1809,7 +2342,7 @@ function flushSync(fn) {
     if (fn) ;
     while (true) {
       flush_tasks();
-      if (queued_root_effects.length === 0 && !has_pending_tasks()) {
+      if (queued_root_effects.length === 0) {
         current_batch?.flush();
         if (queued_root_effects.length === 0) {
           last_scheduled_effect = null;
@@ -3338,7 +3871,7 @@ const options = {
 		<div class="error">
 			<span class="status">` + status + '</span>\n			<div class="message">\n				<h1>' + message + "</h1>\n			</div>\n		</div>\n	</body>\n</html>\n"
   },
-  version_hash: "1pp3vsq"
+  version_hash: "1emxzy2"
 };
 async function get_hooks() {
   let handle;
@@ -3346,6 +3879,7 @@ async function get_hooks() {
   let handleError;
   let handleValidationError;
   let init;
+  ({ handle, handleFetch, handleError, handleValidationError, init } = await import('./chunks/hooks.server-D_qPU0c-.js'));
   let reroute;
   let transport;
   return {
@@ -3358,542 +3892,6 @@ async function get_hooks() {
     transport
   };
 }
-
-const INVALIDATED_PARAM = "x-sveltekit-invalidated";
-const TRAILING_SLASH_PARAM = "x-sveltekit-trailing-slash";
-function stringify(data, transport) {
-  const encoders = Object.fromEntries(Object.entries(transport).map(([k, v]) => [k, v.encode]));
-  return stringify$1(data, encoders);
-}
-function parse_remote_arg(string, transport) {
-  if (!string) return void 0;
-  const json_string = text_decoder.decode(
-    // no need to add back `=` characters, atob can handle it
-    base64_decode(string.replaceAll("-", "+").replaceAll("_", "/"))
-  );
-  const decoders = Object.fromEntries(Object.entries(transport).map(([k, v]) => [k, v.decode]));
-  return parse(json_string, decoders);
-}
-
-var cookie = {};
-
-/*!
- * cookie
- * Copyright(c) 2012-2014 Roman Shtylman
- * Copyright(c) 2015 Douglas Christopher Wilson
- * MIT Licensed
- */
-
-var hasRequiredCookie;
-
-function requireCookie () {
-	if (hasRequiredCookie) return cookie;
-	hasRequiredCookie = 1;
-
-	/**
-	 * Module exports.
-	 * @public
-	 */
-
-	cookie.parse = parse;
-	cookie.serialize = serialize;
-
-	/**
-	 * Module variables.
-	 * @private
-	 */
-
-	var __toString = Object.prototype.toString;
-
-	/**
-	 * RegExp to match field-content in RFC 7230 sec 3.2
-	 *
-	 * field-content = field-vchar [ 1*( SP / HTAB ) field-vchar ]
-	 * field-vchar   = VCHAR / obs-text
-	 * obs-text      = %x80-FF
-	 */
-
-	var fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/;
-
-	/**
-	 * Parse a cookie header.
-	 *
-	 * Parse the given cookie header string into an object
-	 * The object has the various cookies as keys(names) => values
-	 *
-	 * @param {string} str
-	 * @param {object} [options]
-	 * @return {object}
-	 * @public
-	 */
-
-	function parse(str, options) {
-	  if (typeof str !== 'string') {
-	    throw new TypeError('argument str must be a string');
-	  }
-
-	  var obj = {};
-	  var opt = options || {};
-	  var dec = opt.decode || decode;
-
-	  var index = 0;
-	  while (index < str.length) {
-	    var eqIdx = str.indexOf('=', index);
-
-	    // no more cookie pairs
-	    if (eqIdx === -1) {
-	      break
-	    }
-
-	    var endIdx = str.indexOf(';', index);
-
-	    if (endIdx === -1) {
-	      endIdx = str.length;
-	    } else if (endIdx < eqIdx) {
-	      // backtrack on prior semicolon
-	      index = str.lastIndexOf(';', eqIdx - 1) + 1;
-	      continue
-	    }
-
-	    var key = str.slice(index, eqIdx).trim();
-
-	    // only assign once
-	    if (undefined === obj[key]) {
-	      var val = str.slice(eqIdx + 1, endIdx).trim();
-
-	      // quoted values
-	      if (val.charCodeAt(0) === 0x22) {
-	        val = val.slice(1, -1);
-	      }
-
-	      obj[key] = tryDecode(val, dec);
-	    }
-
-	    index = endIdx + 1;
-	  }
-
-	  return obj;
-	}
-
-	/**
-	 * Serialize data into a cookie header.
-	 *
-	 * Serialize the a name value pair into a cookie string suitable for
-	 * http headers. An optional options object specified cookie parameters.
-	 *
-	 * serialize('foo', 'bar', { httpOnly: true })
-	 *   => "foo=bar; httpOnly"
-	 *
-	 * @param {string} name
-	 * @param {string} val
-	 * @param {object} [options]
-	 * @return {string}
-	 * @public
-	 */
-
-	function serialize(name, val, options) {
-	  var opt = options || {};
-	  var enc = opt.encode || encode;
-
-	  if (typeof enc !== 'function') {
-	    throw new TypeError('option encode is invalid');
-	  }
-
-	  if (!fieldContentRegExp.test(name)) {
-	    throw new TypeError('argument name is invalid');
-	  }
-
-	  var value = enc(val);
-
-	  if (value && !fieldContentRegExp.test(value)) {
-	    throw new TypeError('argument val is invalid');
-	  }
-
-	  var str = name + '=' + value;
-
-	  if (null != opt.maxAge) {
-	    var maxAge = opt.maxAge - 0;
-
-	    if (isNaN(maxAge) || !isFinite(maxAge)) {
-	      throw new TypeError('option maxAge is invalid')
-	    }
-
-	    str += '; Max-Age=' + Math.floor(maxAge);
-	  }
-
-	  if (opt.domain) {
-	    if (!fieldContentRegExp.test(opt.domain)) {
-	      throw new TypeError('option domain is invalid');
-	    }
-
-	    str += '; Domain=' + opt.domain;
-	  }
-
-	  if (opt.path) {
-	    if (!fieldContentRegExp.test(opt.path)) {
-	      throw new TypeError('option path is invalid');
-	    }
-
-	    str += '; Path=' + opt.path;
-	  }
-
-	  if (opt.expires) {
-	    var expires = opt.expires;
-
-	    if (!isDate(expires) || isNaN(expires.valueOf())) {
-	      throw new TypeError('option expires is invalid');
-	    }
-
-	    str += '; Expires=' + expires.toUTCString();
-	  }
-
-	  if (opt.httpOnly) {
-	    str += '; HttpOnly';
-	  }
-
-	  if (opt.secure) {
-	    str += '; Secure';
-	  }
-
-	  if (opt.partitioned) {
-	    str += '; Partitioned';
-	  }
-
-	  if (opt.priority) {
-	    var priority = typeof opt.priority === 'string'
-	      ? opt.priority.toLowerCase()
-	      : opt.priority;
-
-	    switch (priority) {
-	      case 'low':
-	        str += '; Priority=Low';
-	        break
-	      case 'medium':
-	        str += '; Priority=Medium';
-	        break
-	      case 'high':
-	        str += '; Priority=High';
-	        break
-	      default:
-	        throw new TypeError('option priority is invalid')
-	    }
-	  }
-
-	  if (opt.sameSite) {
-	    var sameSite = typeof opt.sameSite === 'string'
-	      ? opt.sameSite.toLowerCase() : opt.sameSite;
-
-	    switch (sameSite) {
-	      case true:
-	        str += '; SameSite=Strict';
-	        break;
-	      case 'lax':
-	        str += '; SameSite=Lax';
-	        break;
-	      case 'strict':
-	        str += '; SameSite=Strict';
-	        break;
-	      case 'none':
-	        str += '; SameSite=None';
-	        break;
-	      default:
-	        throw new TypeError('option sameSite is invalid');
-	    }
-	  }
-
-	  return str;
-	}
-
-	/**
-	 * URL-decode string value. Optimized to skip native call when no %.
-	 *
-	 * @param {string} str
-	 * @returns {string}
-	 */
-
-	function decode (str) {
-	  return str.indexOf('%') !== -1
-	    ? decodeURIComponent(str)
-	    : str
-	}
-
-	/**
-	 * URL-encode value.
-	 *
-	 * @param {string} val
-	 * @returns {string}
-	 */
-
-	function encode (val) {
-	  return encodeURIComponent(val)
-	}
-
-	/**
-	 * Determine if value is a Date.
-	 *
-	 * @param {*} val
-	 * @private
-	 */
-
-	function isDate (val) {
-	  return __toString.call(val) === '[object Date]' ||
-	    val instanceof Date
-	}
-
-	/**
-	 * Try decoding a string using a decoding function.
-	 *
-	 * @param {string} str
-	 * @param {function} decode
-	 * @private
-	 */
-
-	function tryDecode(str, decode) {
-	  try {
-	    return decode(str);
-	  } catch (e) {
-	    return str;
-	  }
-	}
-	return cookie;
-}
-
-var cookieExports = requireCookie();
-
-var setCookie = {exports: {}};
-
-var hasRequiredSetCookie;
-
-function requireSetCookie () {
-	if (hasRequiredSetCookie) return setCookie.exports;
-	hasRequiredSetCookie = 1;
-
-	var defaultParseOptions = {
-	  decodeValues: true,
-	  map: false,
-	  silent: false,
-	};
-
-	function isNonEmptyString(str) {
-	  return typeof str === "string" && !!str.trim();
-	}
-
-	function parseString(setCookieValue, options) {
-	  var parts = setCookieValue.split(";").filter(isNonEmptyString);
-
-	  var nameValuePairStr = parts.shift();
-	  var parsed = parseNameValuePair(nameValuePairStr);
-	  var name = parsed.name;
-	  var value = parsed.value;
-
-	  options = options
-	    ? Object.assign({}, defaultParseOptions, options)
-	    : defaultParseOptions;
-
-	  try {
-	    value = options.decodeValues ? decodeURIComponent(value) : value; // decode cookie value
-	  } catch (e) {
-	    console.error(
-	      "set-cookie-parser encountered an error while decoding a cookie with value '" +
-	        value +
-	        "'. Set options.decodeValues to false to disable this feature.",
-	      e
-	    );
-	  }
-
-	  var cookie = {
-	    name: name,
-	    value: value,
-	  };
-
-	  parts.forEach(function (part) {
-	    var sides = part.split("=");
-	    var key = sides.shift().trimLeft().toLowerCase();
-	    var value = sides.join("=");
-	    if (key === "expires") {
-	      cookie.expires = new Date(value);
-	    } else if (key === "max-age") {
-	      cookie.maxAge = parseInt(value, 10);
-	    } else if (key === "secure") {
-	      cookie.secure = true;
-	    } else if (key === "httponly") {
-	      cookie.httpOnly = true;
-	    } else if (key === "samesite") {
-	      cookie.sameSite = value;
-	    } else if (key === "partitioned") {
-	      cookie.partitioned = true;
-	    } else {
-	      cookie[key] = value;
-	    }
-	  });
-
-	  return cookie;
-	}
-
-	function parseNameValuePair(nameValuePairStr) {
-	  // Parses name-value-pair according to rfc6265bis draft
-
-	  var name = "";
-	  var value = "";
-	  var nameValueArr = nameValuePairStr.split("=");
-	  if (nameValueArr.length > 1) {
-	    name = nameValueArr.shift();
-	    value = nameValueArr.join("="); // everything after the first =, joined by a "=" if there was more than one part
-	  } else {
-	    value = nameValuePairStr;
-	  }
-
-	  return { name: name, value: value };
-	}
-
-	function parse(input, options) {
-	  options = options
-	    ? Object.assign({}, defaultParseOptions, options)
-	    : defaultParseOptions;
-
-	  if (!input) {
-	    if (!options.map) {
-	      return [];
-	    } else {
-	      return {};
-	    }
-	  }
-
-	  if (input.headers) {
-	    if (typeof input.headers.getSetCookie === "function") {
-	      // for fetch responses - they combine headers of the same type in the headers array,
-	      // but getSetCookie returns an uncombined array
-	      input = input.headers.getSetCookie();
-	    } else if (input.headers["set-cookie"]) {
-	      // fast-path for node.js (which automatically normalizes header names to lower-case
-	      input = input.headers["set-cookie"];
-	    } else {
-	      // slow-path for other environments - see #25
-	      var sch =
-	        input.headers[
-	          Object.keys(input.headers).find(function (key) {
-	            return key.toLowerCase() === "set-cookie";
-	          })
-	        ];
-	      // warn if called on a request-like object with a cookie header rather than a set-cookie header - see #34, 36
-	      if (!sch && input.headers.cookie && !options.silent) {
-	        console.warn(
-	          "Warning: set-cookie-parser appears to have been called on a request object. It is designed to parse Set-Cookie headers from responses, not Cookie headers from requests. Set the option {silent: true} to suppress this warning."
-	        );
-	      }
-	      input = sch;
-	    }
-	  }
-	  if (!Array.isArray(input)) {
-	    input = [input];
-	  }
-
-	  if (!options.map) {
-	    return input.filter(isNonEmptyString).map(function (str) {
-	      return parseString(str, options);
-	    });
-	  } else {
-	    var cookies = {};
-	    return input.filter(isNonEmptyString).reduce(function (cookies, str) {
-	      var cookie = parseString(str, options);
-	      cookies[cookie.name] = cookie;
-	      return cookies;
-	    }, cookies);
-	  }
-	}
-
-	/*
-	  Set-Cookie header field-values are sometimes comma joined in one string. This splits them without choking on commas
-	  that are within a single set-cookie field-value, such as in the Expires portion.
-
-	  This is uncommon, but explicitly allowed - see https://tools.ietf.org/html/rfc2616#section-4.2
-	  Node.js does this for every header *except* set-cookie - see https://github.com/nodejs/node/blob/d5e363b77ebaf1caf67cd7528224b651c86815c1/lib/_http_incoming.js#L128
-	  React Native's fetch does this for *every* header, including set-cookie.
-
-	  Based on: https://github.com/google/j2objc/commit/16820fdbc8f76ca0c33472810ce0cb03d20efe25
-	  Credits to: https://github.com/tomball for original and https://github.com/chrusart for JavaScript implementation
-	*/
-	function splitCookiesString(cookiesString) {
-	  if (Array.isArray(cookiesString)) {
-	    return cookiesString;
-	  }
-	  if (typeof cookiesString !== "string") {
-	    return [];
-	  }
-
-	  var cookiesStrings = [];
-	  var pos = 0;
-	  var start;
-	  var ch;
-	  var lastComma;
-	  var nextStart;
-	  var cookiesSeparatorFound;
-
-	  function skipWhitespace() {
-	    while (pos < cookiesString.length && /\s/.test(cookiesString.charAt(pos))) {
-	      pos += 1;
-	    }
-	    return pos < cookiesString.length;
-	  }
-
-	  function notSpecialChar() {
-	    ch = cookiesString.charAt(pos);
-
-	    return ch !== "=" && ch !== ";" && ch !== ",";
-	  }
-
-	  while (pos < cookiesString.length) {
-	    start = pos;
-	    cookiesSeparatorFound = false;
-
-	    while (skipWhitespace()) {
-	      ch = cookiesString.charAt(pos);
-	      if (ch === ",") {
-	        // ',' is a cookie separator if we have later first '=', not ';' or ','
-	        lastComma = pos;
-	        pos += 1;
-
-	        skipWhitespace();
-	        nextStart = pos;
-
-	        while (pos < cookiesString.length && notSpecialChar()) {
-	          pos += 1;
-	        }
-
-	        // currently special character
-	        if (pos < cookiesString.length && cookiesString.charAt(pos) === "=") {
-	          // we found cookies separator
-	          cookiesSeparatorFound = true;
-	          // pos is inside the next cookie, so back up and return it.
-	          pos = nextStart;
-	          cookiesStrings.push(cookiesString.substring(start, lastComma));
-	          start = pos;
-	        } else {
-	          // in param ',' or param separator ';',
-	          // we continue from that comma
-	          pos = lastComma + 1;
-	        }
-	      } else {
-	        pos += 1;
-	      }
-	    }
-
-	    if (!cookiesSeparatorFound || pos >= cookiesString.length) {
-	      cookiesStrings.push(cookiesString.substring(start, cookiesString.length));
-	    }
-	  }
-
-	  return cookiesStrings;
-	}
-
-	setCookie.exports = parse;
-	setCookie.exports.parse = parse;
-	setCookie.exports.parseString = parseString;
-	setCookie.exports.splitCookiesString = splitCookiesString;
-	return setCookie.exports;
-}
-
-var setCookieExports = /*@__PURE__*/ requireSetCookie();
 
 const SVELTE_KIT_ASSETS = "/_svelte_kit_assets";
 const ENDPOINT_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"];
@@ -4123,7 +4121,6 @@ async function render_endpoint(event, event_state, mod, state) {
       return new Response(void 0, { status: 204 });
     }
   }
-  event_state.is_endpoint_request = true;
   try {
     const response = await with_request_store(
       { event, state: event_state },
@@ -4538,65 +4535,56 @@ function create_async_iterator() {
 }
 function server_data_serializer(event, event_state, options2) {
   let promise_id = 1;
-  let max_nodes = -1;
   const iterator = create_async_iterator();
   const global = get_global_name(options2);
-  function get_replacer(index) {
-    return function replacer(thing) {
-      if (typeof thing?.then === "function") {
-        const id = promise_id++;
-        const promise = thing.then(
-          /** @param {any} data */
-          (data) => ({ data })
-        ).catch(
-          /** @param {any} error */
-          async (error2) => ({
-            error: await handle_error_and_jsonify(event, event_state, options2, error2)
-          })
-        ).then(
-          /**
-           * @param {{data: any; error: any}} result
-           */
-          async ({ data, error: error2 }) => {
-            let str;
-            try {
-              str = uneval(error2 ? [, error2] : [data], replacer);
-            } catch {
-              error2 = await handle_error_and_jsonify(
-                event,
-                event_state,
-                options2,
-                new Error(`Failed to serialize promise while rendering ${event.route.id}`)
-              );
-              data = void 0;
-              str = uneval([, error2], replacer);
-            }
-            return {
-              index,
-              str: `${global}.resolve(${id}, ${str.includes("app.decode") ? `(app) => ${str}` : `() => ${str}`})`
-            };
+  function replacer(thing) {
+    if (typeof thing?.then === "function") {
+      const id = promise_id++;
+      const promise = thing.then(
+        /** @param {any} data */
+        (data) => ({ data })
+      ).catch(
+        /** @param {any} error */
+        async (error2) => ({
+          error: await handle_error_and_jsonify(event, event_state, options2, error2)
+        })
+      ).then(
+        /**
+         * @param {{data: any; error: any}} result
+         */
+        async ({ data, error: error2 }) => {
+          let str;
+          try {
+            str = uneval(error2 ? [, error2] : [data], replacer);
+          } catch {
+            error2 = await handle_error_and_jsonify(
+              event,
+              event_state,
+              options2,
+              new Error(`Failed to serialize promise while rendering ${event.route.id}`)
+            );
+            data = void 0;
+            str = uneval([, error2], replacer);
           }
-        );
-        iterator.add(promise);
-        return `${global}.defer(${id})`;
-      } else {
-        for (const key2 in options2.hooks.transport) {
-          const encoded = options2.hooks.transport[key2].encode(thing);
-          if (encoded) {
-            return `app.decode('${key2}', ${uneval(encoded, replacer)})`;
-          }
+          return `${global}.resolve(${id}, ${str.includes("app.decode") ? `(app) => ${str}` : `() => ${str}`})`;
+        }
+      );
+      iterator.add(promise);
+      return `${global}.defer(${id})`;
+    } else {
+      for (const key2 in options2.hooks.transport) {
+        const encoded = options2.hooks.transport[key2].encode(thing);
+        if (encoded) {
+          return `app.decode('${key2}', ${uneval(encoded, replacer)})`;
         }
       }
-    };
+    }
   }
   const strings = (
     /** @type {string[]} */
     []
   );
   return {
-    set_max_nodes(i) {
-      max_nodes = i;
-    },
     add_node(i, node) {
       try {
         if (!node) {
@@ -4605,7 +4593,7 @@ function server_data_serializer(event, event_state, options2) {
         }
         const payload = { type: "data", data: node.data, uses: serialize_uses(node) };
         if (node.slash) payload.slash = node.slash;
-        strings[i] = uneval(payload, get_replacer(i));
+        strings[i] = uneval(payload, replacer);
       } catch (e) {
         e.path = e.path.slice(1);
         throw new Error(clarify_devalue_error(
@@ -4620,13 +4608,8 @@ function server_data_serializer(event, event_state, options2) {
       const close = `<\/script>
 `;
       return {
-        data: `[${compact(max_nodes > -1 ? strings.slice(0, max_nodes) : strings).join(",")}]`,
-        chunks: promise_id > 1 ? iterator.iterate(({ index, str }) => {
-          if (max_nodes > -1 && index >= max_nodes) {
-            return "";
-          }
-          return open + str + close;
-        }) : null
+        data: `[${strings.join(",")}]`,
+        chunks: promise_id > 1 ? iterator.iterate((str) => open + str + close) : null
       };
     }
   };
@@ -5772,6 +5755,22 @@ async function render_response({
 							try_to_resolve();
 						}`);
     }
+    const { remote_data } = event_state;
+    if (remote_data) {
+      const remote = {};
+      for (const key2 in remote_data) {
+        remote[key2] = await remote_data[key2];
+      }
+      const replacer = (thing) => {
+        for (const key2 in options2.hooks.transport) {
+          const encoded = options2.hooks.transport[key2].encode(thing);
+          if (encoded) {
+            return `app.decode('${key2}', ${uneval(encoded, replacer)})`;
+          }
+        }
+      };
+      properties.push(`data: ${uneval(remote, replacer)}`);
+    }
     blocks.push(`${global} = {
 						${properties.join(",\n						")}
 					};`);
@@ -5816,34 +5815,15 @@ ${indent}	${hydrate.join(`,
 ${indent}	`)}
 ${indent}}`);
     }
-    const { remote_data } = event_state;
-    let serialized_remote_data = "";
-    if (remote_data) {
-      const remote = {};
-      for (const key2 in remote_data) {
-        remote[key2] = await remote_data[key2];
-      }
-      const replacer = (thing) => {
-        for (const key2 in options2.hooks.transport) {
-          const encoded = options2.hooks.transport[key2].encode(thing);
-          if (encoded) {
-            return `app.decode('${key2}', ${uneval(encoded, replacer)})`;
-          }
-        }
-      };
-      serialized_remote_data = `${global}.data = ${uneval(remote, replacer)};
-
-						`;
-    }
     const boot = client.inline ? `${client.inline.script}
 
-					${serialized_remote_data}${global}.app.start(${args.join(", ")});` : client.app ? `Promise.all([
+					__sveltekit_${options2.version_hash}.app.start(${args.join(", ")});` : client.app ? `Promise.all([
 						import(${s(prefixed(client.start))}),
 						import(${s(prefixed(client.app))})
 					]).then(([kit, app]) => {
-						${serialized_remote_data}kit.start(app, ${args.join(", ")});
+						kit.start(app, ${args.join(", ")});
 					});` : `import(${s(prefixed(client.start))}).then((app) => {
-						${serialized_remote_data}app.start(${args.join(", ")})
+						app.start(${args.join(", ")})
 					});`;
     if (load_env_eagerly) {
       blocks.push(`import(${s(`${base$1}/${app_dir}/env.js`)}).then(({ env }) => {
@@ -6141,7 +6121,7 @@ async function handle_remote_call_internal(event, state, options2, manifest, id)
   const remotes = manifest._.remotes;
   if (!remotes[hash2]) error(404);
   const module = await remotes[hash2]();
-  const fn = module.default[name];
+  const fn = module[name];
   if (!fn) error(404);
   const info = fn.__;
   const transport = options2.hooks.transport;
@@ -6151,58 +6131,18 @@ async function handle_remote_call_internal(event, state, options2, manifest, id)
   });
   let form_client_refreshes;
   try {
-    if (info.type === "query_batch") {
-      if (event.request.method !== "POST") {
-        throw new SvelteKitError(
-          405,
-          "Method Not Allowed",
-          `\`query.batch\` functions must be invoked via POST request, not ${event.request.method}`
-        );
-      }
-      const { payloads } = await event.request.json();
-      const args = payloads.map((payload2) => parse_remote_arg(payload2, transport));
-      const get_result = await with_request_store({ event, state }, () => info.run(args));
-      const results = await Promise.all(
-        args.map(async (arg, i) => {
-          try {
-            return { type: "result", data: get_result(arg, i) };
-          } catch (error2) {
-            return {
-              type: "error",
-              error: await handle_error_and_jsonify(event, state, options2, error2),
-              status: error2 instanceof HttpError || error2 instanceof SvelteKitError ? error2.status : 500
-            };
-          }
-        })
-      );
-      return json(
-        /** @type {RemoteFunctionResponse} */
-        {
-          type: "result",
-          result: stringify(results, transport)
-        }
-      );
-    }
     if (info.type === "form") {
-      if (event.request.method !== "POST") {
-        throw new SvelteKitError(
-          405,
-          "Method Not Allowed",
-          `\`form\` functions must be invoked via POST request, not ${event.request.method}`
-        );
-      }
       if (!is_form_content_type(event.request)) {
         throw new SvelteKitError(
           415,
           "Unsupported Media Type",
-          `\`form\` functions expect form-encoded data — received ${event.request.headers.get(
+          `Form actions expect form-encoded data — received ${event.request.headers.get(
             "content-type"
           )}`
         );
       }
       const form_data = await event.request.formData();
-      form_client_refreshes = /** @type {string[]} */
-      JSON.parse(
+      form_client_refreshes = JSON.parse(
         /** @type {string} */
         form_data.get("sveltekit:remote_refreshes") ?? "[]"
       );
@@ -6214,7 +6154,10 @@ async function handle_remote_call_internal(event, state, options2, manifest, id)
         {
           type: "result",
           result: stringify(data2, transport),
-          refreshes: await serialize_refreshes(form_client_refreshes)
+          refreshes: await serialize_refreshes(
+            /** @type {string[]} */
+            form_client_refreshes
+          )
         }
       );
     }
@@ -6249,27 +6192,20 @@ async function handle_remote_call_internal(event, state, options2, manifest, id)
     );
   } catch (error2) {
     if (error2 instanceof Redirect) {
-      return json(
-        /** @type {RemoteFunctionResponse} */
-        {
-          type: "redirect",
-          location: error2.location,
-          refreshes: await serialize_refreshes(form_client_refreshes ?? [])
-        }
-      );
+      return json({
+        type: "redirect",
+        location: error2.location,
+        refreshes: await serialize_refreshes(form_client_refreshes ?? [])
+      });
     }
-    const status = error2 instanceof HttpError || error2 instanceof SvelteKitError ? error2.status : 500;
     return json(
       /** @type {RemoteFunctionResponse} */
       {
         type: "error",
         error: await handle_error_and_jsonify(event, state, options2, error2),
-        status
+        status: error2 instanceof HttpError || error2 instanceof SvelteKitError ? error2.status : 500
       },
       {
-        // By setting a non-200 during prerendering we fail the prerender process (unless handleHttpError handles it).
-        // Errors at runtime will be passed to the client and are handled there
-        status: state.prerendering ? status : void 0,
         headers: {
           "cache-control": "private, no-store"
         }
@@ -6277,12 +6213,15 @@ async function handle_remote_call_internal(event, state, options2, manifest, id)
     );
   }
   async function serialize_refreshes(client_refreshes) {
-    const refreshes = state.refreshes ?? {};
+    const refreshes = (
+      /** @type {Record<string, Promise<any>>} */
+      state.refreshes
+    );
     for (const key2 of client_refreshes) {
       if (refreshes[key2] !== void 0) continue;
       const [hash3, name2, payload] = key2.split("/");
       const loader = manifest._.remotes[hash3];
-      const fn2 = (await loader?.())?.default?.[name2];
+      const fn2 = (await loader?.())?.[name2];
       if (!fn2) error(400, "Bad Request");
       refreshes[key2] = with_request_store(
         { event, state },
@@ -6321,7 +6260,7 @@ async function handle_remote_form_post_internal(event, state, manifest, id) {
   const module = await remotes[hash2]?.();
   let form = (
     /** @type {RemoteForm<any>} */
-    module?.default[name]
+    module?.[name]
   );
   if (!form) {
     event.setHeaders({
@@ -6474,9 +6413,7 @@ async function render_page(event, event_state, page, options2, manifest, state, 
               return data;
             }
           });
-          if (node) {
-            data_serializer.add_node(i, server_data);
-          }
+          data_serializer.add_node(i, server_data);
           data_serializer_json?.add_node(i, server_data);
           return server_data;
         } catch (e) {
@@ -6551,7 +6488,6 @@ async function render_page(event, event_state, page, options2, manifest, state, 
               const node2 = await manifest._.nodes[index]();
               let j = i;
               while (!branch[j]) j -= 1;
-              data_serializer.set_max_nodes(j + 1);
               const layouts = compact(branch.slice(0, j + 1));
               const nodes2 = new PageNodes(layouts.map((layout) => layout.node));
               return await render_response({
@@ -6573,7 +6509,7 @@ async function render_page(event, event_state, page, options2, manifest, state, 
                   server_data: null
                 }),
                 fetched,
-                data_serializer
+                data_serializer: server_data_serializer(event, event_state, options2)
               });
             }
           }
@@ -6611,7 +6547,7 @@ async function render_page(event, event_state, page, options2, manifest, state, 
       branch: ssr === false ? [] : compact(branch),
       action_result,
       fetched,
-      data_serializer: ssr === false ? server_data_serializer(event, event_state, options2) : data_serializer
+      data_serializer
     });
   } catch (e) {
     return await respond_with_error({
@@ -7417,7 +7353,7 @@ async function internal_respond(request, options2, manifest, state) {
     return response;
   } catch (e) {
     if (e instanceof Redirect) {
-      const response = is_data_request || remote_id ? redirect_json_response(e) : route?.page && is_action_json_request(event) ? action_json_redirect(e) : redirect_response(e.status, e.location);
+      const response = is_data_request ? redirect_json_response(e) : route?.page && is_action_json_request(event) ? action_json_redirect(e) : redirect_response(e.status, e.location);
       add_cookies_to_headers(response.headers, new_cookies.values());
       return response;
     }

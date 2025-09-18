@@ -1,3 +1,18 @@
+function coerceUtcIsoString(value) {
+  if (!value) {
+    return (/* @__PURE__ */ new Date()).toISOString();
+  }
+  const trimmed = value.trim();
+  const hasTz = /[zZ]|[+-]\d{2}:?\d{2}$/.test(trimmed);
+  const normalized = trimmed.replace(" ", "T");
+  const stamped = hasTz ? normalized : `${normalized}Z`;
+  const parsed = new Date(stamped);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString();
+  }
+  const fallback = new Date(trimmed);
+  return Number.isNaN(fallback.getTime()) ? (/* @__PURE__ */ new Date()).toISOString() : fallback.toISOString();
+}
 function computeVPD_c_kPa(tempC, rh) {
   const es = 0.6108 * Math.exp(17.27 * tempC / (tempC + 237.3));
   const ea = rh / 100 * es;
@@ -5,7 +20,7 @@ function computeVPD_c_kPa(tempC, rh) {
 }
 function mapReadingToWeather(r) {
   const mock = getMockWeather();
-  const updatedAt = new Date(r.timestamp_utc ?? (/* @__PURE__ */ new Date()).toISOString()).toISOString();
+  const updatedAt = coerceUtcIsoString(r.timestamp_utc);
   const tempC = r.temp_c ?? void 0;
   const rh = r.humidity_pct ?? void 0;
   const vpd = tempC != null && rh != null ? computeVPD_c_kPa(tempC, rh) : mock.outdoor.vpd;
@@ -107,14 +122,16 @@ async function fetchWeather() {
   const { data, connected, source } = await fetchBackendWeatherMeta("/api");
   return { weather: data, connected, source };
 }
-async function fetchMetric(metric, fetchFn = fetch) {
-  const res = await fetchFn(`/api/weather/${metric}?_ts=${Date.now()}`);
+async function fetchWeatherHistory(from, to, fetchFn = fetch) {
+  const res = await fetchFn(`/api/weather/history?from=${from}&to=${to}&_ts=${Date.now()}`);
   if (!res.ok) {
-    throw new Error(`Unknown metric: ${metric}`);
+    throw new Error(`Unable to fetch history: ${res.status}`);
   }
-  return res.json();
+  const json = await res.json();
+  const rows = Array.isArray(json?.data) ? json.data : [];
+  return rows;
 }
 export {
-  fetchMetric as a,
+  fetchWeatherHistory as a,
   fetchWeather as f
 };

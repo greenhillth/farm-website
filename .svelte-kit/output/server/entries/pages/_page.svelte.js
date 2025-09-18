@@ -55,8 +55,8 @@ function _page($$payload) {
       title: "Interactive Farm Map",
       description: "Explore fields, soil metrics and optimal ranges.",
       tags: ["map", "leaflet"],
-      image: "/img/logo.png",
-      imageAlt: "Farm logo",
+      image: "/img/aerial-map.jpg",
+      imageAlt: "Aerial view of farm map",
       badge: "Featured"
     },
     {
@@ -64,7 +64,7 @@ function _page($$payload) {
       title: "Paddock Manager",
       description: "Manage paddocks, notes, and field tasks.",
       tags: ["paddocks"],
-      image: null,
+      image: "/img/tractor-1.jpg",
       badge: "New"
     },
     {
@@ -72,8 +72,24 @@ function _page($$payload) {
       title: "Soil Tests",
       description: "Manage soil tests and analysis.",
       tags: ["soil", "tests"],
-      image: null,
+      image: "img/soil.jpg",
       badge: "New"
+    },
+    {
+      href: "https://greenhillbros.sharepoint.com/sites/Draft/Shared%20Documents/Forms/AllItems.aspx",
+      title: "Sharepoint Invoices",
+      description: "Sharepoint Invoices Site",
+      tags: ["instructions", "manual"],
+      image: "/img/sharepoint.jpg",
+      badge: "Sharepoint"
+    },
+    {
+      href: "https://greenhillbros.sharepoint.com/sites/Draft/SitePages/CollabHome.aspx",
+      title: "Sharepoint Home",
+      description: "Greenhill Bros Sharepoint Home",
+      tags: ["instructions", "manual"],
+      image: "/img/sharepoint.jpg",
+      badge: "Sharepoint"
     },
     {
       href: "/timesheet",
@@ -88,7 +104,7 @@ function _page($$payload) {
       title: "Weather Station",
       description: "Live outdoor/indoor, wind, rainfall, solar and more.",
       tags: ["weather"],
-      image: null,
+      image: "img/weather-station.webp",
       badge: "Dashboard"
     },
     // {
@@ -108,20 +124,21 @@ function _page($$payload) {
       badge: "Analytics"
     },
     {
-      href: "/map?metric=K",
-      title: "Potassium (K)",
-      description: "Check optimal ranges and hotspots.",
-      tags: ["soil", "K"],
-      image: null
+      href: "/manual",
+      title: "Operation Instructions",
+      description: "Instructions for the less technically-savvy.",
+      tags: ["instructions", "manual"],
+      image: "img/confused-dad-1.jpg",
+      badge: "Help"
     }
   ];
   const each_array = ensure_array_like(items);
-  $$payload.out.push(`<main class="container mx-auto px-4 py-8"><header class="mb-6 flex items-center justify-between gap-4"><h1 class="text-xl md:text-2xl font-semibold">Greenhill Bros Farm</h1> <a href="/map" class="text-sm text-muted hover:text-white">Open map →</a></header> <section class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"><!--[-->`);
+  $$payload.out.push(`<div class="home-shell svelte-1j7pcr4"><div class="home-shell__bg svelte-1j7pcr4" aria-hidden="true"></div> <main class="relative container mx-auto px-4 py-8 svelte-1j7pcr4"><header class="mb-6 flex items-center justify-between gap-4"><h1 class="text-xl font-semibold md:text-2xl">Greenhill Bros Farm</h1> <a href="/map" class="text-muted text-sm hover:text-white">Open map →</a></header> <section class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"><!--[-->`);
   for (let $$index = 0, $$length = each_array.length; $$index < $$length; $$index++) {
     let i = each_array[$$index];
     Card($$payload, spread_props([i]));
   }
-  $$payload.out.push(`<!--]--></section></main>`);
+  $$payload.out.push(`<!--]--></section></main></div>`);
 }
 export {
   _page as default

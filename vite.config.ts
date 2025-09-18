@@ -11,11 +11,20 @@ export default defineConfig({
 		noExternal: ['leaflet']
 	},
 	server: {
+		host: true,
+		port: 4000,
+		strictPort: true,
+		allowedHosts: ['farm.greenhill.net.au'],
 		proxy: {
 			'/api': {
 				target: 'http://localhost:8000',
 				changeOrigin: true
 			}
 		}
+	},
+	preview: {
+		host: true,
+		port: 4001,
+		strictPort: true
 	}
 });

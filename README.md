@@ -37,6 +37,55 @@ You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
 
+## Docker
+
+A multi-stage `Dockerfile` is included for running the production build behind Cloudflared.
+
+Build the image:
+
+```sh
+docker build -t website-frontend .
+```
+
+Run the container and expose port 4000 to the host:
+
+```sh
+docker run --rm -p 4000:4000 website-frontend
+```
+
+The image runs `npm run build` during the build stage and starts the compiled Node server (`node build`) with `HOST=0.0.0.0` and `PORT=4000`.
+
+If you need different ports, override `PORT` at runtime, e.g. `docker run -e PORT=8080 -p 8080:8080 website-frontend`.
+
+
+## Ports
+
+Local scripts remain on port 400 for backwards compatibility:
+
+- Dev: `npm run dev:400` (equivalent to `vite dev --host --port 400 --strictPort`)
+- Preview: `npm run preview:400`
+- Production Node run: `npm run start:400` (sets `PORT=400` for the Node server)
+
+The Docker container publishes port 4000 by default and sets `HOST=0.0.0.0`. When running it locally, map the port with `-p 4000:4000`.
+
+Note: Ports 400 and 4000 are unprivileged on Unix, so they typically do not require elevated permissions.
+
+## Cloudflared (Argo Tunnel)
+
+The frontend is ready to work with Cloudflared. Cloudflared should forward traffic to `http://localhost:4000` so that requests land on the Docker container.
+
+Options:
+
+- Quick Tunnel (no config):
+  - `cloudflared tunnel --url http://localhost:4000`
+
+- Named Tunnel (config file):
+  - A template is provided at `cloudflared-config/config.yml`.
+  - Set your `tunnel` ID and `credentials-file`, and change the `hostname`.
+  - Run with: `cloudflared --config cloudflared-config/config.yml tunnel run`
+
+If you prefer to store the config in the standard location, move the file to `cloudflared/config.yml` and ensure Cloudflared has access. Note that the existing `cloudflared/` directory in this repo may be owned by root on your system; adjust ownership or point Cloudflared to `cloudflared-config/config.yml` directly.
+
 ## Weather station and MQSS mock service
 
 The weather dashboard now consumes data from a small mock MQSS service. The
