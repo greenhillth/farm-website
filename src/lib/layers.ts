@@ -1,4 +1,18 @@
+import type { PathOptions } from 'leaflet';
+
 import { linearGradientCSS } from './utils';
+
+export const DEFAULT_PADDOCK_STYLE = {
+  color: "#374151",
+  weight: 1,
+  fillColor: "#6b7280",
+  fillOpacity: 0.85,
+};
+
+const DEFAULT_HOVER_STYLE = {
+  weight: 2,
+  fillOpacity: 0.95,
+};
 
 /** Build a colored GeoJSON layer + legend for a given metric. */
 export function buildMetricLayer(
@@ -91,19 +105,14 @@ export function buildBaseLayer(
   geojson: any,
   L: typeof import("leaflet")
 ) {
-  const baseStyle = {
-    color: "#374151",
-    weight: 1,
-    fillColor: "#6b7280",
-    fillOpacity: 0.85,
-  };
-  const hoverStyle = {
-    weight: 2,
-    fillOpacity: 0.95,
-  };
   return L.geoJSON(geojson, {
-    style: () => ({ ...baseStyle }),
+    style: () => ({ ...DEFAULT_PADDOCK_STYLE }),
     onEachFeature: (feature: any, layer: any) => {
+      const typedLayer = layer as typeof layer & {
+        __baseStyle?: PathOptions;
+      };
+      typedLayer.__baseStyle = { ...DEFAULT_PADDOCK_STYLE };
+
       const props = feature?.properties ?? {};
       const name =
         props.FIELDNAME ?? props.fieldName ?? props.FIELD_NAME ?? "Unnamed paddock";
@@ -121,13 +130,19 @@ export function buildBaseLayer(
 
       if ("setStyle" in layer && typeof (layer as any).setStyle === "function") {
         layer.on("mouseover", () => {
-          (layer as any).setStyle(hoverStyle);
+          const base = typedLayer.__baseStyle ?? DEFAULT_PADDOCK_STYLE;
+          (layer as any).setStyle({
+            ...base,
+            weight: DEFAULT_HOVER_STYLE.weight,
+            fillOpacity: Math.min(1, DEFAULT_HOVER_STYLE.fillOpacity),
+          });
           if ("bringToFront" in layer && typeof (layer as any).bringToFront === "function") {
             (layer as any).bringToFront();
           }
         });
         layer.on("mouseout", () => {
-          (layer as any).setStyle(baseStyle);
+          const base = typedLayer.__baseStyle ?? DEFAULT_PADDOCK_STYLE;
+          (layer as any).setStyle(base);
         });
       }
     },

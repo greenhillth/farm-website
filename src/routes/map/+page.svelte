@@ -2,12 +2,12 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import L from 'leaflet'; // removed unused layerGroup
-	import type { TileLayerOptions } from 'leaflet';
+	import type { PathOptions, TileLayerOptions } from 'leaflet';
 	import { onDestroy, onMount } from 'svelte';
 
-	import CONFIG from '$lib/config';
-	import type { MetricId, MetricOption } from '$lib/config';
-	import { buildBaseLayer } from '$lib/layers';
+import CONFIG from '$lib/config';
+import type { MetricId, MetricOption } from '$lib/config';
+import { DEFAULT_PADDOCK_STYLE, buildBaseLayer } from '$lib/layers';
 
 	import 'leaflet/dist/leaflet.css';
 
@@ -27,6 +27,229 @@
 		url: string;
 		options: TileLayerOptions;
 	};
+
+	type SoilTestRecord = Record<string, unknown>;
+
+	type NormalisedSoilSample = {
+		fieldId: string;
+		sampleDate: string | null;
+		sampleDateMs: number | null;
+		sampleName: string | null;
+		metrics: Partial<Record<MetricId, number>>;
+		raw: SoilTestRecord;
+	};
+
+	type MetricStats = {
+		min: number;
+		max: number;
+		mean: number;
+		median: number;
+		count: number;
+	};
+
+	const VIRIDIS_STOPS = ['#440154', '#414487', '#2a788e', '#22a884', '#7ad151', '#fde725'];
+	const VIRIDIS_GRADIENT = `linear-gradient(to right, ${VIRIDIS_STOPS.map((color, index) => {
+		const pct = (100 * index) / (VIRIDIS_STOPS.length - 1);
+		return `${color} ${pct.toFixed(1)}%`;
+	}).join(', ')})`;
+	const NO_DATA_STYLE = {
+		fillColor: '#1f2937',
+		fillOpacity: 0.25,
+		color: '#2f3748',
+		weight: 1
+	};
+
+	const METRIC_VALUE_KEYS: Record<MetricId, string[]> = {
+		none: [],
+		OM: ['OM', 'om', 'OrganicMatter', 'organic_matter', 'total_C', 'Total_C'],
+		P: ['P', 'p', 'Phosphorus'],
+		K: ['K', 'k', 'Potassium'],
+		M: ['Mg', 'mg', 'Magnesium', 'magnesium'],
+		Ca: ['Ca', 'ca', 'Calcium', 'calcium'],
+		pH: ['ph_water', 'pH', 'ph', 'ph_H2O', 'ph_h2o']
+	};
+
+	const FIELD_ID_KEYS = [
+		'fieldID',
+		'fieldId',
+		'FIELDID',
+		'FIELD_ID',
+		'ADSFLDID',
+		'adsfldid',
+		'field_id',
+		'id_field',
+		'paddockId',
+		'paddock_id'
+	];
+
+	function normaliseFieldId(value: unknown): string {
+		if (value === null || value === undefined) return '';
+		const text = String(value).trim();
+		return text;
+	}
+
+	function extractFieldId(record: SoilTestRecord): string {
+		for (const key of FIELD_ID_KEYS) {
+			if (key in record) {
+				const candidate = normaliseFieldId(record[key]);
+				if (candidate) return candidate;
+			}
+		}
+		return '';
+	}
+
+	function toNumber(value: unknown): number | null {
+		if (value === null || value === undefined) return null;
+		const candidate = typeof value === 'string' ? value.trim() : value;
+		if (candidate === '') return null;
+		const num = Number(candidate);
+		return Number.isFinite(num) ? num : null;
+	}
+
+	function pickMetricValue(record: SoilTestRecord, metricId: MetricId): number | null {
+		const keys = METRIC_VALUE_KEYS[metricId] ?? [];
+		for (const key of keys) {
+			if (!(key in record)) continue;
+			const candidate = toNumber(record[key]);
+			if (candidate !== null) return candidate;
+		}
+		return null;
+	}
+
+	function parseDateMs(value: unknown): number | null {
+		if (!value) return null;
+		const timestamp = Date.parse(String(value));
+		return Number.isNaN(timestamp) ? null : timestamp;
+	}
+
+	function hexToRgb(hex: string): [number, number, number] {
+		const clean = hex.replace('#', '');
+		const int = parseInt(clean, 16);
+		return [(int >> 16) & 255, (int >> 8) & 255, int & 255];
+	}
+
+	function rgbToHex([r, g, b]: [number, number, number]): string {
+		return `#${[r, g, b]
+			.map((value) => Math.max(0, Math.min(255, value)))
+			.map((value) => value.toString(16).padStart(2, '0'))
+			.join('')}`;
+	}
+
+	function lerp(a: number, b: number, t: number): number {
+		return a + (b - a) * t;
+	}
+
+	function lerpColor(a: string, b: string, t: number): string {
+		const [ar, ag, ab] = hexToRgb(a);
+		const [br, bg, bb] = hexToRgb(b);
+		return rgbToHex([
+			Math.round(lerp(ar, br, t)),
+			Math.round(lerp(ag, bg, t)),
+			Math.round(lerp(ab, bb, t))
+		]);
+	}
+
+	function clamp(value: number, min: number, max: number): number {
+		return Math.max(min, Math.min(max, value));
+	}
+
+	function viridisColor(value: number, min: number, max: number): string {
+		if (Number.isNaN(value) || !Number.isFinite(value)) {
+			return VIRIDIS_STOPS[0];
+		}
+		const span = max - min;
+		const safeSpan = span === 0 ? 1 : span;
+		const t = clamp((value - min) / safeSpan, 0, 1);
+		const scaled = t * (VIRIDIS_STOPS.length - 1);
+		const idx = Math.floor(scaled);
+		const nextIdx = Math.min(VIRIDIS_STOPS.length - 1, idx + 1);
+		const localT = scaled - idx;
+		return lerpColor(VIRIDIS_STOPS[idx], VIRIDIS_STOPS[nextIdx], localT);
+	}
+
+	function derivePaddockIdentity(props: Record<string, unknown>) {
+		const name =
+			(props.FIELDNAME as string | undefined) ??
+			(props.fieldName as string | undefined) ??
+			(props.FIELD_NAME as string | undefined) ??
+			(props.name as string | undefined) ??
+			(props.Name as string | undefined) ??
+			'Unnamed paddock';
+		const displayCandidates = [
+			props.ADSFLDID,
+			props.fieldID,
+			props.FIELDID,
+			props.FIELD_ID,
+			props.fieldId,
+			props.id,
+			props.Id
+		];
+		const displayValue = displayCandidates.find(
+			(candidate) => candidate !== null && candidate !== undefined && String(candidate).trim() !== ''
+		);
+		const displayId = displayValue === undefined ? '–' : String(displayValue);
+		const fieldId = extractFieldId(props as SoilTestRecord) || normaliseFieldId(displayValue);
+		return { name, displayId, fieldId };
+	}
+
+	const valueFormatter = new Intl.NumberFormat('en-AU', {
+		maximumFractionDigits: 2,
+		minimumFractionDigits: 0
+	});
+
+	function formatLegendTick(value: number | null | undefined): string {
+		if (value === null || value === undefined || Number.isNaN(value)) return '–';
+		return valueFormatter.format(value);
+	}
+
+	function formatMetricValue(value: number | undefined, metric: MetricOption): string {
+		if (value === undefined || value === null || Number.isNaN(value)) {
+			return 'No data';
+		}
+		const abs = Math.abs(value);
+		const decimals = abs >= 100 ? 0 : abs >= 10 ? 1 : 2;
+		const formatted = value.toFixed(decimals).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+		return metric.unit ? `${formatted} ${metric.unit}` : formatted;
+	}
+
+	function formatSampleDate(value: string | null): string {
+		if (!value) return '';
+		const parsed = new Date(value);
+		if (Number.isNaN(parsed.getTime())) return value;
+		return parsed.toLocaleDateString('en-AU', {
+			year: 'numeric',
+			month: 'short',
+			day: 'numeric'
+		});
+	}
+
+	function setLayerBaseStyle(layer: any, style: Partial<PathOptions>) {
+		if (!layer || typeof layer.setStyle !== 'function') return;
+		const nextStyle = {
+			...DEFAULT_PADDOCK_STYLE,
+			...style
+		};
+		layer.__baseStyle = nextStyle;
+		layer.setStyle(nextStyle);
+	}
+
+	function updatePaddockTooltip(layer: any, html: string) {
+		if (typeof layer.getTooltip === 'function') {
+			const existing = layer.getTooltip();
+			if (existing) {
+				existing.setContent(html);
+				return;
+			}
+		}
+		if (typeof layer.bindTooltip === 'function') {
+			layer.bindTooltip(html, {
+				sticky: true,
+				direction: 'top',
+				className: 'paddock-tooltip',
+				opacity: 0.95
+			});
+		}
+	}
 
 	const metricOptions = CONFIG.soilMetrics;
 	if (metricOptions.length === 0) {
@@ -76,14 +299,31 @@
 
 	let activeBaseLayer: string = baseLayerConfigs[0]?.id ?? 'imagery';
 	let activeMetric: MetricId = defaultMetric;
-
-	// Derived active metric object + message (no O(n) lookups on render)
-	$: activeMetricObj = metricsById.get(activeMetric)!; // safe due to guards below
-
 	let activeBase: BaseLayerConfig | undefined = baseLayerConfigs.find(
 		(layer) => layer.id === activeBaseLayer
 	);
 	let paddockCount = 0;
+	let soilMetricsByField = new Map<string, NormalisedSoilSample>();
+	let soilMetricsVersion = 0;
+	let soilDataLoading = false;
+	let soilDataError: string | null = null;
+	let activeMetricStats: MetricStats | null = null;
+	let activeMetricPaddockCount = 0;
+	let styleUpdateMarker = '';
+	let metricScaleReady = false;
+
+	// Derived active metric object + message (no O(n) lookups on render)
+	$: activeMetricObj = metricsById.get(activeMetric)!; // safe due to guards below
+	$: styleUpdateMarker = `${activeMetric}:${soilMetricsVersion}`;
+	$: metricScaleReady =
+		activeMetricObj.id !== 'none' &&
+		typeof activeMetricObj.c_min === 'number' &&
+		typeof activeMetricObj.c_max === 'number' &&
+		activeMetricObj.c_max > activeMetricObj.c_min;
+	$: activeMetricStats = computeMetricStats(activeMetricObj, soilMetricsVersion);
+	$: if (paddockLayer && styleUpdateMarker) {
+		applySoilMetricStyles();
+	}
 
 	const tileLayerCache = new Map<string, L.TileLayer>();
 
@@ -156,6 +396,167 @@
 		}
 	}
 
+	async function loadSoilTests(force = false) {
+		if (soilDataLoading) return;
+		if (!force && soilMetricsByField.size > 0 && !soilDataError) return;
+
+		soilDataLoading = true;
+		soilDataError = null;
+
+		try {
+			const response = await fetch(`${CONFIG.data.tests}?latest=true`);
+			if (!response.ok) {
+				throw new Error(`Request failed (${response.status})`);
+			}
+
+			const payload = await response.json();
+			if (!Array.isArray(payload)) {
+				throw new Error('Unexpected soil test response payload.');
+			}
+
+			const index = buildSoilMetricIndex(payload as SoilTestRecord[]);
+			soilMetricsByField = index;
+		} catch (err) {
+			console.error('Failed to load soil test data', err);
+			soilDataError = err instanceof Error ? err.message : 'Failed to load soil test data.';
+			soilMetricsByField = new Map();
+		} finally {
+			soilDataLoading = false;
+			soilMetricsVersion += 1;
+			scheduleInvalidate(80);
+		}
+	}
+
+	function buildSoilMetricIndex(records: SoilTestRecord[]): Map<string, NormalisedSoilSample> {
+		const next = new Map<string, NormalisedSoilSample>();
+		for (const entry of records) {
+			if (!entry || typeof entry !== 'object') continue;
+			const fieldId = extractFieldId(entry);
+			if (!fieldId) continue;
+
+			const metrics: NormalisedSoilSample['metrics'] = {};
+			for (const metric of metricOptions) {
+				if (metric.id === 'none') continue;
+				const value = pickMetricValue(entry, metric.id);
+				if (value !== null) {
+					metrics[metric.id] = value;
+				}
+			}
+
+			const sampleDateSource =
+				(entry.sample_date ??
+					entry.sampleDate ??
+					entry.sample_datetime ??
+					entry.SampleDate ??
+					entry.date ??
+					entry.timestamp ??
+					null) as unknown;
+			const sampleDate = sampleDateSource ? String(sampleDateSource) : null;
+			const sampleDateMs = parseDateMs(sampleDateSource);
+			const sampleNameSource =
+				(entry.name_sample ?? entry.sample_name ?? entry.sampleName ?? entry.SampleName ?? null) as unknown;
+			const sampleName = sampleNameSource === null || sampleNameSource === undefined ? null : String(sampleNameSource);
+
+			const existing = next.get(fieldId);
+			if (existing) {
+				const existingMs = existing.sampleDateMs ?? -Infinity;
+				const candidateMs = sampleDateMs ?? -Infinity;
+				if (candidateMs < existingMs) {
+					continue;
+				}
+			}
+
+			next.set(fieldId, {
+				fieldId,
+				sampleDate,
+				sampleDateMs,
+				sampleName,
+				metrics,
+				raw: entry
+			});
+		}
+		return next;
+	}
+
+	function applySoilMetricStyles() {
+		if (!paddockLayer) return;
+		const metric = metricsById.get(activeMetric);
+		if (!metric) return;
+
+		const cMin = typeof metric.c_min === 'number' ? metric.c_min : null;
+		const cMax = typeof metric.c_max === 'number' ? metric.c_max : null;
+		const colorable = metricScaleReady && cMin !== null && cMax !== null;
+		let withValues = 0;
+
+		paddockLayer.eachLayer((layer: any) => {
+			const featureProps = (layer?.feature?.properties ?? {}) as Record<string, unknown>;
+			const { name, displayId, fieldId } = derivePaddockIdentity(featureProps);
+			const sample = fieldId ? soilMetricsByField.get(fieldId) : undefined;
+			const metricValue = sample?.metrics?.[metric.id];
+
+			let valueText: string | null = null;
+
+			if (colorable && typeof metricValue === 'number' && Number.isFinite(metricValue)) {
+				const fillColor = viridisColor(metricValue, cMin!, cMax!);
+				setLayerBaseStyle(layer, {
+					fillColor,
+					fillOpacity: 0.88,
+					color: '#0f172a',
+					weight: 1
+				});
+				valueText = formatMetricValue(metricValue, metric);
+				withValues += 1;
+			} else if (colorable) {
+				setLayerBaseStyle(layer, NO_DATA_STYLE);
+				valueText = 'No data';
+			} else {
+				setLayerBaseStyle(layer, {});
+				if (typeof metricValue === 'number' && Number.isFinite(metricValue)) {
+					valueText = formatMetricValue(metricValue, metric);
+				} else if (sample) {
+					valueText = 'No data';
+				}
+			}
+
+			const parts = [
+				`<div><strong>${name}</strong></div>`,
+				`<div>ID: ${displayId}</div>`
+			];
+
+			if (metric.id !== 'none') {
+				parts.push(`<div>${metric.label}: ${valueText ?? 'No data'}</div>`);
+				if (sample?.sampleDate) {
+					parts.push(`<div class="text-[0.7rem] opacity-80">Sample: ${formatSampleDate(sample.sampleDate)}</div>`);
+				} else if (colorable) {
+					parts.push('<div class="text-[0.7rem] opacity-80">No recent sample</div>');
+				}
+			}
+
+			updatePaddockTooltip(layer, parts.join(''));
+		});
+
+		activeMetricPaddockCount = withValues;
+	}
+
+	function computeMetricStats(metric: MetricOption, version: number): MetricStats | null {
+		void version;
+		if (!metric || metric.id === 'none') return null;
+		const values: number[] = [];
+		soilMetricsByField.forEach((sample) => {
+			const value = sample.metrics[metric.id];
+			if (typeof value === 'number' && Number.isFinite(value)) {
+				values.push(value);
+			}
+		});
+		if (values.length === 0) return null;
+		values.sort((a, b) => a - b);
+		const min = values[0];
+		const max = values[values.length - 1];
+		const median = values[Math.floor(values.length / 2)];
+		const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+		return { min, max, median, mean, count: values.length };
+	}
+
 	function resetView() {
 		if (map && baseBounds && baseBounds.isValid()) {
 			map.fitBounds(baseBounds, { padding: [24, 24] });
@@ -213,6 +614,7 @@
 
 	function retryLoad() {
 		loadFarmData();
+		loadSoilTests(true);
 	}
 
 	onMount(() => {
@@ -224,6 +626,7 @@
 
 		applyBaseLayer(activeBaseLayer);
 		loadFarmData();
+		loadSoilTests();
 
 		resizeObserver = new ResizeObserver(() => {
 			map?.invalidateSize();
@@ -365,13 +768,54 @@
 							</button>
 						{/each}
 					</div>
-					<p class="text-muted/60 text-xs">
-						{#if activeMetric === defaultMetric}
-							Choose a dataset to overlay paddock performance when it is published.
+					<div class="space-y-2 text-xs text-muted/60">
+						{#if activeMetricObj.id === 'none'}
+							<p>Choose a dataset to colour paddocks using recent soil test data.</p>
+						{:else if soilDataLoading}
+							<p>Loading the latest soil test results…</p>
+						{:else if soilDataError}
+							<p class="text-red-300">{soilDataError}</p>
+							<button
+								type="button"
+								class="inline-flex items-center gap-1 rounded-md border border-red-300/40 bg-red-300/10 px-2 py-1 text-[11px] text-red-200 transition hover:border-red-300/60 hover:bg-red-300/20"
+								on:click={() => loadSoilTests(true)}
+							>
+								Retry
+							</button>
+						{:else if !metricScaleReady}
+							<p>We don't have a colour scale configured for {activeMetricObj.label} yet.</p>
+						{:else if activeMetricStats}
+							{@const stats = activeMetricStats!}
+							<p>
+								Colouring {activeMetricPaddockCount} paddock{activeMetricPaddockCount === 1 ? '' : 's'} using {activeMetricObj.label}.
+							</p>
+							<div class="space-y-2 rounded-md border border-white/10 bg-white/5 p-3 text-[11px] text-muted/70">
+								<div class="h-2 w-full rounded-full" style={`background: ${VIRIDIS_GRADIENT};`}></div>
+								<div class="flex justify-between text-muted/60">
+									<span>
+										Scale {formatLegendTick(activeMetricObj.c_min)}{activeMetricObj.unit ? ` ${activeMetricObj.unit}` : ''}
+									</span>
+									<span>
+										{formatLegendTick(activeMetricObj.c_max)}{activeMetricObj.unit ? ` ${activeMetricObj.unit}` : ''}
+									</span>
+								</div>
+								<div class="flex justify-between text-muted/50">
+									<span>
+										Samples {formatLegendTick(stats.min)}{activeMetricObj.unit ? ` ${activeMetricObj.unit}` : ''}
+									</span>
+									<span>
+										{formatLegendTick(stats.max)}{activeMetricObj.unit ? ` ${activeMetricObj.unit}` : ''}
+									</span>
+								</div>
+								<div class="flex justify-between text-muted/50">
+									<span>Median {formatLegendTick(stats.median)}{activeMetricObj.unit ? ` ${activeMetricObj.unit}` : ''}</span>
+									<span>n = {stats.count}</span>
+								</div>
+							</div>
 						{:else}
-							{activeMetricObj.label} overlay coming soon.
+							<p>No paddocks have recent samples for {activeMetricObj.label} yet.</p>
 						{/if}
-					</p>
+					</div>
 				</section>
 
 				<section class="space-y-3">
