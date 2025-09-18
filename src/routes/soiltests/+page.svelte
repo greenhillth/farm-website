@@ -36,6 +36,61 @@
   let uploadError: string | null = null;
   let submitting = false;
 
+  let csvFile: File | null = null;
+  let csvFileName: string | null = null;
+  let csvFileInput: HTMLInputElement | null = null;
+  let csvUploadForm: HTMLFormElement | null = null;
+
+  type CsvProgressStage =
+    | 'idle'
+    | 'uploading'
+    | 'queued'
+    | 'parsing'
+    | 'importing'
+    | 'complete'
+    | 'error';
+
+  type CsvProgressState = {
+    visible: boolean;
+    stage: CsvProgressStage;
+    percent: number;
+    message: string;
+    detail?: string | null;
+  };
+
+  type CsvProgressUpdate = {
+    jobId?: string;
+    stage: CsvProgressStage;
+    percent?: number;
+    message?: string;
+    detail?: string | null;
+  };
+
+  const CSV_PROGRESS_EVENT_NAME = 'farm:csv-import-progress';
+
+  const csvStageDefaults: Record<CsvProgressStage, { label: string; percent: number }> = {
+    idle: { label: 'Waiting to upload CSV', percent: 0 },
+    uploading: { label: 'Uploading CSV file…', percent: 10 },
+    queued: { label: 'Queued for processing…', percent: 25 },
+    parsing: { label: 'Parsing CSV data…', percent: 50 },
+    importing: { label: 'Importing soil tests…', percent: 75 },
+    complete: { label: 'Import complete', percent: 100 },
+    error: { label: 'Import failed', percent: 100 },
+  };
+
+  let csvProgress: CsvProgressState = {
+    visible: false,
+    stage: 'idle',
+    percent: csvStageDefaults.idle.percent,
+    message: csvStageDefaults.idle.label,
+    detail: null,
+  };
+
+  let csvProgressPercent = csvStageDefaults.idle.percent;
+  $: csvProgressPercent = Math.min(100, Math.max(0, csvProgress.percent));
+
+  let activeCsvJobId: string | null = null;
+
   type ManualForm = {
     fieldId: string;
     sampleName: string;
@@ -101,6 +156,109 @@
     csv: '/api/tests/import',
   } as const;
 
+  function setCsvProgress(
+    stage: CsvProgressStage,
+    percent?: number,
+    message?: string,
+    detail?: string | null
+  ) {
+    const defaults = csvStageDefaults[stage];
+    const previousStage = csvProgress.stage;
+    const previousDetail = csvProgress.detail ?? null;
+    csvProgress = {
+      visible: stage !== 'idle' || percent !== undefined || message !== undefined,
+      stage,
+      percent: Math.min(100, Math.max(0, percent ?? defaults.percent)),
+      message: message ?? defaults.label,
+      detail:
+        detail === undefined
+          ? stage === previousStage
+            ? previousDetail
+            : null
+          : detail,
+    };
+  }
+
+  function resetCsvUploadState() {
+    activeCsvJobId = null;
+    csvFile = null;
+    csvFileName = null;
+    csvProgress = {
+      visible: false,
+      stage: 'idle',
+      percent: csvStageDefaults.idle.percent,
+      message: csvStageDefaults.idle.label,
+      detail: null,
+    };
+    if (csvFileInput) {
+      csvFileInput.value = '';
+    }
+    if (csvUploadForm) {
+      csvUploadForm.reset();
+    }
+    submitting = false;
+  }
+
+  function handleCsvFileChange(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const [file] = input.files ?? [];
+    if (!file) {
+      resetCsvUploadState();
+      return;
+    }
+    csvFile = file;
+    csvFileName = file.name;
+    uploadError = null;
+    setCsvProgress('idle', undefined, undefined, null);
+  }
+
+  function clearCsvFile() {
+    if (submitting) return;
+    resetCsvUploadState();
+    uploadError = null;
+  }
+
+  function handleCsvProgressUpdate(update: CsvProgressUpdate) {
+    if (!update) return;
+    if (update.jobId && activeCsvJobId && update.jobId !== activeCsvJobId) return;
+    if (update.jobId && !activeCsvJobId) {
+      activeCsvJobId = update.jobId;
+    }
+
+    setCsvProgress(update.stage, update.percent, update.message, update.detail);
+
+    if (update.stage === 'error') {
+      uploadError = update.detail ?? update.message ?? 'CSV import failed.';
+    } else if (uploadError) {
+      uploadError = null;
+    }
+
+    submitting = update.stage !== 'complete' && update.stage !== 'error';
+
+    if (update.stage === 'complete') {
+      // Allow selecting the same file again once the import is done.
+      csvFile = null;
+      if (csvFileInput) {
+        csvFileInput.value = '';
+      }
+    }
+  }
+
+  /**
+   * CSV import progress events are expected to be dispatched by the backend.
+   * Once the POST /api/tests/import endpoint returns a tracking ID, open an
+   * SSE or WebSocket connection and dispatch CustomEvents named
+   * `farm:csv-import-progress` with a {@link CsvProgressUpdate} payload.
+   *
+   * Example (while backend integration is pending):
+   * `window.dispatchEvent(new CustomEvent(CSV_PROGRESS_EVENT_NAME, { detail: { jobId, stage: 'parsing', percent: 50 } }))`
+   */
+  function onCsvProgressEvent(event: Event) {
+    const customEvent = event as CustomEvent<CsvProgressUpdate>;
+    if (!customEvent.detail) return;
+    handleCsvProgressUpdate(customEvent.detail);
+  }
+
   const numberFormat = new Intl.NumberFormat('en-AU', {
     maximumFractionDigits: 2,
   });
@@ -150,6 +308,7 @@
 
   function openUploader(mode: 'manual' | 'csv' = 'manual') {
     if (!showUploader && mode === 'manual') resetManualForm();
+    if (!showUploader && mode === 'csv') resetCsvUploadState();
     uploadMode = mode;
     uploadError = null;
     submitting = false;
@@ -161,12 +320,16 @@
     uploadMode = mode;
     uploadError = null;
     submitting = false;
+    if (mode === 'csv') {
+      resetCsvUploadState();
+    }
   }
 
   function closeUploader() {
     showUploader = false;
     submitting = false;
     uploadError = null;
+    resetCsvUploadState();
   }
 
   async function handleManualSubmit(event: SubmitEvent) {
@@ -221,24 +384,56 @@
   async function handleCsvSubmit(event: SubmitEvent) {
     event.preventDefault();
     const form = event.target as HTMLFormElement;
+    csvUploadForm = form;
     const data = new FormData(form);
     const file = data.get('file');
     if (!(file instanceof File) || !file.size) {
       uploadError = 'Please choose a CSV file to upload.';
+      resetCsvUploadState();
       return;
     }
 
-    submitting = true;
+    csvFile = file;
+    csvFileName = file.name;
     uploadError = null;
+    submitting = true;
+
+    const jobId =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}`;
+
+    activeCsvJobId = jobId;
+    setCsvProgress(
+      'uploading',
+      undefined,
+      `Uploading ${file.name}…`,
+      'Upload started. Waiting for processing updates from the server…'
+    );
+
+    console.info(
+      'POST to',
+      uploadEndpoints.csv,
+      'with file',
+      file.name,
+      'tracking job',
+      jobId
+    );
+    console.info(
+      `Dispatch CSV progress updates with window.dispatchEvent(new CustomEvent('${CSV_PROGRESS_EVENT_NAME}', { detail: { jobId: '${jobId}', stage: 'parsing', percent: 50 } }))`
+    );
+
     try {
-      console.info('POST to', uploadEndpoints.csv, 'with file', file.name);
-      // TODO: await fetch(uploadEndpoints.csv, { method: 'POST', body: data });
-      closeUploader();
-      form.reset();
+      // TODO: Replace stub with real upload request and progress tracking.
+      // const response = await fetch(uploadEndpoints.csv, { method: 'POST', body: data });
+      // if (!response.ok) throw new Error(`Upload failed (${response.status})`);
+      // const json = await response.json();
+      // if (json?.jobId) {
+      //   activeCsvJobId = json.jobId;
+      // }
     } catch (err) {
-      uploadError = err instanceof Error ? err.message : 'Failed to upload CSV';
-    } finally {
-      submitting = false;
+      const message = err instanceof Error ? err.message : 'Failed to upload CSV';
+      handleCsvProgressUpdate({ stage: 'error', message, detail: message, jobId });
     }
   }
 
@@ -307,6 +502,14 @@
     } finally {
       loading = false;
     }
+  });
+
+  onMount(() => {
+    const handler = (event: Event) => onCsvProgressEvent(event);
+    window.addEventListener(CSV_PROGRESS_EVENT_NAME, handler);
+    return () => {
+      window.removeEventListener(CSV_PROGRESS_EVENT_NAME, handler);
+    };
   });
 
   $: filtered = q
@@ -503,7 +706,7 @@
           </footer>
         </form>
       {:else}
-        <form class="modal__body" on:submit={handleCsvSubmit}>
+        <form class="modal__body" on:submit={handleCsvSubmit} bind:this={csvUploadForm}>
           <p class="text-sm text-muted">
             Upload a CSV exported from the lab. Expected headers include <code>fieldID</code>,
             <code>name_sample</code>, <code>sample_date</code>, and metric columns such as
@@ -513,15 +716,57 @@
             The file will be POSTed to <code>{uploadEndpoints.csv}</code> as <code>multipart/form-data</code> with the file field named <code>file</code>.
           </p>
           <label class="modal__dropzone">
-            <input type="file" accept=".csv" name="file" required />
-            <span>Choose CSV file</span>
+            <input
+              type="file"
+              accept=".csv"
+              name="file"
+              required
+              on:change={handleCsvFileChange}
+              bind:this={csvFileInput}
+            />
+            <span>{csvFile ? 'Change CSV file' : 'Choose CSV file'}</span>
           </label>
+          {#if csvFile || csvFileName}
+            <div class="modal__selected-file" role="status" aria-live="polite">
+              <div class="modal__selected-file-summary">
+                <span class="modal__selected-file-label">
+                  {csvProgress.stage === 'complete' ? 'Last uploaded file' : 'Selected file'}
+                </span>
+                <span class="modal__selected-file-name">{csvFile?.name ?? csvFileName}</span>
+              </div>
+              {#if csvFile}
+                <button
+                  type="button"
+                  class="modal__selected-file-clear"
+                  on:click={clearCsvFile}
+                  aria-label="Remove selected file"
+                  disabled={submitting}
+                >
+                  ×
+                </button>
+              {/if}
+            </div>
+          {/if}
+          {#if csvProgress.visible}
+            <div class="modal__progress" role="status" aria-live="polite">
+              <div class="modal__progress-header">
+                <span>{csvProgress.message}</span>
+                <span>{Math.round(csvProgressPercent)}%</span>
+              </div>
+              <div class="modal__progress-bar" aria-hidden="true">
+                <div class="modal__progress-value" style={`width: ${csvProgressPercent}%`}></div>
+              </div>
+              {#if csvProgress.detail}
+                <div class="modal__progress-detail">{csvProgress.detail}</div>
+              {/if}
+            </div>
+          {/if}
           {#if uploadError}
             <div class="modal__error">{uploadError}</div>
           {/if}
           <footer class="modal__footer">
             <button type="button" on:click={closeUploader} class="modal__secondary">Cancel</button>
-            <button type="submit" class="modal__primary" disabled={submitting}>
+            <button type="submit" class="modal__primary" disabled={submitting || !csvFile}>
               {submitting ? 'Uploading…' : 'Upload CSV'}
             </button>
           </footer>
@@ -663,6 +908,97 @@
     padding: 0.5rem 1rem;
     font-size: 0.85rem;
     cursor: pointer;
+  }
+
+  .modal__selected-file {
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(148, 163, 184, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .modal__selected-file-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .modal__selected-file-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(248, 250, 252, 0.6);
+  }
+
+  .modal__selected-file-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #f8fafc;
+    word-break: break-all;
+  }
+
+  .modal__selected-file-clear {
+    background: transparent;
+    border: 1px solid rgba(248, 113, 113, 0.55);
+    color: rgba(248, 113, 113, 0.9);
+    border-radius: 999px;
+    width: 1.75rem;
+    height: 1.75rem;
+    line-height: 1;
+    font-size: 1rem;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+  }
+
+  .modal__selected-file-clear[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .modal__progress {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    background: rgba(59, 130, 246, 0.12);
+  }
+
+  .modal__progress-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: rgba(248, 250, 252, 0.85);
+  }
+
+  .modal__progress-bar {
+    position: relative;
+    width: 100%;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.25);
+    overflow: hidden;
+  }
+
+  .modal__progress-value {
+    height: 100%;
+    width: 0;
+    background: rgba(59, 130, 246, 0.9);
+    transition: width 160ms ease;
+  }
+
+  .modal__progress-detail {
+    font-size: 0.75rem;
+    color: rgba(248, 250, 252, 0.7);
   }
 
   .modal__error {

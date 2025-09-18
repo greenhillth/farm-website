@@ -1,0 +1,1 @@
+import{A as n}from"./c93sh_Ps.js";function a(s,r,e){var t=s==null?"":""+s;return r&&(t=t?t+" "+r:r),t===""?null:t}function o(s,r){return s==null?null:String(s)}function _(s,r,e,t,u,c){var i=s.__className;if(n||i!==e||i===void 0){var l=a(e,t);(!n||l!==s.getAttribute("class"))&&(l==null?s.removeAttribute("class"):s.className=l),s.__className=e}return c}export{_ as s,o as t};
