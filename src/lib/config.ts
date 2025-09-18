@@ -14,6 +14,7 @@ const CONFIG = {
 			id: 'none',
 			label: 'None',
 			description: null,
+			range_optimal: [null, null],
 			c_min: null,
 			c_max: null
 		},

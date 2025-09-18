@@ -5,9 +5,9 @@
 	import type { PathOptions, TileLayerOptions } from 'leaflet';
 	import { onDestroy, onMount } from 'svelte';
 
-import CONFIG from '$lib/config';
-import type { MetricId, MetricOption } from '$lib/config';
-import { DEFAULT_PADDOCK_STYLE, buildBaseLayer } from '$lib/layers';
+	import CONFIG from '$lib/config';
+	import type { MetricId, MetricOption } from '$lib/config';
+	import { DEFAULT_PADDOCK_STYLE, buildBaseLayer } from '$lib/layers';
 
 	import 'leaflet/dist/leaflet.css';
 
@@ -185,7 +185,8 @@ import { DEFAULT_PADDOCK_STYLE, buildBaseLayer } from '$lib/layers';
 			props.Id
 		];
 		const displayValue = displayCandidates.find(
-			(candidate) => candidate !== null && candidate !== undefined && String(candidate).trim() !== ''
+			(candidate) =>
+				candidate !== null && candidate !== undefined && String(candidate).trim() !== ''
 		);
 		const displayId = displayValue === undefined ? '–' : String(displayValue);
 		const fieldId = extractFieldId(props as SoilTestRecord) || normaliseFieldId(displayValue);
@@ -208,7 +209,10 @@ import { DEFAULT_PADDOCK_STYLE, buildBaseLayer } from '$lib/layers';
 		}
 		const abs = Math.abs(value);
 		const decimals = abs >= 100 ? 0 : abs >= 10 ? 1 : 2;
-		const formatted = value.toFixed(decimals).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+		const formatted = value
+			.toFixed(decimals)
+			.replace(/\.0+$/, '')
+			.replace(/(\.\d*[1-9])0+$/, '$1');
 		return metric.unit ? `${formatted} ${metric.unit}` : formatted;
 	}
 
@@ -445,19 +449,24 @@ import { DEFAULT_PADDOCK_STYLE, buildBaseLayer } from '$lib/layers';
 				}
 			}
 
-			const sampleDateSource =
-				(entry.sample_date ??
-					entry.sampleDate ??
-					entry.sample_datetime ??
-					entry.SampleDate ??
-					entry.date ??
-					entry.timestamp ??
-					null) as unknown;
+			const sampleDateSource = (entry.sample_date ??
+				entry.sampleDate ??
+				entry.sample_datetime ??
+				entry.SampleDate ??
+				entry.date ??
+				entry.timestamp ??
+				null) as unknown;
 			const sampleDate = sampleDateSource ? String(sampleDateSource) : null;
 			const sampleDateMs = parseDateMs(sampleDateSource);
-			const sampleNameSource =
-				(entry.name_sample ?? entry.sample_name ?? entry.sampleName ?? entry.SampleName ?? null) as unknown;
-			const sampleName = sampleNameSource === null || sampleNameSource === undefined ? null : String(sampleNameSource);
+			const sampleNameSource = (entry.name_sample ??
+				entry.sample_name ??
+				entry.sampleName ??
+				entry.SampleName ??
+				null) as unknown;
+			const sampleName =
+				sampleNameSource === null || sampleNameSource === undefined
+					? null
+					: String(sampleNameSource);
 
 			const existing = next.get(fieldId);
 			if (existing) {
@@ -520,15 +529,14 @@ import { DEFAULT_PADDOCK_STYLE, buildBaseLayer } from '$lib/layers';
 				}
 			}
 
-			const parts = [
-				`<div><strong>${name}</strong></div>`,
-				`<div>ID: ${displayId}</div>`
-			];
+			const parts = [`<div><strong>${name}</strong></div>`, `<div>ID: ${displayId}</div>`];
 
 			if (metric.id !== 'none') {
 				parts.push(`<div>${metric.label}: ${valueText ?? 'No data'}</div>`);
 				if (sample?.sampleDate) {
-					parts.push(`<div class="text-[0.7rem] opacity-80">Sample: ${formatSampleDate(sample.sampleDate)}</div>`);
+					parts.push(
+						`<div class="text-[0.7rem] opacity-80">Sample: ${formatSampleDate(sample.sampleDate)}</div>`
+					);
 				} else if (colorable) {
 					parts.push('<div class="text-[0.7rem] opacity-80">No recent sample</div>');
 				}
@@ -770,7 +778,7 @@ import { DEFAULT_PADDOCK_STYLE, buildBaseLayer } from '$lib/layers';
 							</button>
 						{/each}
 					</div>
-					<div class="space-y-2 text-xs text-muted/60">
+					<div class="text-muted/60 space-y-2 text-xs">
 						{#if activeMetricObj.id === 'none'}
 							<p>Choose a dataset to colour paddocks using recent soil test data.</p>
 						{:else if soilDataLoading}
@@ -789,28 +797,46 @@ import { DEFAULT_PADDOCK_STYLE, buildBaseLayer } from '$lib/layers';
 						{:else if activeMetricStats}
 							{@const stats = activeMetricStats!}
 							<p>
-								Colouring {activeMetricPaddockCount} paddock{activeMetricPaddockCount === 1 ? '' : 's'} using {activeMetricObj.label}.
+								Colouring {activeMetricPaddockCount} paddock{activeMetricPaddockCount === 1
+									? ''
+									: 's'} using {activeMetricObj.label}.
 							</p>
-							<div class="space-y-2 rounded-md border border-white/10 bg-white/5 p-3 text-[11px] text-muted/70">
-								<div class="h-2 w-full rounded-full" style={`background: ${VIRIDIS_GRADIENT};`}></div>
-								<div class="flex justify-between text-muted/60">
+							<div
+								class="text-muted/70 space-y-2 rounded-md border border-white/10 bg-white/5 p-3 text-[11px]"
+							>
+								<div class="text-center font-medium font-semibold">
+									Scale{activeMetricObj.unit ? ` (${activeMetricObj.unit})` : ''}
+								</div>
+								<div
+									class="h-2 w-full rounded-full"
+									style={`background: ${VIRIDIS_GRADIENT};`}
+								></div>
+								<div class="text-muted/60 flex justify-between">
 									<span>
-										Scale {formatLegendTick(activeMetricObj.c_min)}{activeMetricObj.unit ? ` ${activeMetricObj.unit}` : ''}
+										{formatLegendTick(activeMetricObj.c_min)}
 									</span>
 									<span>
-										{formatLegendTick(activeMetricObj.c_max)}{activeMetricObj.unit ? ` ${activeMetricObj.unit}` : ''}
+										{formatLegendTick(activeMetricObj.c_max)}
 									</span>
 								</div>
-								<div class="flex justify-between text-muted/50">
+								<div class="text-muted/50 flex justify-between">
 									<span>
-										Samples {formatLegendTick(stats.min)}{activeMetricObj.unit ? ` ${activeMetricObj.unit}` : ''}
+										Samples {formatLegendTick(stats.min)}{activeMetricObj.unit
+											? ` ${activeMetricObj.unit}`
+											: ''}
 									</span>
 									<span>
-										{formatLegendTick(stats.max)}{activeMetricObj.unit ? ` ${activeMetricObj.unit}` : ''}
+										{formatLegendTick(stats.max)}{activeMetricObj.unit
+											? ` ${activeMetricObj.unit}`
+											: ''}
 									</span>
 								</div>
-								<div class="flex justify-between text-muted/50">
-									<span>Median {formatLegendTick(stats.median)}{activeMetricObj.unit ? ` ${activeMetricObj.unit}` : ''}</span>
+								<div class="text-muted/50 flex justify-between">
+									<span
+										>Median {formatLegendTick(stats.median)}{activeMetricObj.unit
+											? ` ${activeMetricObj.unit}`
+											: ''}</span
+									>
 									<span>n = {stats.count}</span>
 								</div>
 							</div>
@@ -928,6 +954,12 @@ import { DEFAULT_PADDOCK_STYLE, buildBaseLayer } from '$lib/layers';
 				<p class={`mt-1 leading-relaxed ${isStreetsBase ? 'text-slate-100' : 'text-muted'}`}>
 					{activeMetricObj.description}
 				</p>
+				<p
+					class={`mt-1 leading-relaxed font-semibold ${isStreetsBase ? 'text-slate-200' : 'text-muted/70'}`}
+				>
+					Optimal range: {activeMetricObj.range_optimal[0]}{activeMetricObj.unit} to {activeMetricObj
+						.range_optimal[1]}{activeMetricObj.unit}
+				</p>
 			</div>
 		{/if}
 
@@ -958,7 +990,7 @@ import { DEFAULT_PADDOCK_STYLE, buildBaseLayer } from '$lib/layers';
 			class={`map-home focus-visible:ring-accent/40 absolute top-4 right-4 z-[1000] inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition hover:text-white focus:outline-none focus-visible:ring-2 ${
 				isStreetsBase
 					? 'border-white/60 bg-slate-950/95 text-white shadow-xl hover:border-white/80'
-					: 'border-white/10 bg-panel/95 text-white shadow-lg hover:border-white/30'
+					: 'bg-panel/95 border-white/10 text-white shadow-lg hover:border-white/30'
 			}`}
 			aria-label="Back to home"
 		>
