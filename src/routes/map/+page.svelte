@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import L from 'leaflet'; // removed unused layerGroup
+	import L from 'leaflet';
 	import type { PathOptions, TileLayerOptions } from 'leaflet';
 	import { onDestroy, onMount } from 'svelte';
 
@@ -47,43 +47,43 @@
 		count: number;
 	};
 
-type LegendPercents = {
-	lowPct: number;
-	highPct: number;
-	showOpt: boolean;
-	optLoPct: number;
-	optHiPct: number;
-	optWidth: number;
-	optMidPct: number;
-};
-
-const EMPTY_LEGEND_PERCENTS: LegendPercents = {
-	lowPct: 0,
-	highPct: 0,
-	showOpt: false,
-	optLoPct: 0,
-	optHiPct: 0,
-	optWidth: 0,
-	optMidPct: 0
-};
-
-type LegendDetails = {
-	min: { value: number | null; fields: string[] };
-	max: { value: number | null; fields: string[] };
-	opt: {
-		range: [number, number] | null;
-		within: { count: number; pct: number; total: number };
+	type LegendPercents = {
+		lowPct: number;
+		highPct: number;
+		showOpt: boolean;
+		optLoPct: number;
+		optHiPct: number;
+		optWidth: number;
+		optMidPct: number;
 	};
-};
 
-const EMPTY_LEGEND_DETAILS: LegendDetails = {
-	min: { value: null, fields: [] },
-	max: { value: null, fields: [] },
-	opt: {
-		range: null,
-		within: { count: 0, pct: 0, total: 0 }
-	}
-};
+	const EMPTY_LEGEND_PERCENTS: LegendPercents = {
+		lowPct: 0,
+		highPct: 0,
+		showOpt: false,
+		optLoPct: 0,
+		optHiPct: 0,
+		optWidth: 0,
+		optMidPct: 0
+	};
+
+	type LegendDetails = {
+		min: { value: number | null; fields: string[] };
+		max: { value: number | null; fields: string[] };
+		opt: {
+			range: [number, number] | null;
+			within: { count: number; pct: number; total: number };
+		};
+	};
+
+	const EMPTY_LEGEND_DETAILS: LegendDetails = {
+		min: { value: null, fields: [] },
+		max: { value: null, fields: [] },
+		opt: {
+			range: null,
+			within: { count: 0, pct: 0, total: 0 }
+		}
+	};
 
 	const VIRIDIS_STOPS = ['#440154', '#414487', '#2a788e', '#22a884', '#7ad151', '#fde725'];
 	const VIRIDIS_GRADIENT = `linear-gradient(to right, ${VIRIDIS_STOPS.map((color, index) => {
@@ -403,7 +403,7 @@ const EMPTY_LEGEND_DETAILS: LegendDetails = {
 	// Default to first metric id (type-safe)
 	const defaultMetric: MetricId = metricOptions[0].id;
 
-	const { url: imageryUrl, ...imageryOptions } = CONFIG.tiles;
+	const { url: imageryUrl, ...imageryOptions } = CONFIG.map;
 	const baseLayerConfigs: BaseLayerConfig[] = [
 		{
 			id: 'imagery',
@@ -518,7 +518,7 @@ const EMPTY_LEGEND_DETAILS: LegendDetails = {
 		loadError = null;
 
 		try {
-			const response = await fetch(CONFIG.data.farm);
+			const response = await fetch(CONFIG.backend.farm);
 			if (!response.ok) {
 				throw new Error(`Request failed (${response.status})`);
 			}
@@ -571,7 +571,7 @@ const EMPTY_LEGEND_DETAILS: LegendDetails = {
 		soilDataError = null;
 
 		try {
-			const response = await fetch(`${CONFIG.data.tests}?latest=true`);
+			const response = await fetch(`${CONFIG.backend.tests}?latest=true`);
 			if (!response.ok) {
 				throw new Error(`Request failed (${response.status})`);
 			}
@@ -756,9 +756,7 @@ const EMPTY_LEGEND_DETAILS: LegendDetails = {
 		let withinCount = 0;
 		const [optLoRaw, optHiRaw] = metric.range_optimal ?? [undefined, undefined];
 		const hasOptRange =
-			typeof optLoRaw === 'number' &&
-			typeof optHiRaw === 'number' &&
-			optHiRaw > optLoRaw;
+			typeof optLoRaw === 'number' && typeof optHiRaw === 'number' && optHiRaw > optLoRaw;
 		const optRange = hasOptRange ? ([optLoRaw, optHiRaw] as [number, number]) : null;
 
 		samples.forEach((sample, fieldId) => {
@@ -977,11 +975,11 @@ const EMPTY_LEGEND_DETAILS: LegendDetails = {
 	>
 		<div
 			data-tooltip-boundary
-			class={`sidebar-panel bg-panel/95 text-muted flex h-full w-full flex-col gap-6 border-r border-white/10 text-sm transition-[padding,opacity] duration-300 ease-in-out ${navOpen ? 'pointer-events-auto overflow-y-auto overflow-x-visible px-6 py-6 opacity-100' : 'pointer-events-none overflow-hidden px-0 py-0 opacity-0'}`}
+			class={`sidebar-panel bg-panel/95 text-muted flex h-full w-full flex-col gap-6 border-r border-white/10 text-sm transition-[padding,opacity] duration-300 ease-in-out ${navOpen ? 'pointer-events-auto overflow-x-visible overflow-y-auto px-6 py-6 opacity-100' : 'pointer-events-none overflow-hidden px-0 py-0 opacity-0'}`}
 			aria-hidden={!navOpen}
 		>
 			<header class="flex items-start gap-4 text-white">
-				<a href='/' class="flex items-center gap-3">
+				<a href="/" class="flex items-center gap-3">
 					<img
 						src="/img/logo.png"
 						alt="Greenhill Bros logo"
@@ -1076,103 +1074,125 @@ const EMPTY_LEGEND_DETAILS: LegendDetails = {
 							</button>
 						{:else if !metricScaleReady}
 							<p>We don't have a colour scale configured for {activeMetricObj.label} yet.</p>
-					{:else if activeMetricStats}
-						{@const stats = activeMetricStats!}
-						{@const perc = legendPercents}
-						{@const details = legendDetails}
-						{@const cmin = typeof activeMetricObj.c_min === 'number' ? activeMetricObj.c_min : null}
-						{@const cmax = typeof activeMetricObj.c_max === 'number' ? activeMetricObj.c_max : null}
-						{@const unitSuffix = activeMetricObj.unit ? ` ${activeMetricObj.unit}` : ''}
-						<p>
-							Colouring {activeMetricPaddockCount} paddock{activeMetricPaddockCount === 1 ? '' : 's'} using {activeMetricObj.label}.
-						</p>
-						<div class="space-y-2 rounded-md border border-white/10 bg-white/5 p-3 text-[11px] text-muted/70">
-							<div class="text-center font-semibold">
-								Scale{unitSuffix ? ` (${activeMetricObj.unit})` : ''}
-							</div>
-							<div class="relative h-2 w-full rounded-full">
-								<div class="pointer-events-none absolute inset-0 rounded-full" style={`background: ${VIRIDIS_GRADIENT};`}></div>
-								{#if perc.showOpt}
+						{:else if activeMetricStats}
+							{@const stats = activeMetricStats!}
+							{@const perc = legendPercents}
+							{@const details = legendDetails}
+							{@const cmin =
+								typeof activeMetricObj.c_min === 'number' ? activeMetricObj.c_min : null}
+							{@const cmax =
+								typeof activeMetricObj.c_max === 'number' ? activeMetricObj.c_max : null}
+							{@const unitSuffix = activeMetricObj.unit ? ` ${activeMetricObj.unit}` : ''}
+							<p>
+								Colouring {activeMetricPaddockCount} paddock{activeMetricPaddockCount === 1
+									? ''
+									: 's'} using {activeMetricObj.label}.
+							</p>
+							<div
+								class="text-muted/70 space-y-2 rounded-md border border-white/10 bg-white/5 p-3 text-[11px]"
+							>
+								<div class="text-center font-semibold">
+									Scale{unitSuffix ? ` (${activeMetricObj.unit})` : ''}
+								</div>
+								<div class="relative h-2 w-full rounded-full">
+									<div
+										class="pointer-events-none absolute inset-0 rounded-full"
+										style={`background: ${VIRIDIS_GRADIENT};`}
+									></div>
+									{#if perc.showOpt}
+										<button
+											type="button"
+											class="group absolute inset-y-[-6px] flex items-center justify-center bg-transparent p-0 focus:outline-none"
+											style={`left:${perc.optLoPct}%; width:${perc.optWidth}%`}
+											aria-label={`Optimal range ${formatLegendTick(details.opt.range?.[0])}${unitSuffix} to ${formatLegendTick(details.opt.range?.[1])}${unitSuffix}`}
+										>
+											<div
+												class="pointer-events-none absolute inset-0 rounded-full bg-white/30"
+											></div>
+											<div
+												use:keepTooltipInView
+												class="pointer-events-none absolute -top-24 left-1/2 hidden w-60 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block"
+												role="tooltip"
+											>
+												<div class="font-semibold">
+													Optimal {formatLegendTick(details.opt.range?.[0])}{unitSuffix} – {formatLegendTick(
+														details.opt.range?.[1]
+													)}{unitSuffix}
+												</div>
+												{#if details.opt.within.total > 0}
+													<div class="mt-1 text-[10px] text-slate-200/80">
+														{details.opt.within.count} of {details.opt.within.total} paddocks ({formatPercent(
+															details.opt.within.pct
+														)})
+													</div>
+												{:else}
+													<div class="mt-1 text-[10px] text-slate-200/80">
+														No sampled paddocks yet
+													</div>
+												{/if}
+											</div>
+										</button>
+									{/if}
 									<button
 										type="button"
-										class="group absolute inset-y-[-6px] flex items-center justify-center bg-transparent p-0 focus:outline-none"
-										style={`left:${perc.optLoPct}%; width:${perc.optWidth}%`}
-										aria-label={`Optimal range ${formatLegendTick(details.opt.range?.[0])}${unitSuffix} to ${formatLegendTick(details.opt.range?.[1])}${unitSuffix}`}
+										class="group absolute -top-3 flex h-8 w-8 -translate-x-1/2 cursor-default items-end justify-center bg-transparent p-0 focus:outline-none"
+										style={`left:${perc.lowPct}%`}
+										aria-label={`Minimum value ${formatLegendTick(details.min.value)}${unitSuffix}`}
 									>
-										<div class="pointer-events-none absolute inset-0 rounded-full bg-white/30"></div>
-									<div
-										use:keepTooltipInView
-										class="pointer-events-none absolute -top-24 left-1/2 hidden w-60 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block"
-										role="tooltip"
-									>
-										<div class="font-semibold">
-											Optimal {formatLegendTick(details.opt.range?.[0])}{unitSuffix} – {formatLegendTick(details.opt.range?.[1])}{unitSuffix}
-										</div>
-										{#if details.opt.within.total > 0}
-											<div class="mt-1 text-[10px] text-slate-200/80">
-												{details.opt.within.count} of {details.opt.within.total} paddocks ({formatPercent(details.opt.within.pct)})
+										<div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div>
+										<div
+											use:keepTooltipInView
+											class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block"
+											role="tooltip"
+										>
+											<div class="font-semibold">
+												Min {formatLegendTick(details.min.value)}{unitSuffix}
 											</div>
-										{:else}
-											<div class="mt-1 text-[10px] text-slate-200/80">No sampled paddocks yet</div>
-										{/if}
-									</div>
+											<div class="mt-1 text-[10px] text-slate-200/80">
+												Paddocks: {formatFieldList(details.min.fields)}
+											</div>
+										</div>
 									</button>
-								{/if}
-								<button
-									type="button"
-									class="group absolute -top-3 flex h-8 w-8 -translate-x-1/2 cursor-default items-end justify-center bg-transparent p-0 focus:outline-none"
-									style={`left:${perc.lowPct}%`}
-									aria-label={`Minimum value ${formatLegendTick(details.min.value)}${unitSuffix}`}
-								>
-									<div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div>
-									<div
-										use:keepTooltipInView
-										class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block"
-										role="tooltip"
+									<button
+										type="button"
+										class="group absolute -top-3 flex h-8 w-8 -translate-x-1/2 cursor-default items-end justify-center bg-transparent p-0 focus:outline-none"
+										style={`left:${perc.highPct}%`}
+										aria-label={`Maximum value ${formatLegendTick(details.max.value)}${unitSuffix}`}
 									>
-										<div class="font-semibold">
-											Min {formatLegendTick(details.min.value)}{unitSuffix}
+										<div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div>
+										<div
+											use:keepTooltipInView
+											class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block"
+											role="tooltip"
+										>
+											<div class="font-semibold">
+												Max {formatLegendTick(details.max.value)}{unitSuffix}
+											</div>
+											<div class="mt-1 text-[10px] text-slate-200/80">
+												Paddocks: {formatFieldList(details.max.fields)}
+											</div>
 										</div>
-										<div class="mt-1 text-[10px] text-slate-200/80">
-											Paddocks: {formatFieldList(details.min.fields)}
-										</div>
-									</div>
-								</button>
-								<button
-									type="button"
-									class="group absolute -top-3 flex h-8 w-8 -translate-x-1/2 cursor-default items-end justify-center bg-transparent p-0 focus:outline-none"
-									style={`left:${perc.highPct}%`}
-									aria-label={`Maximum value ${formatLegendTick(details.max.value)}${unitSuffix}`}
-								>
-									<div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div>
-									<div
-										use:keepTooltipInView
-										class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block"
-										role="tooltip"
-									>
-										<div class="font-semibold">
-											Max {formatLegendTick(details.max.value)}{unitSuffix}
-										</div>
-										<div class="mt-1 text-[10px] text-slate-200/80">
-											Paddocks: {formatFieldList(details.max.fields)}
-										</div>
-									</div>
-								</button>
-							</div>
-							<div class="flex justify-between text-[11px] text-muted/60">
-								<span>{formatLegendTick(cmin)}</span>
-								<span>{formatLegendTick(cmax)}</span>
-							</div>
-							<div class="flex justify-between text-[10px] text-muted/60">
-								<span>Median: <span class="font-semibold">{formatLegendTick(stats.median)}{unitSuffix}</span></span>
-							</div>
-							{#if details.opt.range}
-								<div class="text-[10px] text-emerald-200/90">
-									{details.opt.within.count} of {details.opt.within.total} paddocks within optimal ({formatPercent(details.opt.within.pct)})
+									</button>
 								</div>
-							{/if}
-						</div>
-					{:else}
+								<div class="text-muted/60 flex justify-between text-[11px]">
+									<span>{formatLegendTick(cmin)}</span>
+									<span>{formatLegendTick(cmax)}</span>
+								</div>
+								<div class="text-muted/60 flex justify-between text-[10px]">
+									<span
+										>Median: <span class="font-semibold"
+											>{formatLegendTick(stats.median)}{unitSuffix}</span
+										></span
+									>
+								</div>
+								{#if details.opt.range}
+									<div class="text-[10px] text-emerald-200/90">
+										{details.opt.within.count} of {details.opt.within.total} paddocks within optimal
+										({formatPercent(details.opt.within.pct)})
+									</div>
+								{/if}
+							</div>
+						{:else}
 							<p>No paddocks have recent samples for {activeMetricObj.label} yet.</p>
 						{/if}
 					</div>
@@ -1267,7 +1287,7 @@ const EMPTY_LEGEND_DETAILS: LegendDetails = {
 		{#if !navOpen}
 			<button
 				class={`border-border/80 bg-panel/90 text-muted hover:bg-panel focus:ring-accent/40 absolute top-3 left-4 z-[1200] rounded-md border px-3 py-2 text-sm backdrop-blur transition hover:text-white focus:ring-2 focus:outline-none ${
-        					isStreetsBase
+					isStreetsBase
 						? 'border-white/50 bg-slate-950/95 text-slate-200 shadow-black/40'
 						: 'border-border/80 bg-panel/80 text-muted'
 				}`}

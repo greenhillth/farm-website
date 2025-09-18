@@ -3,6 +3,7 @@
 	import Panel from '$lib/components/Panel.svelte';
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import CONFIG from '$lib/config';
+	import { uploadEndpoint } from '$lib/utils';
 
 	const metricColumns = [
 		{ key: 'P', label: 'P' },
@@ -42,8 +43,6 @@
 	let selectedIds: Set<SoilTest['id']> = new Set();
 	let selectedCount = 0;
 	$: selectedCount = selectedIds.size;
-
-	const BULK_DELETE_ENDPOINT = '/api/soil-tests/bulk';
 
 	type ToastVariant = 'success' | 'error' | 'warning';
 	type Toast = { id: number; message: string; variant: ToastVariant };
@@ -159,7 +158,7 @@
 		deletingTests = true;
 		const ids = Array.from(selectedIds);
 		try {
-			const response = await fetch(BULK_DELETE_ENDPOINT, {
+			const response = await fetch(CONFIG.backend.bulkDelete, {
 				method: 'DELETE',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ ids })
@@ -320,28 +319,6 @@
 		Na: 'e.g. 98.5',
 		pH: 'e.g. 5.9'
 	};
-
-	const uploadEndpoints = {
-		/**
-		 * POST /api/soil-tests/manual
-		 * Body JSON schema suggestion:
-		 * {
-		 *   "fieldId": string,
-		 *   "sampleName": string,
-		 *   "sampleId"?: string,
-		 *   "sampleDate": string (ISO 8601),
-		 *   "client"?: string,
-		 *   "metrics": { "P"?: number, "K"?: number, "Ca"?: number, "Mg"?: number, "S"?: number, "Na"?: number, "pH"?: number }
-		 * }
-		 */
-		manual: '/api/soil-tests/manual',
-		/**
-		 * POST /api/soil-tests/import
-		 * Multipart form-data with field `file` containing a CSV.
-		 * Optional query params: ?onDuplicate=skip|replace etc.
-		 */
-		csv: '/api/soil-tests/import'
-	} as const;
 
 	function setCsvProgress(
 		stage: CsvProgressStage,
@@ -548,9 +525,10 @@
 				client: manualForm.client.trim() || undefined,
 				metrics: preparedMetrics
 			};
+			const endpoint = uploadEndpoint('manual');
 
-			console.info('POST to', uploadEndpoints.manual, payload);
-			await fetch(uploadEndpoints.manual, {
+			console.info('POST to', endpoint, payload);
+			await fetch(endpoint, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload)
@@ -592,19 +570,19 @@
 			`Uploading ${file.name}…`,
 			'Upload started. Waiting for processing updates from the server…'
 		);
-
-		console.info('POST to', uploadEndpoints.csv, 'with file', file.name, 'tracking job', jobId);
+		const endpoint: string = uploadEndpoint('import');
+		console.info('POST to', endpoint, 'with file', file.name, 'tracking job', jobId);
 		console.info(
 			`Dispatch CSV progress updates with window.dispatchEvent(new CustomEvent('${CSV_PROGRESS_EVENT_NAME}', { detail: { jobId: '${jobId}', stage: 'parsing', percent: 50 } }))`
 		);
 
 		try {
 			// TODO: Replace stub with real upload request and progress tracking.
-			const response = await fetch(uploadEndpoints.csv, { method: 'POST', body: data });
+			const response = await fetch(endpoint, { method: 'POST', body: data });
 			if (!response.ok) throw new Error(`Upload failed (${response.status})`);
 			const json = await response.json();
 			if (json?.jobId) {
-			  activeCsvJobId = json.jobId;
+				activeCsvJobId = json.jobId;
 			}
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to upload CSV';
@@ -616,8 +594,8 @@
 		loading = true;
 		try {
 			const [testsRes, paddocksRes] = await Promise.all([
-				fetch(CONFIG.data.tests),
-				fetch(CONFIG.data.farm)
+				fetch(CONFIG.backend.latestTest),
+				fetch(CONFIG.backend.farm)
 			]);
 
 			if (!testsRes.ok) throw new Error(`Tests request failed (${testsRes.status})`);
@@ -968,7 +946,7 @@
 						<code>Na</code>, <code>ph_water</code>.
 					</p>
 					<p class="text-muted text-xs">
-						The file will be POSTed to <code>{uploadEndpoints.csv}</code> as
+						The file will be POSTed to <code>{uploadEndpoint('import')}</code> as
 						<code>multipart/form-data</code>
 						with the file field named <code>file</code>.
 					</p>

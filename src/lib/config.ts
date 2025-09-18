@@ -1,11 +1,22 @@
-const api = 'http://localhost:8000/api';
+const rawApiBase = (import.meta.env.VITE_API_BASE ?? '/api').trim();
+const apiBase = rawApiBase ? rawApiBase.replace(/\/+$/, '') : '/api';
 
 const CONFIG = {
-	api: 'http://localhost:8000/api',
-	data: {
-		farm: `${api}/data/farm`,
-		geojson: `${api}/data/farm`,
-		tests: `${api}/data/tests`
+	api: apiBase,
+	backend: {
+		farm: `${apiBase}/farm`,
+		geojson: `${apiBase}/farm`,
+		weather: `${apiBase}/weather`,
+		currentWeather: `${apiBase}/weather/current`,
+		tests: `${apiBase}/soil-tests`,
+		latestTest: `${apiBase}/soil-tests?latest=true`,
+		bulkDelete: `${apiBase}/soil-tests/bulk`,
+		upload: {
+			test: {
+				manual: `${apiBase}/soil-tests/manual`,
+				import: `${apiBase}/soil-tests/import`
+			}
+		}
 	},
 	map: {
 		url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',

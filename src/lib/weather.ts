@@ -1,7 +1,6 @@
 /**
  * Weather data structure.
  */
-
 export type Weather = {
 	updatedAt: string;
 	outdoor: {
@@ -60,9 +59,10 @@ export type WeatherResult = { weather: Weather; connected: boolean; source: 'eco
 
 // Fetch via backend provider mapping FastAPI reading -> Weather shape
 import { fetchBackendWeatherMeta } from '$lib/providers/backend';
+import CONFIG from './config';
 
 export async function fetchWeather(): Promise<WeatherResult> {
-	const { data, connected, source } = await fetchBackendWeatherMeta('/api');
+	const { data, connected, source } = await fetchBackendWeatherMeta();
 	return { weather: data, connected, source };
 }
 
@@ -88,7 +88,7 @@ export async function fetchWeatherHistory(
 	to: number,
 	fetchFn: typeof fetch = fetch
 ): Promise<WeatherHistoryRow[]> {
-	const res = await fetchFn(`/api/weather/history?from=${from}&to=${to}&_ts=${Date.now()}`);
+	const res = await fetchFn(`${CONFIG.backend.weather}?from=${from}&to=${to}&_ts=${Date.now()}`);
 	if (!res.ok) {
 		throw new Error(`Unable to fetch history: ${res.status}`);
 	}
