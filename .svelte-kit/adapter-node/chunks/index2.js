@@ -192,26 +192,14 @@ function apply_adjustments(error) {
 let micro_tasks = [];
 let idle_tasks = [];
 function run_micro_tasks() {
-  var tasks = micro_tasks;
+  var tasks2 = micro_tasks;
   micro_tasks = [];
-  run_all(tasks);
+  run_all(tasks2);
 }
 function run_idle_tasks() {
-  var tasks = idle_tasks;
+  var tasks2 = idle_tasks;
   idle_tasks = [];
-  run_all(tasks);
-}
-function has_pending_tasks() {
-  return micro_tasks.length > 0 || idle_tasks.length > 0;
-}
-function queue_micro_task(fn) {
-  if (micro_tasks.length === 0 && !is_flushing_sync) {
-    var tasks = micro_tasks;
-    queueMicrotask(() => {
-      if (tasks === micro_tasks) run_micro_tasks();
-    });
-  }
-  micro_tasks.push(fn);
+  run_all(tasks2);
 }
 function flush_tasks() {
   if (micro_tasks.length > 0) {
@@ -277,6 +265,17 @@ function update_derived(derived) {
 const batches = /* @__PURE__ */ new Set();
 let current_batch = null;
 let effect_pending_updates = /* @__PURE__ */ new Set();
+let tasks = [];
+function dequeue() {
+  const task = (
+    /** @type {() => void} */
+    tasks.shift()
+  );
+  if (tasks.length > 0) {
+    queueMicrotask(dequeue);
+  }
+  task();
+}
 let queued_root_effects = [];
 let last_scheduled_effect = null;
 let is_flushing = false;
@@ -420,7 +419,7 @@ class Batch {
           this.#effects.push(effect);
         } else if ((flags & CLEAN) === 0) {
           if ((flags & ASYNC) !== 0) {
-            var effects = effect.b?.is_pending() ? this.#boundary_async_effects : this.#async_effects;
+            var effects = effect.b?.pending ? this.#boundary_async_effects : this.#async_effects;
             effects.push(effect);
           } else if (is_dirty(effect)) {
             if ((effect.f & BLOCK_EFFECT) !== 0) this.#block_effects.push(effect);
@@ -550,7 +549,10 @@ class Batch {
   }
   /** @param {() => void} task */
   static enqueue(task) {
-    queue_micro_task(task);
+    if (tasks.length === 0) {
+      queueMicrotask(dequeue);
+    }
+    tasks.unshift(task);
   }
 }
 function flushSync(fn) {
@@ -561,7 +563,7 @@ function flushSync(fn) {
     if (fn) ;
     while (true) {
       flush_tasks();
-      if (queued_root_effects.length === 0 && !has_pending_tasks()) {
+      if (queued_root_effects.length === 0) {
         current_batch?.flush();
         if (queued_root_effects.length === 0) {
           last_scheduled_effect = null;
