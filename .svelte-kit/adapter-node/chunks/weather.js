@@ -1,3 +1,4 @@
+import { C as CONFIG } from "./config.js";
 function coerceUtcIsoString(value) {
   if (!value) {
     return (/* @__PURE__ */ new Date()).toISOString();
@@ -88,9 +89,9 @@ function mapReadingToWeather(r) {
     series: mock.series
   };
 }
-async function fetchBackendWeatherMeta(apiBase) {
+async function fetchBackendWeatherMeta() {
   try {
-    const res = await fetch(`${apiBase.replace(/\/$/, "")}/weather/current`);
+    const res = await fetch(`${CONFIG.backend.currentWeather}`);
     if (!res.ok) throw new Error(`backend /weather/current failed: ${res.status}`);
     const reading = await res.json();
     return { data: mapReadingToWeather(reading), connected: true, source: "ecowitt" };
@@ -119,11 +120,11 @@ function getMockWeather() {
   };
 }
 async function fetchWeather() {
-  const { data, connected, source } = await fetchBackendWeatherMeta("/api");
+  const { data, connected, source } = await fetchBackendWeatherMeta();
   return { weather: data, connected, source };
 }
 async function fetchWeatherHistory(from, to, fetchFn = fetch) {
-  const res = await fetchFn(`/api/weather/history?from=${from}&to=${to}&_ts=${Date.now()}`);
+  const res = await fetchFn(`${CONFIG.backend.weather}?from=${from}&to=${to}&_ts=${Date.now()}`);
   if (!res.ok) {
     throw new Error(`Unable to fetch history: ${res.status}`);
   }

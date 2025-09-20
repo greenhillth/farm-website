@@ -2,23 +2,23 @@ import { b as private_env } from "./shared-server.js";
 const trimTrailingSlash = (value) => value.endsWith("/") ? value.slice(0, -1) : value;
 const handleFetch = async ({ event, request, fetch }) => {
   const requestUrl = new URL(request.url);
-  if (requestUrl.origin === event.url.origin && requestUrl.pathname.startsWith("/api/")) {
-    const backendOrigin = private_env.BACKEND_ORIGIN ?? "http://localhost:8000";
-    const targetBase = trimTrailingSlash(backendOrigin);
-    const targetUrl = `${targetBase}${requestUrl.pathname}${requestUrl.search}`;
-    if (request.method === "GET" || request.method === "HEAD") {
-      return fetch(targetUrl, {
-        method: request.method,
-        headers: request.headers
-      });
+  const sameOrigin = requestUrl.origin === event.url.origin;
+  if (sameOrigin && requestUrl.pathname.startsWith("/api/")) {
+    const backendOrigin = trimTrailingSlash(private_env.BACKEND_ORIGIN ?? "http://127.0.0.1:8000");
+    const targetUrl = `${backendOrigin}${requestUrl.pathname}${requestUrl.search}`;
+    const proxied = new Request(targetUrl, request);
+    proxied.headers.set("x-forwarded-host", event.url.host);
+    proxied.headers.set("x-forwarded-proto", event.url.protocol.replace(":", ""));
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    if (forwardedFor) {
+      proxied.headers.set("x-forwarded-for", forwardedFor);
+    } else if (typeof event.getClientAddress === "function") {
+      const clientAddress = event.getClientAddress();
+      if (clientAddress) {
+        proxied.headers.set("x-forwarded-for", clientAddress);
+      }
     }
-    const cloned = request.clone();
-    const body = await cloned.arrayBuffer();
-    return fetch(targetUrl, {
-      method: request.method,
-      headers: request.headers,
-      body
-    });
+    return fetch(proxied);
   }
   return fetch(request);
 };

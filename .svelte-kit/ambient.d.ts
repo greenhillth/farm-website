@@ -26,6 +26,8 @@
  * ```
  */
 declare module '$env/static/private' {
+	export const VITE_API_BASE: string;
+	export const BACKEND_ORIGIN: string;
 	export const PYTHON_BASIC_REPL: string;
 	export const LESSOPEN: string;
 	export const CONDA_PROMPT_MODIFIER: string;
@@ -135,6 +137,8 @@ declare module '$env/static/public' {
  */
 declare module '$env/dynamic/private' {
 	export const env: {
+		VITE_API_BASE: string;
+		BACKEND_ORIGIN: string;
 		PYTHON_BASIC_REPL: string;
 		LESSOPEN: string;
 		CONDA_PROMPT_MODIFIER: string;

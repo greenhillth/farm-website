@@ -7,14 +7,14 @@ function _page($$payload, $$props) {
   let q = "";
   searchTerm = q.trim().toLowerCase();
   searchTerm ? paddocks.filter((p) => `${p.name} ${p.id} ${p.crop ?? ""}`.toLowerCase().includes(searchTerm)) : paddocks;
-  $$payload.out.push(`<header class="container mx-auto px-4 py-4 flex items-center justify-between gap-4"><a href="/" class="text-sm text-muted hover:text-white">← Back to home</a> <div class="text-xs text-muted">Paddock Manager</div></header> <main class="container mx-auto px-4 pb-8 space-y-5">`);
+  $$payload.out.push(`<header class="container mx-auto flex items-center justify-between gap-4 px-4 py-4"><a href="/" class="text-muted text-sm hover:text-white">← Back to home</a> <div class="text-muted text-xs">Paddock Manager</div></header> <main class="container mx-auto space-y-5 px-4 pb-8">`);
   Panel($$payload, {
     title: "Paddocks",
     children: ($$payload2) => {
-      $$payload2.out.push(`<div class="flex items-center gap-3 mb-3"><input placeholder="Search by name or ID…"${attr("value", q)} class="w-full max-w-md rounded-md border border-border bg-white/5 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/40"/> <a href="/map" class="text-sm text-muted hover:text-white">Open map →</a></div> `);
+      $$payload2.out.push(`<div class="mb-3 flex items-center gap-3"><input placeholder="Search by name or ID…"${attr("value", q)} class="border-border focus:ring-accent/40 w-full max-w-md rounded-md border bg-white/5 px-3 py-2 text-sm outline-none focus:ring-2"/> <a href="/map" class="text-muted text-sm hover:text-white">Open map →</a></div> `);
       {
         $$payload2.out.push("<!--[-->");
-        $$payload2.out.push(`<div class="text-sm text-muted">Loading paddocks…</div>`);
+        $$payload2.out.push(`<div class="text-muted text-sm">Loading paddocks…</div>`);
       }
       $$payload2.out.push(`<!--]-->`);
     },
@@ -24,7 +24,7 @@ function _page($$payload, $$props) {
   Panel($$payload, {
     title: "Recent Notes",
     children: ($$payload2) => {
-      $$payload2.out.push(`<ul class="list-disc pl-5 text-sm text-muted space-y-1"><li>South paddock: inspect fence line</li> <li>North ridge: soil sampling next week</li> <li>Creek paddock: spot spray blackberry regrowth</li></ul>`);
+      $$payload2.out.push(`<ul class="text-muted list-disc space-y-1 pl-5 text-sm"><li>South paddock: inspect fence line</li> <li>North ridge: soil sampling next week</li> <li>Creek paddock: spot spray blackberry regrowth</li></ul>`);
     },
     $$slots: { default: true }
   });
@@ -32,7 +32,7 @@ function _page($$payload, $$props) {
   Panel($$payload, {
     title: "Upcoming Tasks",
     children: ($$payload2) => {
-      $$payload2.out.push(`<ul class="list-disc pl-5 text-sm text-muted space-y-1"><li>Fertilize OM trial plots (Friday)</li> <li>Check troughs in Top Flat</li></ul>`);
+      $$payload2.out.push(`<ul class="text-muted list-disc space-y-1 pl-5 text-sm"><li>Fertilize OM trial plots (Friday)</li> <li>Check troughs in Top Flat</li></ul>`);
     },
     $$slots: { default: true }
   });

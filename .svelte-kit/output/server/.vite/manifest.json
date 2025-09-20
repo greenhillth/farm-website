@@ -17,6 +17,10 @@
       "_index2.js"
     ]
   },
+  "_config.js": {
+    "file": "chunks/config.js",
+    "name": "config"
+  },
   "_environment.js": {
     "file": "chunks/environment.js",
     "name": "environment"
@@ -86,7 +90,10 @@
   },
   "_weather.js": {
     "file": "chunks/weather.js",
-    "name": "weather"
+    "name": "weather",
+    "imports": [
+      "_config.js"
+    ]
   },
   "node_modules/@sveltejs/kit/src/runtime/app/server/remote/index.js": {
     "file": "remote-entry.js",
@@ -206,7 +213,8 @@
       "_index-server.js",
       "_exports.js",
       "_utils.js",
-      "_state.svelte.js"
+      "_state.svelte.js",
+      "_config.js"
     ],
     "css": [
       "_app/immutable/assets/_page.vo9YS9di.css"

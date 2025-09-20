@@ -5,6 +5,7 @@ import "../../../chunks/exports.js";
 import "../../../chunks/utils.js";
 import "../../../chunks/state.svelte.js";
 import "clsx";
+import { C as CONFIG } from "../../../chunks/config.js";
 const getStores = () => {
   const stores$1 = getContext("__svelte__");
   return {
@@ -9584,72 +9585,6 @@ function requireLeafletSrc() {
   return leafletSrc$1.exports;
 }
 requireLeafletSrc();
-const CONFIG = {
-  soilMetrics: [
-    {
-      id: "none",
-      label: "None",
-      description: null,
-      range_optimal: [null, null],
-      c_min: null,
-      c_max: null
-    },
-    {
-      id: "OM",
-      label: "Organic Matter",
-      description: "Indicates the amount of decomposed plant and animal residues in the soil. Higher levels improve soil structure, water retention, and nutrient availability.",
-      unit: "%",
-      range_optimal: [3.25, 5.2],
-      c_min: 0,
-      c_max: 7
-    },
-    {
-      id: "P",
-      label: "Phosphorus",
-      description: "Essential for root development, energy transfer, and early crop growth. Deficiency often limits yields in many soils.",
-      unit: "mg/kg",
-      range_optimal: [40, 90],
-      c_min: 0,
-      c_max: 250
-    },
-    {
-      id: "K",
-      label: "Potassium",
-      description: "Supports plant water regulation, disease resistance, and overall crop quality. Deficiency reduces drought tolerance and yield.",
-      unit: "mg/kg",
-      range_optimal: [245, 400],
-      c_min: 0,
-      c_max: 900
-    },
-    {
-      id: "M",
-      label: "Magnesium",
-      description: "A key part of chlorophyll, vital for photosynthesis. Low levels can cause yellowing between leaf veins and poor plant growth.",
-      unit: "mg/kg",
-      range_optimal: [220, 440],
-      c_min: 0,
-      c_max: 600
-    },
-    {
-      id: "Ca",
-      label: "Calcium",
-      description: "Important for cell wall strength, root development, and soil structure. Deficiency can lead to poor root growth and fruit quality issues.",
-      unit: "mg/kg",
-      range_optimal: [1950, 3450],
-      c_min: 0,
-      c_max: 5e3
-    },
-    {
-      id: "pH",
-      label: "Soil pH",
-      description: "Measures soil acidity or alkalinity, which strongly influences nutrient availability and microbial activity. Most crops prefer a slightly acidic to neutral range.",
-      unit: null,
-      range_optimal: [6, 7],
-      c_min: 5,
-      c_max: 8
-    }
-  ]
-};
 function _page($$payload, $$props) {
   push();
   var $$store_subs;
@@ -9722,7 +9657,7 @@ function _page($$payload, $$props) {
   }
   const metricsById = new Map(metricOptions.map((m) => [m.id, m]));
   const defaultMetric = metricOptions[0].id;
-  const { url: imageryUrl, ...imageryOptions } = CONFIG.tiles;
+  const { url: imageryUrl, ...imageryOptions } = CONFIG.map;
   const baseLayerConfigs = [
     {
       id: "imagery",
@@ -9893,7 +9828,7 @@ function _page($$payload, $$props) {
   const each_array_1 = ensure_array_like(metricOptions);
   const each_array_2 = ensure_array_like(quickLinks);
   $$payload.out.push(`<div class="map-shell relative flex h-dvh min-h-[540px] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"><aside${attr_class(`map-sidebar relative flex h-full shrink-0 overflow-visible transition-[width] duration-300 ease-in-out ${"w-80 max-w-full"}`, "svelte-522sze")}><div data-tooltip-boundary=""${attr_class(
-    `sidebar-panel bg-panel/95 text-muted flex h-full w-full flex-col gap-6 border-r border-white/10 text-sm transition-[padding,opacity] duration-300 ease-in-out ${"pointer-events-auto overflow-y-auto overflow-x-visible px-6 py-6 opacity-100"}`,
+    `sidebar-panel bg-panel/95 text-muted flex h-full w-full flex-col gap-6 border-r border-white/10 text-sm transition-[padding,opacity] duration-300 ease-in-out ${"pointer-events-auto overflow-x-visible overflow-y-auto px-6 py-6 opacity-100"}`,
     "svelte-522sze"
   )}${attr("aria-hidden", false)}><header class="flex items-start gap-4 text-white"><a href="/" class="flex items-center gap-3"><img src="/img/logo.png" alt="Greenhill Bros logo" class="h-10 w-10 rounded-md border border-white/10 bg-white/10 p-1"/> <div class="leading-tight"><p class="text-muted/70 text-xs tracking-wider uppercase">Greenhill Bros Farm</p> <h1 class="text-lg font-semibold">Interactive map</h1></div></a> <div class="ml-auto"><button class="border-border/80 text-muted focus:ring-accent/40 rounded-md border bg-white/5 p-2 hover:bg-white/10 hover:text-white focus:ring-2 focus:outline-none" aria-label="Collapse sidebar"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"></path></svg></button></div></header> <nav id="map-controls" aria-label="Map controls" class="space-y-8"><section class="space-y-3"><div><h2 class="text-muted/70 text-xs font-semibold tracking-wider uppercase">Base map</h2> <p class="text-muted/60 mt-1 text-xs">Choose the imagery used beneath the farm overlays.</p></div> <div class="flex flex-wrap gap-2"><!--[-->`);
   for (let $$index = 0, $$length = each_array.length; $$index < $$length; $$index++) {
@@ -9941,7 +9876,7 @@ function _page($$payload, $$props) {
             const cmin = typeof activeMetricObj.c_min === "number" ? activeMetricObj.c_min : null;
             const cmax = typeof activeMetricObj.c_max === "number" ? activeMetricObj.c_max : null;
             const unitSuffix = activeMetricObj.unit ? ` ${activeMetricObj.unit}` : "";
-            $$payload.out.push(`<p>Colouring ${escape_html(activeMetricPaddockCount)} paddock${escape_html("s")} using ${escape_html(activeMetricObj.label)}.</p> <div class="space-y-2 rounded-md border border-white/10 bg-white/5 p-3 text-[11px] text-muted/70"><div class="text-center font-semibold">Scale${escape_html(unitSuffix ? ` (${activeMetricObj.unit})` : "")}</div> <div class="relative h-2 w-full rounded-full"><div class="pointer-events-none absolute inset-0 rounded-full"${attr_style(`background: ${VIRIDIS_GRADIENT};`)}></div> `);
+            $$payload.out.push(`<p>Colouring ${escape_html(activeMetricPaddockCount)} paddock${escape_html("s")} using ${escape_html(activeMetricObj.label)}.</p> <div class="text-muted/70 space-y-2 rounded-md border border-white/10 bg-white/5 p-3 text-[11px]"><div class="text-center font-semibold">Scale${escape_html(unitSuffix ? ` (${activeMetricObj.unit})` : "")}</div> <div class="relative h-2 w-full rounded-full"><div class="pointer-events-none absolute inset-0 rounded-full"${attr_style(`background: ${VIRIDIS_GRADIENT};`)}></div> `);
             if (perc.showOpt) {
               $$payload.out.push("<!--[-->");
               $$payload.out.push(`<button type="button" class="group absolute inset-y-[-6px] flex items-center justify-center bg-transparent p-0 focus:outline-none"${attr_style(`left:${perc.optLoPct}%; width:${perc.optWidth}%`)}${attr("aria-label", `Optimal range ${formatLegendTick(details.opt.range?.[0])}${unitSuffix} to ${formatLegendTick(details.opt.range?.[1])}${unitSuffix}`)}><div class="pointer-events-none absolute inset-0 rounded-full bg-white/30"></div> <div class="pointer-events-none absolute -top-24 left-1/2 hidden w-60 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block" role="tooltip"><div class="font-semibold">Optimal ${escape_html(formatLegendTick(details.opt.range?.[0]))}${escape_html(unitSuffix)} – ${escape_html(formatLegendTick(details.opt.range?.[1]))}${escape_html(unitSuffix)}</div> `);
@@ -9956,10 +9891,11 @@ function _page($$payload, $$props) {
             } else {
               $$payload.out.push("<!--[!-->");
             }
-            $$payload.out.push(`<!--]--> <button type="button" class="group absolute -top-3 flex h-8 w-8 -translate-x-1/2 cursor-default items-end justify-center bg-transparent p-0 focus:outline-none"${attr_style(`left:${perc.lowPct}%`)}${attr("aria-label", `Minimum value ${formatLegendTick(details.min.value)}${unitSuffix}`)}><div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div> <div class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block" role="tooltip"><div class="font-semibold">Min ${escape_html(formatLegendTick(details.min.value))}${escape_html(unitSuffix)}</div> <div class="mt-1 text-[10px] text-slate-200/80">Paddocks: ${escape_html(formatFieldList(details.min.fields))}</div></div></button> <button type="button" class="group absolute -top-3 flex h-8 w-8 -translate-x-1/2 cursor-default items-end justify-center bg-transparent p-0 focus:outline-none"${attr_style(`left:${perc.highPct}%`)}${attr("aria-label", `Maximum value ${formatLegendTick(details.max.value)}${unitSuffix}`)}><div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div> <div class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block" role="tooltip"><div class="font-semibold">Max ${escape_html(formatLegendTick(details.max.value))}${escape_html(unitSuffix)}</div> <div class="mt-1 text-[10px] text-slate-200/80">Paddocks: ${escape_html(formatFieldList(details.max.fields))}</div></div></button></div> <div class="flex justify-between text-[11px] text-muted/60"><span>${escape_html(formatLegendTick(cmin))}</span> <span>${escape_html(formatLegendTick(cmax))}</span></div> <div class="flex justify-between text-[10px] text-muted/60"><span>Median: <span class="font-semibold">${escape_html(formatLegendTick(stats.median))}${escape_html(unitSuffix)}</span></span></div> `);
+            $$payload.out.push(`<!--]--> <button type="button" class="group absolute -top-3 flex h-8 w-8 -translate-x-1/2 cursor-default items-end justify-center bg-transparent p-0 focus:outline-none"${attr_style(`left:${perc.lowPct}%`)}${attr("aria-label", `Minimum value ${formatLegendTick(details.min.value)}${unitSuffix}`)}><div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div> <div class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block" role="tooltip"><div class="font-semibold">Min ${escape_html(formatLegendTick(details.min.value))}${escape_html(unitSuffix)}</div> <div class="mt-1 text-[10px] text-slate-200/80">Paddocks: ${escape_html(formatFieldList(details.min.fields))}</div></div></button> <button type="button" class="group absolute -top-3 flex h-8 w-8 -translate-x-1/2 cursor-default items-end justify-center bg-transparent p-0 focus:outline-none"${attr_style(`left:${perc.highPct}%`)}${attr("aria-label", `Maximum value ${formatLegendTick(details.max.value)}${unitSuffix}`)}><div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div> <div class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block" role="tooltip"><div class="font-semibold">Max ${escape_html(formatLegendTick(details.max.value))}${escape_html(unitSuffix)}</div> <div class="mt-1 text-[10px] text-slate-200/80">Paddocks: ${escape_html(formatFieldList(details.max.fields))}</div></div></button></div> <div class="text-muted/60 flex justify-between text-[11px]"><span>${escape_html(formatLegendTick(cmin))}</span> <span>${escape_html(formatLegendTick(cmax))}</span></div> <div class="text-muted/60 flex justify-between text-[10px]"><span>Median: <span class="font-semibold">${escape_html(formatLegendTick(stats.median))}${escape_html(unitSuffix)}</span></span></div> `);
             if (details.opt.range) {
               $$payload.out.push("<!--[-->");
-              $$payload.out.push(`<div class="text-[10px] text-emerald-200/90">${escape_html(details.opt.within.count)} of ${escape_html(details.opt.within.total)} paddocks within optimal (${escape_html(formatPercent(details.opt.within.pct))})</div>`);
+              $$payload.out.push(`<div class="text-[10px] text-emerald-200/90">${escape_html(details.opt.within.count)} of ${escape_html(details.opt.within.total)} paddocks within optimal
+										(${escape_html(formatPercent(details.opt.within.pct))})</div>`);
             } else {
               $$payload.out.push("<!--[!-->");
             }
