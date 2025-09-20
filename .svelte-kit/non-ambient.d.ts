@@ -47,6 +47,6 @@ declare module "$app/types" {
 		};
 		Pathname(): "/" | "/alex" | "/alex/" | "/api" | "/api/" | `/api/${string}` & {} | `/api/${string}/` & {} | "/manual" | "/manual/" | "/map" | "/map/" | "/paddocks" | "/paddocks/" | "/soiltests" | "/soiltests/" | "/timesheet" | "/timesheet/" | "/weather" | "/weather/" | `/weather/${string}` & {} | `/weather/${string}/` & {};
 		ResolvedPathname(): `${"" | `/${string}`}${ReturnType<AppTypes['Pathname']>}`;
-		Asset(): "/img/aerial-map.jpg" | "/img/background.webp" | "/img/confused-dad-1.jpg" | "/img/gbros-rounded.svg" | "/img/gbros.svg" | "/img/gbros.webp" | "/img/logo-square.svg" | "/img/logo.png" | "/img/manual-card.webp" | "/img/map-card.webp" | "/img/paddock-4.jpg" | "/img/paddock-card.webp" | "/img/sharepoint.jpg" | "/img/sharepoint.svg" | "/img/soil-card.webp" | "/img/soil.jpg" | "/img/tom-and-alex.jpg" | "/img/tractor-1.jpg" | "/img/weather-station.webp" | "/robots.txt" | "/video/pysn.mp4" | string & {};
+		Asset(): "/img/aerial-map.jpg" | "/img/background.webp" | "/img/confused-dad-1.jpg" | "/img/gbros-rounded.svg" | "/img/gbros.svg" | "/img/gbros.webp" | "/img/logo-square.svg" | "/img/logo.png" | "/img/manual-card.webp" | "/img/map-card.webp" | "/img/paddock-4.jpg" | "/img/paddock-card.webp" | "/img/sharepoint.jpg" | "/img/sharepoint.svg" | "/img/soil-card.webp" | "/img/soil.jpg" | "/img/tom-and-alex.jpg" | "/img/tractor-1.jpg" | "/img/weather-station.webp" | "/robots.txt" | "/samples/soil-tests.csv" | "/video/pysn.mp4" | string & {};
 	}
 }

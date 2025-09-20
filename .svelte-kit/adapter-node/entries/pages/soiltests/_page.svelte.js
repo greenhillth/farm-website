@@ -42,18 +42,35 @@ function ConfirmModal($$payload, $$props) {
   });
   pop();
 }
+const metricColumns = [
+  { key: "P", label: "P" },
+  { key: "K", label: "K" },
+  { key: "Ca", label: "Ca" },
+  { key: "Mg", label: "Mg" },
+  { key: "S", label: "S" },
+  { key: "Na", label: "Na" },
+  { key: "ph_water", label: "pH (H2O)" }
+];
+const optionalColumns = [
+  { key: "olsen_P", label: "Olsen P" },
+  { key: "Cl", label: "Cl" },
+  { key: "Cu", label: "Cu" },
+  { key: "Fe", label: "Fe" },
+  { key: "Mn", label: "Mn" },
+  { key: "Zn", label: "Zn" },
+  { key: "B", label: "B" },
+  { key: "Al", label: "Al" },
+  { key: "EC", label: "EC" },
+  { key: "ph_cacl2", label: "pH (CaCl₂)" },
+  { key: "buffer_pH", label: "Buffer pH" },
+  { key: "total_C", label: "Total C" },
+  { key: "total_N", label: "Total N" },
+  { key: "soil_depth_from", label: "Depth from" },
+  { key: "soil_depth_to", label: "Depth to" }
+];
 function _page($$payload, $$props) {
   push();
   let filtered;
-  const metricColumns = [
-    { key: "P", label: "P" },
-    { key: "K", label: "K" },
-    { key: "Ca", label: "Ca" },
-    { key: "Mg", label: "Mg" },
-    { key: "S", label: "S" },
-    { key: "Na", label: "Na" },
-    { key: "pH", label: "pH (H2O)" }
-  ];
   let tests = [];
   let q = "";
   let isEditMode = false;
@@ -72,15 +89,132 @@ function _page($$payload, $$props) {
     toastTimeouts.forEach((timeout) => clearTimeout(timeout));
     toastTimeouts.clear();
   });
-  let manualMetrics = { P: "", K: "", Ca: "", Mg: "", S: "", Na: "", pH: "" };
-  selectedCount = selectedIds.size;
-  metricColumns.reduce(
-    (count, { key }) => {
-      const value = manualMetrics[key];
-      return value && value.trim() ? count + 1 : count;
+  const csvMetricHeadings = [];
+  for (const column of metricColumns) {
+    csvMetricHeadings.push(column.key);
+  }
+  const optionalMetricHeadings = optionalColumns.map((column) => column.key);
+  const optionalQualifierHeadings = ["grower", "crop"];
+  const csvSections = [
+    {
+      id: "core-headings",
+      title: "Core headings",
+      defaultOpen: true,
+      rows: [
+        {
+          headings: ["fieldID"],
+          required: true,
+          datatype: "Whole number (e.g. 101)",
+          description: "Matches the paddock Field ID shown in Soil tests. Numbers only."
+        },
+        {
+          headings: ["name_sample"],
+          required: true,
+          datatype: 'Text (e.g. "North Flats 2024")',
+          description: "Friendly lab sample name."
+        },
+        {
+          headings: ["id_sample", "sample_id"],
+          required: true,
+          datatype: "Whole number (e.g. 552301)",
+          description: 'Lab reference number (either "id_sample" or "sample_id").'
+        },
+        {
+          headings: ["sample_date"],
+          required: true,
+          datatype: "Date in YYYY-MM-DD",
+          description: "ISO date. Format as text in spreadsheets to avoid auto changes."
+        },
+        {
+          headings: ["client"],
+          datatype: "Text (optional)",
+          description: "Requester name. Leave blank if none."
+        }
+      ]
     },
-    0
+    {
+      id: "metric-headings",
+      title: "Metric headings",
+      tone: "metrics",
+      defaultOpen: true,
+      note: "Include at least one metric column. Leave unused metric cells blank.",
+      rows: [
+        {
+          headings: csvMetricHeadings,
+          datatype: "Decimal number (e.g. 56.7)",
+          description: "Soil nutrient metrics — include at least one column."
+        }
+      ]
+    },
+    {
+      id: "optional-metric-headings",
+      title: "Optional metric headings",
+      tone: "optional",
+      defaultOpen: false,
+      note: "Extra numeric metrics exported by some labs. Include them when available; otherwise omit the columns.",
+      rows: [
+        {
+          headings: optionalMetricHeadings,
+          datatype: "Numeric values (see lab units)",
+          description: "Supplementary lab metrics such as Cl, Cu, Fe, Mn, Zn, EC, buffer pH, and depth readings."
+        }
+      ]
+    },
+    {
+      id: "optional-qualifiers",
+      title: "Optional qualifiers",
+      tone: "optional",
+      defaultOpen: false,
+      note: "Context columns that appear in some exports. Safe to omit if your lab does not provide them.",
+      rows: [
+        {
+          headings: Array.from(optionalQualifierHeadings),
+          datatype: "Text",
+          description: "High-level context such as grower or crop."
+        }
+      ]
+    }
+  ];
+  csvSections.reduce(
+    (accumulator, section) => {
+      accumulator[section.id] = section.defaultOpen ?? true;
+      return accumulator;
+    },
+    {}
   );
+  let manualForm = {
+    fieldId: ""
+  };
+  function createEmptyMetrics() {
+    const empty = {};
+    for (const column of metricColumns) {
+      empty[column.key] = "";
+    }
+    return empty;
+  }
+  let manualMetrics = createEmptyMetrics();
+  const MAX_PADDOCK_SUGGESTIONS = 50;
+  let paddockOptions = [];
+  selectedCount = selectedIds.size;
+  (() => {
+    const value = manualForm.fieldId;
+    const query = value.trim();
+    if (!query) {
+      return paddockOptions.slice(0, MAX_PADDOCK_SUGGESTIONS);
+    }
+    const lowered = query.toLowerCase();
+    return paddockOptions.filter((option) => {
+      if (option.id.toString().includes(query)) return true;
+      if (option.name.toLowerCase().includes(lowered)) return true;
+      return option.farm ? option.farm.toLowerCase().includes(lowered) : false;
+    }).slice(0, MAX_PADDOCK_SUGGESTIONS);
+  })();
+  {
+    for (const column of metricColumns) {
+      const value = manualMetrics[column.key];
+      if (value && value.trim()) ;
+    }
+  }
   filtered = tests;
   if (toasts.length) {
     $$payload.out.push("<!--[-->");

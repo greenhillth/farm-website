@@ -9585,72 +9585,181 @@ function requireLeafletSrc() {
   return leafletSrc$1.exports;
 }
 requireLeafletSrc();
+const quickLinks = [
+  { href: "/", label: "Back to home" },
+  { href: "/paddocks", label: "Paddock manager" },
+  { href: "/soiltests", label: "Soil tests" },
+  { href: "/weather", label: "Weather station" }
+];
+const EMPTY_LEGEND_PERCENTS = {
+  lowPct: 0,
+  highPct: 0,
+  showOpt: false,
+  optLoPct: 0,
+  optHiPct: 0,
+  optWidth: 0,
+  optMidPct: 0
+};
+const EMPTY_LEGEND_DETAILS = {
+  min: { value: null, fields: [] },
+  max: { value: null, fields: [] },
+  opt: {
+    range: null,
+    within: { count: 0, pct: 0, total: 0 }
+  }
+};
+const VIRIDIS_STOPS = ["#440154", "#414487", "#2a788e", "#22a884", "#7ad151", "#fde725"];
+const VIRIDIS_GRADIENT = `linear-gradient(to right, ${VIRIDIS_STOPS.map((color, index) => {
+  const pct = 100 * index / (VIRIDIS_STOPS.length - 1);
+  return `${color} ${pct.toFixed(1)}%`;
+}).join(", ")})`;
+function clamp(value, min = 0, max = 1) {
+  if (Number.isNaN(value)) return min;
+  if (max < min) {
+    const tmp = min;
+    min = max;
+    max = tmp;
+  }
+  return Math.max(min, Math.min(max, value));
+}
+function toPct(value, min, max) {
+  if (!Number.isFinite(value) || !Number.isFinite(min) || !Number.isFinite(max)) return 0;
+  if (max === min) return 0;
+  return clamp((value - min) / (max - min) * 100, 0, 100);
+}
+const valueFormatter = new Intl.NumberFormat("en-AU", {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 0
+});
+const percentFormatter = new Intl.NumberFormat("en-AU", {
+  maximumFractionDigits: 1,
+  minimumFractionDigits: 0
+});
+function formatLegendTick(value) {
+  if (value === null || value === void 0 || Number.isNaN(value)) return "–";
+  return valueFormatter.format(value);
+}
+function formatPercent(value) {
+  if (value === null || value === void 0 || Number.isNaN(value)) return "0%";
+  return `${percentFormatter.format(value)}%`;
+}
+function formatFieldList(fields, limit = 5) {
+  if (!fields || fields.length === 0) return "None";
+  if (fields.length <= limit) return fields.join(", ");
+  const shown = fields.slice(0, limit).join(", ");
+  return `${shown}, +${fields.length - limit} more`;
+}
+function computeMetricStats(metric, samples) {
+  if (!metric || metric.id === "none") return null;
+  const values = [];
+  samples.forEach((sample) => {
+    const value = sample.metrics[metric.id];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      values.push(value);
+    }
+  });
+  if (values.length === 0) return null;
+  values.sort((a, b) => a - b);
+  const min = values[0];
+  const max = values[values.length - 1];
+  const median = values[Math.floor(values.length / 2)];
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  return { min, max, median, mean, count: values.length };
+}
+function getFieldDisplayName(fieldId, sample, identities) {
+  const identity = identities.get(fieldId);
+  if (identity?.name && identity.name !== "Unnamed paddock") return identity.name;
+  if (identity?.displayId && identity.displayId !== "–") return identity.displayId;
+  if (sample?.sampleName) return sample.sampleName;
+  return Number.isInteger(fieldId) ? fieldId.toString() : "Unknown paddock";
+}
+function computeLegendDetails(metric, stats, samples, identities) {
+  if (!stats || metric.id === "none") return EMPTY_LEGEND_DETAILS;
+  const tolerance = 1e-6;
+  const minValue = stats.min;
+  const maxValue = stats.max;
+  const minFields = [];
+  const maxFields = [];
+  let total = 0;
+  let withinCount = 0;
+  const [optLoRaw, optHiRaw] = metric.range_optimal ?? [void 0, void 0];
+  const hasOptRange = typeof optLoRaw === "number" && typeof optHiRaw === "number" && optHiRaw > optLoRaw;
+  const optRange = hasOptRange ? [optLoRaw, optHiRaw] : null;
+  samples.forEach((sample, fieldId) => {
+    const value = sample.metrics[metric.id];
+    if (typeof value !== "number" || !Number.isFinite(value)) return;
+    total += 1;
+    if (Math.abs(value - minValue) <= tolerance) {
+      minFields.push(getFieldDisplayName(fieldId, sample, identities));
+    }
+    if (Math.abs(value - maxValue) <= tolerance) {
+      maxFields.push(getFieldDisplayName(fieldId, sample, identities));
+    }
+    if (optRange) {
+      const [optLo, optHi] = optRange;
+      if (value >= optLo - tolerance && value <= optHi + tolerance) {
+        withinCount += 1;
+      }
+    }
+  });
+  return {
+    min: {
+      value: minFields.length ? minValue : null,
+      fields: minFields
+    },
+    max: {
+      value: maxFields.length ? maxValue : null,
+      fields: maxFields
+    },
+    opt: {
+      range: optRange,
+      within: {
+        count: withinCount,
+        pct: total > 0 ? withinCount / total * 100 : 0,
+        total
+      }
+    }
+  };
+}
+function computeLegendPercents(metric, stats, scaleReady) {
+  if (!scaleReady || !stats) return EMPTY_LEGEND_PERCENTS;
+  const { c_min: cMinRaw, c_max: cMaxRaw } = metric;
+  if (typeof cMinRaw !== "number" || typeof cMaxRaw !== "number") {
+    return EMPTY_LEGEND_PERCENTS;
+  }
+  const cmin = cMinRaw;
+  const cmax = cMaxRaw;
+  const lowPct = toPct(stats.min, cmin, cmax);
+  const highPct = toPct(stats.max, cmin, cmax);
+  const [optLoRaw, optHiRaw] = metric.range_optimal ?? [void 0, void 0];
+  const showOpt = Number.isFinite(optLoRaw) && Number.isFinite(optHiRaw) && typeof optLoRaw === "number" && typeof optHiRaw === "number" && optHiRaw > optLoRaw;
+  let optLoPct = 0;
+  let optHiPct = 0;
+  let optWidth = 0;
+  let optMidPct = 0;
+  if (showOpt) {
+    const optLo = optLoRaw;
+    const optHi = optHiRaw;
+    optLoPct = toPct(optLo, cmin, cmax);
+    optHiPct = toPct(optHi, cmin, cmax);
+    optWidth = Math.max(0, optHiPct - optLoPct);
+    optMidPct = (optLoPct + optHiPct) / 2;
+  }
+  return {
+    lowPct,
+    highPct,
+    showOpt,
+    optLoPct,
+    optHiPct,
+    optWidth,
+    optMidPct
+  };
+}
 function _page($$payload, $$props) {
   push();
   var $$store_subs;
   let activeMetricObj;
-  const quickLinks = [
-    { href: "/", label: "Back to home" },
-    { href: "/paddocks", label: "Paddock manager" },
-    { href: "/soiltests", label: "Soil tests" },
-    { href: "/weather", label: "Weather station" }
-  ];
-  const EMPTY_LEGEND_PERCENTS = {
-    lowPct: 0,
-    highPct: 0,
-    showOpt: false,
-    optLoPct: 0,
-    optHiPct: 0,
-    optWidth: 0,
-    optMidPct: 0
-  };
-  const EMPTY_LEGEND_DETAILS = {
-    min: { value: null, fields: [] },
-    max: { value: null, fields: [] },
-    opt: { range: null, within: { count: 0, pct: 0, total: 0 } }
-  };
-  const VIRIDIS_STOPS = [
-    "#440154",
-    "#414487",
-    "#2a788e",
-    "#22a884",
-    "#7ad151",
-    "#fde725"
-  ];
-  const VIRIDIS_GRADIENT = `linear-gradient(to right, ${VIRIDIS_STOPS.map((color, index) => {
-    const pct = 100 * index / (VIRIDIS_STOPS.length - 1);
-    return `${color} ${pct.toFixed(1)}%`;
-  }).join(", ")})`;
-  function clamp(value, min = 0, max = 1) {
-    if (Number.isNaN(value)) return min;
-    if (max < min) {
-      const tmp = min;
-      min = max;
-      max = tmp;
-    }
-    return Math.max(min, Math.min(max, value));
-  }
-  function toPct(value, min, max) {
-    if (!Number.isFinite(value) || !Number.isFinite(min) || !Number.isFinite(max)) return 0;
-    if (max === min) return 0;
-    return clamp((value - min) / (max - min) * 100, 0, 100);
-  }
-  const valueFormatter = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2, minimumFractionDigits: 0 });
-  const percentFormatter = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 1, minimumFractionDigits: 0 });
-  function formatLegendTick(value) {
-    if (value === null || value === void 0 || Number.isNaN(value)) return "–";
-    return valueFormatter.format(value);
-  }
-  function formatPercent(value) {
-    if (value === null || value === void 0 || Number.isNaN(value)) return "0%";
-    return `${percentFormatter.format(value)}%`;
-  }
-  function formatFieldList(fields, limit = 5) {
-    if (!fields || fields.length === 0) return "None";
-    if (fields.length <= limit) return fields.join(", ");
-    const shown = fields.slice(0, limit).join(", ");
-    return `${shown}, +${fields.length - limit} more`;
-  }
+  const quickLinks$1 = quickLinks;
   const metricOptions = CONFIG.soilMetrics;
   if (metricOptions.length === 0) {
     throw new Error("CONFIG.soilMetrics is empty; need at least one metric.");
@@ -9690,106 +9799,6 @@ function _page($$payload, $$props) {
   let legendDetails = EMPTY_LEGEND_DETAILS;
   let paddockIdentities = /* @__PURE__ */ new Map();
   const tileLayerCache = /* @__PURE__ */ new Map();
-  function computeMetricStats(metric, version) {
-    if (!metric || metric.id === "none") return null;
-    const values = [];
-    soilMetricsByField.forEach((sample) => {
-      const value = sample.metrics[metric.id];
-      if (typeof value === "number" && Number.isFinite(value)) {
-        values.push(value);
-      }
-    });
-    if (values.length === 0) return null;
-    values.sort((a, b) => a - b);
-    const min = values[0];
-    const max = values[values.length - 1];
-    const median = values[Math.floor(values.length / 2)];
-    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
-    return { min, max, median, mean, count: values.length };
-  }
-  function getFieldDisplayName(fieldId, sample, identities) {
-    const identity = identities.get(fieldId);
-    if (identity?.name && identity.name !== "Unnamed paddock") return identity.name;
-    if (identity?.displayId && identity.displayId !== "–") return identity.displayId;
-    if (sample?.sampleName) return sample.sampleName;
-    return fieldId || "Unknown paddock";
-  }
-  function computeLegendDetails(metric, stats, samples, identities) {
-    if (!stats || metric.id === "none") return EMPTY_LEGEND_DETAILS;
-    const tolerance = 1e-6;
-    const minValue = stats.min;
-    const maxValue = stats.max;
-    const minFields = [];
-    const maxFields = [];
-    let total = 0;
-    let withinCount = 0;
-    const [optLoRaw, optHiRaw] = metric.range_optimal ?? [void 0, void 0];
-    const hasOptRange = typeof optLoRaw === "number" && typeof optHiRaw === "number" && optHiRaw > optLoRaw;
-    const optRange = hasOptRange ? [optLoRaw, optHiRaw] : null;
-    samples.forEach((sample, fieldId) => {
-      const value = sample.metrics[metric.id];
-      if (typeof value !== "number" || !Number.isFinite(value)) return;
-      total += 1;
-      if (Math.abs(value - minValue) <= tolerance) {
-        minFields.push(getFieldDisplayName(fieldId, sample, identities));
-      }
-      if (Math.abs(value - maxValue) <= tolerance) {
-        maxFields.push(getFieldDisplayName(fieldId, sample, identities));
-      }
-      if (optRange) {
-        const [optLo, optHi] = optRange;
-        if (value >= optLo - tolerance && value <= optHi + tolerance) {
-          withinCount += 1;
-        }
-      }
-    });
-    return {
-      min: { value: minFields.length ? minValue : null, fields: minFields },
-      max: { value: maxFields.length ? maxValue : null, fields: maxFields },
-      opt: {
-        range: optRange,
-        within: {
-          count: withinCount,
-          pct: total > 0 ? withinCount / total * 100 : 0,
-          total
-        }
-      }
-    };
-  }
-  function computeLegendPercents(metric, stats, scaleReady) {
-    if (!scaleReady || !stats) return EMPTY_LEGEND_PERCENTS;
-    const { c_min: cMinRaw, c_max: cMaxRaw } = metric;
-    if (typeof cMinRaw !== "number" || typeof cMaxRaw !== "number") {
-      return EMPTY_LEGEND_PERCENTS;
-    }
-    const cmin = cMinRaw;
-    const cmax = cMaxRaw;
-    const lowPct = toPct(stats.min, cmin, cmax);
-    const highPct = toPct(stats.max, cmin, cmax);
-    const [optLoRaw, optHiRaw] = metric.range_optimal ?? [void 0, void 0];
-    const showOpt = Number.isFinite(optLoRaw) && Number.isFinite(optHiRaw) && typeof optLoRaw === "number" && typeof optHiRaw === "number" && optHiRaw > optLoRaw;
-    let optLoPct = 0;
-    let optHiPct = 0;
-    let optWidth = 0;
-    let optMidPct = 0;
-    if (showOpt) {
-      const optLo = optLoRaw;
-      const optHi = optHiRaw;
-      optLoPct = toPct(optLo, cmin, cmax);
-      optHiPct = toPct(optHi, cmin, cmax);
-      optWidth = Math.max(0, optHiPct - optLoPct);
-      optMidPct = (optLoPct + optHiPct) / 2;
-    }
-    return {
-      lowPct,
-      highPct,
-      showOpt,
-      optLoPct,
-      optHiPct,
-      optWidth,
-      optMidPct
-    };
-  }
   onDestroy(() => {
     tileLayerCache.forEach((layer) => layer.remove());
     tileLayerCache.clear();
@@ -9809,7 +9818,9 @@ function _page($$payload, $$props) {
   }
   activeMetricObj = metricsById.get(activeMetric);
   metricScaleReady = activeMetricObj.id !== "none" && typeof activeMetricObj.c_min === "number" && typeof activeMetricObj.c_max === "number" && activeMetricObj.c_max > activeMetricObj.c_min;
-  activeMetricStats = computeMetricStats(activeMetricObj);
+  {
+    activeMetricStats = computeMetricStats(activeMetricObj, soilMetricsByField);
+  }
   legendPercents = computeLegendPercents(activeMetricObj, activeMetricStats, metricScaleReady);
   legendDetails = computeLegendDetails(activeMetricObj, activeMetricStats, soilMetricsByField, paddockIdentities);
   isStreetsBase = activeBaseLayer === "streets";
@@ -9826,7 +9837,7 @@ function _page($$payload, $$props) {
     baseLayerConfigs
   );
   const each_array_1 = ensure_array_like(metricOptions);
-  const each_array_2 = ensure_array_like(quickLinks);
+  const each_array_2 = ensure_array_like(quickLinks$1);
   $$payload.out.push(`<div class="map-shell relative flex h-dvh min-h-[540px] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"><aside${attr_class(`map-sidebar relative flex h-full shrink-0 overflow-visible transition-[width] duration-300 ease-in-out ${"w-80 max-w-full"}`, "svelte-w85nl5")}><div data-tooltip-boundary=""${attr_class(
     `sidebar-panel bg-panel/95 text-muted flex h-full w-full flex-col gap-6 border-r border-white/10 text-sm transition-[padding,opacity] duration-300 ease-in-out ${"pointer-events-auto overflow-x-visible overflow-y-auto px-6 py-6 opacity-100"}`,
     "svelte-w85nl5"

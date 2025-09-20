@@ -1,1 +1,0 @@
-import{aQ as a}from"./B5Olihw7.js";a();
