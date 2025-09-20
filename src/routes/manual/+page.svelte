@@ -104,7 +104,7 @@
 	const manualSteps = [
 		'Open the Soil tests page and select “Add soil test” in the top-right of the panel.',
 		'Stay on the default “Manual entry” tab.',
-		'Fill in the required Field ID, Sample name and Sample date fields. Add Sample ID or Client details if you have them.',
+		'Fill in the required Field ID, Sample name, Sample ID and Sample date fields. The Field ID box suggests matching paddocks as you type. Add Client details if you have them.',
 		'Enter at least one metric (P, K, Ca, Mg, S, Na or pH (H₂O)). The placeholders show the typical format from the lab.',
 		'Press “Save test”. The modal closes and the new sample appears at the top of the table.'
 	] as const;
@@ -119,7 +119,7 @@
 	const csvHeaders = [
 		{
 			label: 'fieldID',
-			description: 'Required. Matches the Field ID displayed under each paddock name.'
+			description: 'Required. Integer paddock identifier matching the ID displayed under each paddock name.'
 		},
 		{
 			label: 'name_sample',
@@ -127,8 +127,7 @@
 		},
 		{
 			label: 'sample_id / sampleId',
-			description:
-				'Optional lab reference. Use either style; leave blank if the lab did not supply one.'
+			description: 'Required lab reference. Supply the integer ID exactly as provided by the lab.'
 		},
 		{
 			label: 'sample_date',

@@ -14,14 +14,53 @@ export type MetricKey = (typeof metricColumns)[number]['key'];
 
 export type SoilTest = {
 	id: number;
-	fieldId: string;
+	fieldId: number;
 	paddockName: string;
 	farm?: string;
-	sampleId?: string | null;
+	sampleId: number;
 	sampleName?: string | null;
 	sampleDate?: string | null;
 	client?: string | null;
 	metrics: Partial<Record<MetricKey, number>>;
+};
+
+
+export type RawSoilTestRow = {
+	id?: number | string | null;
+	fieldID?: number | string | null;
+	P?: number | string | null;
+	p?: number | string | null;
+	K?: number | string | null;
+	k?: number | string | null;
+	Ca?: number | string | null;
+	CA?: number | string | null;
+	Mg?: number | string | null;
+	MG?: number | string | null;
+	S?: number | string | null;
+	s?: number | string | null;
+	Na?: number | string | null;
+	NA?: number | string | null;
+	sodium?: number | string | null;
+	ph_water?: number | string | null;
+	pH?: number | string | null;
+	PH?: number | string | null;
+	farm?: string | number | null;
+	id_sample?: number | string | null;
+	name_sample?: string | null;
+	sample_date?: string | null;
+	client?: string | null;
+};
+
+
+export type PaddockSummary = {
+	id: number;
+	name: string;
+	farm?: string;
+};
+
+export type FetchSoilTestsResult = {
+	tests: SoilTest[];
+	paddocks: PaddockSummary[];
 };
 
 export type BulkDeleteResponse = {
@@ -86,6 +125,11 @@ export const toNumber = (value: unknown) => {
 	return Number.isFinite(num) ? num : undefined;
 };
 
+export const toInteger = (value: unknown) => {
+	const num = Number(value);
+	return Number.isInteger(num) ? num : undefined;
+};
+
 export function formatNumber(value: number | undefined) {
 	return value === undefined ? '-' : numberFormat.format(value);
 }
@@ -102,10 +146,10 @@ export function formatDate(value: string | null | undefined) {
 }
 
 export function normalisePaddockId(value: unknown) {
-	return value ? String(value) : '';
+	return toInteger(value);
 }
 
-export async function fetchSoilTests(): Promise<SoilTest[]> {
+export async function fetchSoilTests(): Promise<FetchSoilTestsResult> {
 	const [testsRes, paddocksRes] = await Promise.all([
 		fetch(CONFIG.backend.tests),
 		fetch(CONFIG.backend.farm)
@@ -116,19 +160,24 @@ export async function fetchSoilTests(): Promise<SoilTest[]> {
 
 	const [testsJson, paddocksJson] = await Promise.all([testsRes.json(), paddocksRes.json()]);
 
-	const paddockLookup = new Map<string, { name: string; farm?: string }>();
+	const paddockLookup = new Map<number, { name: string; farm?: string }>();
 	for (const feature of paddocksJson?.features ?? []) {
 		const props = feature?.properties ?? {};
-		const id = normalisePaddockId(props.fieldID ?? props.ADSFLDID ?? props.FIELDID ?? props.id);
-		if (!id) continue;
+		const id = normalisePaddockId(
+			props.fieldID ?? props.ADSFLDID ?? props.FIELDID ?? props.id
+		);
+		if (id === undefined) continue;
 		const name = String(props.fieldName ?? props.FIELDNAME ?? 'Unnamed paddock');
 		const farm = props.FARM ? String(props.FARM) : undefined;
 		paddockLookup.set(id, { name, farm });
 	}
 
-	return (testsJson ?? [])
-		.map((row: any) => {
+	const tests = (testsJson ?? [])
+		.map((row: RawSoilTestRow) => {
 			const fieldId = normalisePaddockId(row.fieldID);
+			if (fieldId === undefined) {
+				throw new Error('Received soil test without a valid integer field ID');
+			}
 			const paddock = paddockLookup.get(fieldId);
 			const metrics: SoilTest['metrics'] = {
 				P: toNumber(row.P ?? row.p),
@@ -140,12 +189,17 @@ export async function fetchSoilTests(): Promise<SoilTest[]> {
 				pH: toNumber(row.ph_water ?? row.pH ?? row.PH)
 			};
 
+			const sampleId = toInteger(row.id_sample);
+			if (sampleId === undefined) {
+				throw new Error('Received soil test without a valid integer sample ID');
+			}
+
 			return {
 				id: Number(row.id ?? 0),
 				fieldId,
 				paddockName: paddock?.name ?? 'Unknown paddock',
 				farm: paddock?.farm ?? (row.farm ? String(row.farm) : undefined),
-				sampleId: row.id_sample ?? null,
+				sampleId,
 				sampleName: row.name_sample ?? null,
 				sampleDate: row.sample_date ?? null,
 				client: row.client ?? null,
@@ -157,4 +211,19 @@ export async function fetchSoilTests(): Promise<SoilTest[]> {
 			const bDate = b.sampleDate ? new Date(b.sampleDate).getTime() : 0;
 			return bDate - aDate;
 		});
+
+	for (const test of tests) {
+		if (!paddockLookup.has(test.fieldId)) {
+			paddockLookup.set(test.fieldId, {
+				name: test.paddockName,
+				farm: test.farm ?? undefined
+			});
+		}
+	}
+
+	const paddocks: PaddockSummary[] = Array.from(paddockLookup.entries())
+		.map(([id, details]) => ({ id, name: details.name, farm: details.farm }))
+		.sort((a, b) => a.id - b.id);
+
+	return { tests, paddocks };
 }

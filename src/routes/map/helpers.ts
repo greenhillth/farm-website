@@ -23,7 +23,7 @@ export type BaseLayerConfig = {
 export type SoilTestRecord = Record<string, unknown>;
 
 export type NormalisedSoilSample = {
-	fieldId: string;
+	fieldId: number;
 	sampleDate: string | null;
 	sampleDateMs: number | null;
 	sampleName: string | null;
@@ -113,20 +113,22 @@ const FIELD_ID_KEYS = [
 	'paddock_id'
 ];
 
-export function normaliseFieldId(value: unknown): string {
-	if (value === null || value === undefined) return '';
+export function normaliseFieldId(value: unknown): number | null {
+	if (value === null || value === undefined) return null;
 	const text = String(value).trim();
-	return text;
+	if (text === '') return null;
+	const num = Number(text);
+	return Number.isInteger(num) ? num : null;
 }
 
-export function extractFieldId(record: SoilTestRecord): string {
+export function extractFieldId(record: SoilTestRecord): number | null {
 	for (const key of FIELD_ID_KEYS) {
 		if (key in record) {
 			const candidate = normaliseFieldId(record[key]);
-			if (candidate) return candidate;
+			if (candidate !== null) return candidate;
 		}
 	}
-	return '';
+	return null;
 }
 
 export function toNumber(value: unknown): number | null {
@@ -232,7 +234,8 @@ export function derivePaddockIdentity(props: Record<string, unknown>) {
 			candidate !== null && candidate !== undefined && String(candidate).trim() !== ''
 	);
 	const displayId = displayValue === undefined ? '–' : String(displayValue);
-	const fieldId = extractFieldId(props as SoilTestRecord) || normaliseFieldId(displayValue);
+	const fieldId =
+		extractFieldId(props as SoilTestRecord) ?? normaliseFieldId(displayValue);
 	return { name, displayId, fieldId };
 }
 
@@ -389,7 +392,7 @@ export function updatePaddockTooltip(layer: any, html: string) {
 
 export function computeMetricStats(
 	metric: MetricOption,
-	samples: Map<string, NormalisedSoilSample>
+	samples: Map<number, NormalisedSoilSample>
 ): MetricStats | null {
 	if (!metric || metric.id === 'none') return null;
 	const values: number[] = [];
@@ -409,22 +412,22 @@ export function computeMetricStats(
 }
 
 export function getFieldDisplayName(
-	fieldId: string,
+	fieldId: number,
 	sample: NormalisedSoilSample | undefined,
-	identities: Map<string, { name: string; displayId: string }>
+	identities: Map<number, { name: string; displayId: string }>
 ): string {
 	const identity = identities.get(fieldId);
 	if (identity?.name && identity.name !== 'Unnamed paddock') return identity.name;
 	if (identity?.displayId && identity.displayId !== '–') return identity.displayId;
 	if (sample?.sampleName) return sample.sampleName;
-	return fieldId || 'Unknown paddock';
+	return Number.isInteger(fieldId) ? fieldId.toString() : 'Unknown paddock';
 }
 
 export function computeLegendDetails(
 	metric: MetricOption,
 	stats: MetricStats | null,
-	samples: Map<string, NormalisedSoilSample>,
-	identities: Map<string, { name: string; displayId: string }>
+	samples: Map<number, NormalisedSoilSample>,
+	identities: Map<number, { name: string; displayId: string }>
 ): LegendDetails {
 	if (!stats || metric.id === 'none') return EMPTY_LEGEND_DETAILS;
 	const tolerance = 1e-6;

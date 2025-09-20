@@ -5,7 +5,7 @@ The frontend soil test uploader expects two POST endpoints. Both live under the 
 ## 1. Manual Entry Endpoint – `POST /api/soil-tests/manual`
 
 ### Purpose
-Persist a single soil test that the user entered through the manual form. The frontend already validates mandatory fields (field id, sample name, sample date) and ensures at least one metric value is provided, but the backend must still repeat validation.
+Persist a single soil test that the user entered through the manual form. The frontend already validates mandatory fields (field id, sample name, sample ID, sample date) and ensures at least one metric value is provided, but the backend must still repeat validation.
 
 ### Request
 * **Method**: `POST`
@@ -14,9 +14,9 @@ Persist a single soil test that the user entered through the manual form. The fr
 
 ```json
 {
-  "fieldId": "4251583",          // string, required
+  "fieldId": 4251583,             // integer, required
   "sampleName": "Cemetery core", // string, required
-  "sampleId": "14005725",        // string, optional
+  "sampleId": 14005725,           // integer, required
   "sampleDate": "2014-07-23",    // string (ISO-8601 date), required
   "client": "Botanical Resources", // string, optional
   "metrics": {                      // object, at least one key must be present
@@ -32,11 +32,12 @@ Persist a single soil test that the user entered through the manual form. The fr
 ```
 
 ### Validation Rules
-1. `fieldId`, `sampleName`, and `sampleDate` are required non-empty strings.
-2. `sampleDate` must parse cleanly to a `date` (UTC) or `datetime.date`.
-3. `metrics` must contain at least one of the supported metric keys (`P`, `K`, `Ca`, `Mg`, `S`, `Na`, `pH`). Reject payloads with no metrics or non-numeric values.
-4. Values should be stored in consistent units; the frontend passes raw lab values.
-5. Optionally, use the `fieldId` to join with the paddock table and confirm the field exists; return 404 if it doesn’t, or 400 with a helpful message.
+1. `fieldId`, `sampleName`, `sampleId`, and `sampleDate` are required; trim whitespace on the string fields.
+2. `fieldId` and `sampleId` must be integers. Reject non-numeric or fractional values.
+3. `sampleDate` must parse cleanly to a `date` (UTC) or `datetime.date`.
+4. `metrics` must contain at least one of the supported metric keys (`P`, `K`, `Ca`, `Mg`, `S`, `Na`, `pH`). Reject payloads with no metrics or non-numeric values.
+5. Values should be stored in consistent units; the frontend passes raw lab values.
+6. Optionally, use the `fieldId` to join with the paddock table and confirm the field exists; return 404 if it doesn’t, or 400 with a helpful message.
 
 ### Suggested Pydantic Models
 
@@ -66,16 +67,16 @@ class MetricsPayload(BaseModel):
         return any(getattr(self, key) is not None for key in METRIC_KEYS)
 
 class ManualTestPayload(BaseModel):
-    field_id: str = Field(..., alias="fieldId")
+    field_id: int = Field(..., alias="fieldId")
     sample_name: str = Field(..., alias="sampleName")
-    sample_id: Optional[str] = Field(None, alias="sampleId")
+    sample_id: int = Field(..., alias="sampleId")
     sample_date: date = Field(..., alias="sampleDate")
     client: Optional[str] = None
     metrics: MetricsPayload
 
-    @validator("field_id", "sample_name")
+    @validator("sample_name", pre=True)
     def non_empty(cls, v):
-        if not v.strip():
+        if isinstance(v, str) and not v.strip():
             raise ValueError("must not be empty")
         return v
 
@@ -94,7 +95,7 @@ class ManualTestPayload(BaseModel):
 ```json
 {
   "id": 123,
-  "fieldId": "4251583",
+  "fieldId": 4251583,
   "sampleName": "Cemetery core",
   "sampleDate": "2014-07-23",
   "client": "Botanical Resources",
@@ -123,7 +124,7 @@ Accept a CSV file exported from the lab, parse every row into soil test records,
 * Header row present. Recognised columns:
   * `id` (optional)
   * `fieldID` (required) – must map to paddock table.
-  * `id_sample` (optional)
+  * `id_sample` (required, integer)
   * `name_sample` (required for readability)
   * `sample_date` (required) – parse to ISO date.
   * `client`, `grower`, `crop` (optional metadata)

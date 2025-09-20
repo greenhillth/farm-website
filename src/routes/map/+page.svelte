@@ -37,7 +37,8 @@ import {
 	computeLegendPercents,
 	EMPTY_LEGEND_DETAILS,
 	EMPTY_LEGEND_PERCENTS,
-	extractFieldId
+	extractFieldId,
+	type SoilTestRecord
 } from './helpers';
 
 const quickLinks = helperQuickLinks;
@@ -94,7 +95,7 @@ let activeBase: BaseLayerConfig | undefined = baseLayerConfigs.find(
 	(layer) => layer.id === activeBaseLayer
 );
 let paddockCount = 0;
-let soilMetricsByField = new Map<string, NormalisedSoilSample>();
+let soilMetricsByField = new Map<number, NormalisedSoilSample>();
 let soilMetricsVersion = 0;
 let soilDataLoading = false;
 let soilDataError: string | null = null;
@@ -105,7 +106,7 @@ let metricScaleReady = false;
 let isStreetsBase = activeBaseLayer === 'streets';
 let legendPercents: LegendPercents = EMPTY_LEGEND_PERCENTS;
 let legendDetails: LegendDetails = EMPTY_LEGEND_DETAILS;
-let paddockIdentities = new Map<string, { name: string; displayId: string }>();
+let paddockIdentities = new Map<number, { name: string; displayId: string }>();
 
 // Derived active metric object + message (no O(n) lookups on render)
 $: activeMetricObj = metricsById.get(activeMetric)!; // safe due to guards below
@@ -178,12 +179,12 @@ async function loadFarmData() {
 		const geojson = await response.json();
 		farmData = geojson;
 		paddockCount = Array.isArray(geojson?.features) ? geojson.features.length : 0;
-		paddockIdentities = new Map();
+		paddockIdentities = new Map<number, { name: string; displayId: string }>();
 		if (Array.isArray(geojson?.features)) {
 			for (const feature of geojson.features) {
 				const props = (feature?.properties ?? {}) as Record<string, unknown>;
 				const identity = derivePaddockIdentity(props);
-				if (identity.fieldId) {
+				if (typeof identity.fieldId === 'number' && Number.isInteger(identity.fieldId)) {
 					paddockIdentities.set(identity.fieldId, {
 						name: identity.name,
 						displayId: identity.displayId
@@ -238,7 +239,7 @@ async function loadSoilTests(force = false) {
 	} catch (err) {
 		console.error('Failed to load soil test data', err);
 		soilDataError = err instanceof Error ? err.message : 'Failed to load soil test data.';
-		soilMetricsByField = new Map();
+		soilMetricsByField = new Map<number, NormalisedSoilSample>();
 	} finally {
 		soilDataLoading = false;
 		soilMetricsVersion += 1;
@@ -246,12 +247,12 @@ async function loadSoilTests(force = false) {
 	}
 }
 
-function buildSoilMetricIndex(records: SoilTestRecord[]): Map<string, NormalisedSoilSample> {
-	const next = new Map<string, NormalisedSoilSample>();
+function buildSoilMetricIndex(records: SoilTestRecord[]): Map<number, NormalisedSoilSample> {
+	const next = new Map<number, NormalisedSoilSample>();
 	for (const entry of records) {
 		if (!entry || typeof entry !== 'object') continue;
 		const fieldId = extractFieldId(entry);
-		if (!fieldId) continue;
+		if (fieldId === null) continue;
 
 		const metrics: NormalisedSoilSample['metrics'] = {};
 		for (const metric of metricOptions) {
@@ -315,7 +316,10 @@ function applySoilMetricStyles() {
 	paddockLayer.eachLayer((layer: any) => {
 		const featureProps = (layer?.feature?.properties ?? {}) as Record<string, unknown>;
 		const { name, displayId, fieldId } = derivePaddockIdentity(featureProps);
-		const sample = fieldId ? soilMetricsByField.get(fieldId) : undefined;
+		const sample =
+			typeof fieldId === 'number' && Number.isInteger(fieldId)
+				? soilMetricsByField.get(fieldId)
+				: undefined;
 		const metricValue = sample?.metrics?.[metric.id];
 
 		let valueText: string | null = null;

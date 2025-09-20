@@ -17,6 +17,7 @@
 		type CsvProgressState,
 		type CsvProgressUpdate,
 		type MetricKey,
+		type PaddockSummary,
 		type SoilTest
 	} from './helpers';
 
@@ -226,9 +227,9 @@
 	let activeCsvJobId: string | null = null;
 
 	type ManualForm = {
-		fieldId: string;
+		fieldId: string | number;
 		sampleName: string;
-		sampleId: string;
+		sampleId: string | number;
 		sampleDate: string;
 		client: string;
 	};
@@ -252,6 +253,33 @@
 	};
 
 	let manualMetricCount = 0;
+
+	type PaddockOption = {
+		id: number;
+		name: string;
+		farm?: string;
+		label: string;
+	};
+
+	const MAX_PADDOCK_SUGGESTIONS = 50;
+	let paddockOptions: PaddockOption[] = [];
+	let fieldIdSuggestions: PaddockOption[] = [];
+
+	$: fieldIdSuggestions = (() => {
+		const value = manualForm.fieldId;
+		const query = typeof value === 'number' ? value.toString() : value.trim();
+		if (!query) {
+			return paddockOptions.slice(0, MAX_PADDOCK_SUGGESTIONS);
+		}
+		const lowered = query.toLowerCase();
+		return paddockOptions
+			.filter((option) => {
+				if (option.id.toString().includes(query)) return true;
+				if (option.name.toLowerCase().includes(lowered)) return true;
+				return option.farm ? option.farm.toLowerCase().includes(lowered) : false;
+			})
+			.slice(0, MAX_PADDOCK_SUGGESTIONS);
+	})();
 
 	$: manualMetricCount = metricColumns.reduce((count, { key }) => {
 		const value = manualMetrics[key];
@@ -379,14 +407,26 @@
 		resetCsvUploadState();
 	}
 
+	function toPaddockOptions(values: PaddockSummary[]): PaddockOption[] {
+		return values
+			.map((value) => ({
+				id: value.id,
+				name: value.name,
+				farm: value.farm,
+				label: `${value.id} — ${value.name}${value.farm ? ` (${value.farm})` : ''}`
+			}))
+			.sort((a, b) => a.id - b.id);
+	}
+
 	async function loadTests({ showSpinner = false }: { showSpinner?: boolean } = {}): Promise<boolean> {
 		if (showSpinner) {
 			loading = true;
 		}
 		error = null;
 		try {
-			const data = await fetchSoilTests();
-			tests = data;
+			const result = await fetchSoilTests();
+			tests = result.tests;
+			paddockOptions = toPaddockOptions(result.paddocks);
 			return true;
 		} catch (err: unknown) {
 			error = err instanceof Error ? err.message : 'Failed loading soil tests';
@@ -422,6 +462,45 @@
 		submitting = true;
 		uploadError = null;
 		try {
+			const fieldIdValue = manualForm.fieldId;
+			const fieldIdString =
+				typeof fieldIdValue === 'number' ? fieldIdValue.toString() : fieldIdValue.trim();
+			if (!fieldIdString) {
+				uploadError = 'Field ID is required.';
+				submitting = false;
+				return;
+			}
+			const parsedFieldId = Number(fieldIdString);
+			if (!Number.isInteger(parsedFieldId)) {
+				uploadError = 'Field ID must be an integer.';
+				submitting = false;
+				return;
+			}
+
+			const sampleIdValue = manualForm.sampleId;
+			const sampleIdString =
+				typeof sampleIdValue === 'number' ? sampleIdValue.toString() : sampleIdValue.trim();
+			if (!sampleIdString) {
+				uploadError = 'Sample ID is required.';
+				submitting = false;
+				return;
+			}
+			const parsedSampleId = Number(sampleIdString);
+			if (!Number.isInteger(parsedSampleId)) {
+				uploadError = 'Sample ID must be an integer.';
+				submitting = false;
+				return;
+			}
+
+			const duplicateSample = tests.some(
+				(test) => test.fieldId === parsedFieldId && test.sampleId === parsedSampleId
+			);
+			if (duplicateSample) {
+				uploadError = 'A soil test with this Field ID and Sample ID already exists.';
+				submitting = false;
+				return;
+			}
+
 			const preparedMetrics: Partial<Record<MetricKey, number>> = {};
 			let metricCount = 0;
 			for (const { key, label } of metricColumns) {
@@ -444,9 +523,9 @@
 			}
 
 			const payload = {
-				fieldId: manualForm.fieldId.trim(),
+				fieldId: parsedFieldId,
 				sampleName: manualForm.sampleName.trim(),
-				sampleId: manualForm.sampleId.trim() || undefined,
+				sampleId: parsedSampleId,
 				sampleDate: manualForm.sampleDate,
 				client: manualForm.client.trim() || undefined,
 				metrics: preparedMetrics
@@ -549,7 +628,7 @@
 
 	$: filtered = q
 		? tests.filter((test) => {
-			const haystack = `${test.paddockName} ${test.fieldId} ${test.sampleName ?? ''} ${test.sampleId ?? ''} ${test.farm ?? ''}`.toLowerCase();
+			const haystack = `${test.paddockName} ${test.fieldId} ${test.sampleName ?? ''} ${test.sampleId} ${test.farm ?? ''}`.toLowerCase();
 			return haystack.includes(q.toLowerCase());
 		})
 		: tests;
@@ -743,11 +822,19 @@
 							<span>Field ID <span class="required">(required)</span></span>
 							<input
 								type="text"
+								inputmode="numeric"
+								pattern="[0-9]*"
 								bind:value={manualForm.fieldId}
+								list="field-id-options"
 								required
 								class="modal__input"
 								placeholder="e.g. 4251583"
 							/>
+							<datalist id="field-id-options">
+								{#each fieldIdSuggestions as option (option.id)}
+									<option value={option.id} label={option.label}>{option.label}</option>
+								{/each}
+							</datalist>
 						</label>
 						<label class="modal__field">
 							<span>Sample name <span class="required">(required)</span></span>
@@ -760,12 +847,15 @@
 							/>
 						</label>
 						<label class="modal__field">
-							<span>Sample ID</span>
+							<span>Sample ID <span class="required">(required)</span></span>
 							<input
 								type="text"
+								inputmode="numeric"
+								pattern="[0-9]*"
 								bind:value={manualForm.sampleId}
+								required
 								class="modal__input"
-								placeholder="Lab ref (optional)"
+								placeholder="e.g. 100021"
 							/>
 						</label>
 						<label class="modal__field">
