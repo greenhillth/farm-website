@@ -88,7 +88,13 @@ function command(validate_or_fn, maybe_fn) {
   const __ = { type: "command", id: "", name: "" };
   const wrapper = (arg) => {
     const { event, state } = get_request_store();
-    if (!event.isRemoteRequest) {
+    if (state.is_endpoint_request) {
+      if (!["POST", "PUT", "PATCH", "DELETE"].includes(event.request.method)) {
+        throw new Error(
+          `Cannot call a command (\`${__.name}(${maybe_fn ? "..." : ""})\`) from a ${event.request.method} handler`
+        );
+      }
+    } else if (!event.isRemoteRequest) {
       throw new Error(
         `Cannot call a command (\`${__.name}(${maybe_fn ? "..." : ""})\`) during server-side rendering`
       );
@@ -323,6 +329,92 @@ function query(validate_or_fn, maybe_fn) {
   Object.defineProperty(wrapper, "__", { value: __ });
   return wrapper;
 }
+// @__NO_SIDE_EFFECTS__
+function batch(validate_or_fn, maybe_fn) {
+  const fn = maybe_fn ?? validate_or_fn;
+  const validate = create_validator(validate_or_fn, maybe_fn);
+  const __ = {
+    type: "query_batch",
+    id: "",
+    name: "",
+    run: (args) => {
+      const { event, state } = get_request_store();
+      return run_remote_function(
+        event,
+        state,
+        false,
+        args,
+        (array) => Promise.all(array.map(validate)),
+        fn
+      );
+    }
+  };
+  let batching = { args: [], resolvers: [] };
+  const wrapper = (arg) => {
+    if (prerendering) {
+      throw new Error(
+        `Cannot call query.batch '${__.name}' while prerendering, as prerendered pages need static data. Use 'prerender' from $app/server instead`
+      );
+    }
+    const { event, state } = get_request_store();
+    const promise = get_response(__.id, arg, state, () => {
+      return new Promise((resolve, reject) => {
+        batching.args.push(arg);
+        batching.resolvers.push({ resolve, reject });
+        if (batching.args.length > 1) return;
+        setTimeout(async () => {
+          const batched = batching;
+          batching = { args: [], resolvers: [] };
+          try {
+            const get_result = await run_remote_function(
+              event,
+              state,
+              false,
+              batched.args,
+              (array) => Promise.all(array.map(validate)),
+              fn
+            );
+            for (let i = 0; i < batched.resolvers.length; i++) {
+              try {
+                batched.resolvers[i].resolve(get_result(batched.args[i], i));
+              } catch (error2) {
+                batched.resolvers[i].reject(error2);
+              }
+            }
+          } catch (error2) {
+            for (const resolver of batched.resolvers) {
+              resolver.reject(error2);
+            }
+          }
+        }, 0);
+      });
+    });
+    promise.catch(() => {
+    });
+    promise.refresh = async () => {
+      const { state: state2 } = get_request_store();
+      const refreshes = state2.refreshes;
+      if (!refreshes) {
+        throw new Error(
+          `Cannot call refresh on query.batch '${__.name}' because it is not executed in the context of a command/form remote function`
+        );
+      }
+      const cache_key = create_remote_cache_key(__.id, stringify_remote_arg(arg, state2.transport));
+      refreshes[cache_key] = await /** @type {Promise<any>} */
+      promise;
+    };
+    promise.withOverride = () => {
+      throw new Error(`Cannot call '${__.name}.withOverride()' on the server`);
+    };
+    return (
+      /** @type {RemoteQuery<Output>} */
+      promise
+    );
+  };
+  Object.defineProperty(wrapper, "__", { value: __ });
+  return wrapper;
+}
+Object.defineProperty(query, "batch", { value: batch, enumerable: true });
 export {
   command,
   form,

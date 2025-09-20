@@ -18,12 +18,12 @@ function ConfirmModal($$payload, $$props) {
   }
   if (open) {
     $$payload.out.push("<!--[-->");
-    $$payload.out.push(`<div class="confirm-backdrop svelte-1idilmb" role="presentation"><div class="confirm-modal svelte-1idilmb" role="dialog" aria-modal="true"${attr("aria-labelledby", titleId)} tabindex="-1"><h2 class="confirm-title svelte-1idilmb"${attr("id", titleId)}>${escape_html(title)}</h2> <div class="confirm-body svelte-1idilmb"><!---->`);
+    $$payload.out.push(`<div class="confirm-backdrop svelte-mrlnh3" role="presentation"><div class="confirm-modal svelte-mrlnh3" role="dialog" aria-modal="true"${attr("aria-labelledby", titleId)} tabindex="-1"><h2 class="confirm-title svelte-mrlnh3"${attr("id", titleId)}>${escape_html(title)}</h2> <div class="confirm-body svelte-mrlnh3"><!---->`);
     slot($$payload, $$props, "default", {});
-    $$payload.out.push(`<!----></div> <div class="confirm-actions svelte-1idilmb"><button type="button" class="confirm-secondary svelte-1idilmb"${attr("disabled", loading, true)}>${escape_html(cancelText)}</button> <button type="button" class="confirm-primary svelte-1idilmb"${attr("disabled", loading || disableConfirm, true)}>`);
+    $$payload.out.push(`<!----></div> <div class="confirm-actions svelte-mrlnh3"><button type="button" class="confirm-secondary svelte-mrlnh3"${attr("disabled", loading, true)}>${escape_html(cancelText)}</button> <button type="button" class="confirm-primary svelte-mrlnh3"${attr("disabled", loading || disableConfirm, true)}>`);
     if (loading) {
       $$payload.out.push("<!--[-->");
-      $$payload.out.push(`<svg class="confirm-spinner svelte-1idilmb" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle class="confirm-spinner-track svelte-1idilmb" cx="12" cy="12" r="10" fill="none" stroke-width="4"></circle><path class="confirm-spinner-head svelte-1idilmb" d="M4 12a8 8 0 018-8" fill="none" stroke-linecap="round" stroke-width="4"></path></svg>`);
+      $$payload.out.push(`<svg class="confirm-spinner svelte-mrlnh3" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle class="confirm-spinner-track svelte-mrlnh3" cx="12" cy="12" r="10" fill="none" stroke-width="4"></circle><path class="confirm-spinner-head svelte-mrlnh3" d="M4 12a8 8 0 018-8" fill="none" stroke-linecap="round" stroke-width="4"></path></svg>`);
     } else {
       $$payload.out.push("<!--[!-->");
     }
@@ -88,7 +88,7 @@ function _page($$payload, $$props) {
     $$payload.out.push(`<div class="pointer-events-none fixed top-4 right-4 z-[2100] flex max-w-sm flex-col gap-2" aria-live="polite"><!--[-->`);
     for (let $$index = 0, $$length = each_array.length; $$index < $$length; $$index++) {
       let toast = each_array[$$index];
-      $$payload.out.push(`<div${attr_class(`pointer-events-auto flex items-start gap-3 rounded-md border px-3 py-2 text-sm shadow-lg backdrop-blur-sm ${toastClassByVariant[toast.variant]}`, "svelte-11gibzh")}${attr("role", toast.variant === "error" ? "alert" : "status")}><span class="flex-1 svelte-11gibzh">${escape_html(toast.message)}</span> <button class="ml-2 text-xs text-current opacity-70 transition hover:opacity-100 focus:ring-2 focus:ring-current/40 focus:outline-none" type="button" aria-label="Dismiss notification">×</button></div>`);
+      $$payload.out.push(`<div${attr_class(`pointer-events-auto flex items-start gap-3 rounded-md border px-3 py-2 text-sm shadow-lg backdrop-blur-sm ${toastClassByVariant[toast.variant]}`, "svelte-1xo04ij")}${attr("role", toast.variant === "error" ? "alert" : "status")}><span class="flex-1 svelte-1xo04ij">${escape_html(toast.message)}</span> <button class="ml-2 text-xs text-current opacity-70 transition hover:opacity-100 focus:ring-2 focus:ring-current/40 focus:outline-none" type="button" aria-label="Dismiss notification">×</button></div>`);
     }
     $$payload.out.push(`<!--]--></div>`);
   } else {

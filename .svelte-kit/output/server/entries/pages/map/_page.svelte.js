@@ -9827,15 +9827,15 @@ function _page($$payload, $$props) {
   );
   const each_array_1 = ensure_array_like(metricOptions);
   const each_array_2 = ensure_array_like(quickLinks);
-  $$payload.out.push(`<div class="map-shell relative flex h-dvh min-h-[540px] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"><aside${attr_class(`map-sidebar relative flex h-full shrink-0 overflow-visible transition-[width] duration-300 ease-in-out ${"w-80 max-w-full"}`, "svelte-522sze")}><div data-tooltip-boundary=""${attr_class(
+  $$payload.out.push(`<div class="map-shell relative flex h-dvh min-h-[540px] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"><aside${attr_class(`map-sidebar relative flex h-full shrink-0 overflow-visible transition-[width] duration-300 ease-in-out ${"w-80 max-w-full"}`, "svelte-w85nl5")}><div data-tooltip-boundary=""${attr_class(
     `sidebar-panel bg-panel/95 text-muted flex h-full w-full flex-col gap-6 border-r border-white/10 text-sm transition-[padding,opacity] duration-300 ease-in-out ${"pointer-events-auto overflow-x-visible overflow-y-auto px-6 py-6 opacity-100"}`,
-    "svelte-522sze"
+    "svelte-w85nl5"
   )}${attr("aria-hidden", false)}><header class="flex items-start gap-4 text-white"><a href="/" class="flex items-center gap-3"><img src="/img/logo.png" alt="Greenhill Bros logo" class="h-10 w-10 rounded-md border border-white/10 bg-white/10 p-1"/> <div class="leading-tight"><p class="text-muted/70 text-xs tracking-wider uppercase">Greenhill Bros Farm</p> <h1 class="text-lg font-semibold">Interactive map</h1></div></a> <div class="ml-auto"><button class="border-border/80 text-muted focus:ring-accent/40 rounded-md border bg-white/5 p-2 hover:bg-white/10 hover:text-white focus:ring-2 focus:outline-none" aria-label="Collapse sidebar"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"></path></svg></button></div></header> <nav id="map-controls" aria-label="Map controls" class="space-y-8"><section class="space-y-3"><div><h2 class="text-muted/70 text-xs font-semibold tracking-wider uppercase">Base map</h2> <p class="text-muted/60 mt-1 text-xs">Choose the imagery used beneath the farm overlays.</p></div> <div class="flex flex-wrap gap-2"><!--[-->`);
   for (let $$index = 0, $$length = each_array.length; $$index < $$length; $$index++) {
     let layer = each_array[$$index];
     $$payload.out.push(`<button type="button"${attr_class(
       `focus-visible:ring-accent/40 inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition focus:outline-none focus-visible:ring-2 ${activeBaseLayer === layer.id ? "border-accent/60 bg-accent/20 text-white shadow" : "text-muted border-white/10 bg-white/5 hover:border-white/20 hover:text-white"}`,
-      "svelte-522sze"
+      "svelte-w85nl5"
     )}${attr("aria-pressed", activeBaseLayer === layer.id)}>${escape_html(layer.label)}</button>`);
   }
   $$payload.out.push(`<!--]--></div> `);
@@ -9850,7 +9850,7 @@ function _page($$payload, $$props) {
     let metric = each_array_1[$$index_1];
     $$payload.out.push(`<button type="button"${attr_class(
       `focus-visible:ring-accent/40 rounded-md border px-3 py-2 text-sm transition focus:outline-none focus-visible:ring-2 ${activeMetric === metric.id ? "border-accent/60 bg-accent/20 text-white shadow" : "text-muted border-white/10 bg-white/5 hover:border-white/20 hover:text-white"}`,
-      "svelte-522sze"
+      "svelte-w85nl5"
     )}${attr("aria-pressed", activeMetric === metric.id)}>${escape_html(metric.label)}</button>`);
   }
   $$payload.out.push(`<!--]--></div> <div class="text-muted/60 space-y-2 text-xs">`);
@@ -9931,8 +9931,8 @@ function _page($$payload, $$props) {
     $$payload.out.push("<!--[-->");
     $$payload.out.push(`<div${attr_class(
       `pointer-events-none absolute ${"top-3"} left-4 z-[1100] max-w-xs rounded-xl border px-4 py-3 text-xs shadow-lg backdrop-blur ${isStreetsBase ? "border-white/50 bg-slate-950/95 text-slate-200 shadow-black/40" : "border-border/80 bg-panel/80 text-muted"}`,
-      "svelte-522sze"
-    )}><div class="text-sm font-semibold text-white">${escape_html(activeMetricObj.label)}</div> <p${attr_class(`mt-1 leading-relaxed ${isStreetsBase ? "text-slate-100" : "text-muted"}`, "svelte-522sze")}>${escape_html(activeMetricObj.description)}</p> <p${attr_class(`mt-1 leading-relaxed font-semibold ${isStreetsBase ? "text-slate-200" : "text-muted/70"}`, "svelte-522sze")}>Optimal range: ${escape_html(activeMetricObj.range_optimal[0])}${escape_html(activeMetricObj.unit)} to ${escape_html(activeMetricObj.range_optimal[1])}${escape_html(activeMetricObj.unit)}</p></div>`);
+      "svelte-w85nl5"
+    )}><div class="text-sm font-semibold text-white">${escape_html(activeMetricObj.label)}</div> <p${attr_class(`mt-1 leading-relaxed ${isStreetsBase ? "text-slate-100" : "text-muted"}`, "svelte-w85nl5")}>${escape_html(activeMetricObj.description)}</p> <p${attr_class(`mt-1 leading-relaxed font-semibold ${isStreetsBase ? "text-slate-200" : "text-muted/70"}`, "svelte-w85nl5")}>Optimal range: ${escape_html(activeMetricObj.range_optimal[0])}${escape_html(activeMetricObj.unit)} to ${escape_html(activeMetricObj.range_optimal[1])}${escape_html(activeMetricObj.unit)}</p></div>`);
   } else {
     $$payload.out.push("<!--[!-->");
   }
@@ -9941,13 +9941,13 @@ function _page($$payload, $$props) {
     $$payload.out.push("<!--[!-->");
     {
       $$payload.out.push("<!--[-->");
-      $$payload.out.push(`<div class="map-status svelte-522sze" aria-live="polite"><p class="text-muted text-sm">Preparing paddock boundaries…</p></div>`);
+      $$payload.out.push(`<div class="map-status svelte-w85nl5" aria-live="polite"><p class="text-muted text-sm">Preparing paddock boundaries…</p></div>`);
     }
     $$payload.out.push(`<!--]-->`);
   }
   $$payload.out.push(`<!--]--> <a href="/"${attr_class(
     `map-home focus-visible:ring-accent/40 absolute top-4 right-4 z-[1000] inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition hover:text-white focus:outline-none focus-visible:ring-2 ${isStreetsBase ? "border-white/60 bg-slate-950/95 text-white shadow-xl hover:border-white/80" : "bg-panel/95 border-white/10 text-white shadow-lg hover:border-white/30"}`,
-    "svelte-522sze"
+    "svelte-w85nl5"
   )} aria-label="Back to home"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5"><path d="M12 3.172 3 10.5V21h6v-6h6v6h6V10.5L12 3.172z"></path></svg> <span class="hidden sm:inline">Home</span></a></main></div>`);
   if ($$store_subs) unsubscribe_stores($$store_subs);
   pop();
