@@ -1,0 +1,596 @@
+diff --git a/src/routes/soiltests/+page.svelte b/src/routes/soiltests/+page.svelte
+index 1e33644e6b37050c80213ab28e98ca8057d0f75d..311c0d2b777c3562e991d44581efd0edc1a131c8 100644
+--- a/src/routes/soiltests/+page.svelte
++++ b/src/routes/soiltests/+page.svelte
+@@ -202,50 +202,121 @@
+ 			showDeleteConfirm = false;
+ 		} catch (err) {
+ 			console.error('Bulk delete failed', err);
+ 			showToast("Couldn't delete tests. Please try again.", 'error');
+ 		} finally {
+ 			deletingTests = false;
+ 		}
+ 	}
+ 
+ 	let csvFile: File | null = null;
+ 	let csvFileName: string | null = null;
+ 	let csvFileInput: HTMLInputElement | null = null;
+ 	let csvUploadForm: HTMLFormElement | null = null;
+ 
+ 	let csvProgress: CsvProgressState = {
+ 		visible: false,
+ 		stage: 'idle',
+ 		percent: csvStageDefaults.idle.percent,
+ 		message: csvStageDefaults.idle.label,
+ 		detail: null
+ 	};
+ 
+ 	let csvProgressPercent = csvStageDefaults.idle.percent;
+ 	$: csvProgressPercent = Math.min(100, Math.max(0, csvProgress.percent));
+ 
++	type CsvColumnInfo = {
++		headings: string[];
++		required?: boolean;
++		datatype: string;
++		description: string;
++		metrics?: boolean;
++	};
++
++	const csvMetricHeadings = [
++		...metricColumns.map((column) => (column.key === 'pH' ? 'ph_water' : column.key)),
++		'pH'
++	];
++
++	const csvColumnInfo: CsvColumnInfo[] = [
++		{
++			headings: ['fieldID'],
++			required: true,
++			datatype: 'Whole number (e.g. 101)',
++			description:
++				"Matches the paddock's Field ID shown on the Soil tests table. Keep numbers only, no letters."
++		},
++		{
++			headings: ['name_sample'],
++			required: true,
++			datatype: 'Text (e.g. "North Flats 2024")',
++			description: 'Friendly sample name from the lab report to help recognise the record.'
++		},
++		{
++			headings: ['id_sample', 'sample_id'],
++			required: true,
++			datatype: 'Whole number (e.g. 552301)',
++			description:
++				'Lab reference number exactly as provided. Either "id_sample" or "sample_id" will be accepted.'
++		},
++		{
++			headings: ['sample_date'],
++			required: true,
++			datatype: 'Date in YYYY-MM-DD format (e.g. 2024-03-14)',
++			description:
++				'Use ISO dates only. Excel users: format the column as Text to prevent automatic changes.'
++		},
++		{
++			headings: ['client'],
++			datatype: 'Text (optional)',
++			description:
++				'Who requested the test. Leave blank if the lab export does not include a client name.'
++		},
++		{
++			headings: csvMetricHeadings,
++			datatype: 'Decimal numbers (e.g. 56.7). Leave blank if no result.',
++			description:
++				'Metric columns for nutrient results — include P, K, Ca, Mg, S, Na and either ph_water or pH for acidity.',
++			metrics: true
++		}
++	];
++
++	const csvUploaderTips = [
++		'Keep the first row exactly matching the headings shown below.',
++		'Save the file as comma-separated values (CSV) encoded in UTF-8.',
++		'Dates must stay in YYYY-MM-DD format and numbers should not include units or extra text.'
++	];
++
++	const sampleCsvHeadings = [
++		'fieldID',
++		'name_sample',
++		'id_sample',
++		'sample_date',
++		'client',
++		...metricColumns.map((column) => (column.key === 'pH' ? 'ph_water' : column.key))
++	];
++
+ 	let activeCsvJobId: string | null = null;
+ 
+ 	type ManualForm = {
+ 		fieldId: string | number;
+ 		sampleName: string;
+ 		sampleId: string | number;
+ 		sampleDate: string;
+ 		client: string;
+ 	};
+ 
+ 	let manualForm: ManualForm = {
+ 		fieldId: '',
+ 		sampleName: '',
+ 		sampleId: '',
+ 		sampleDate: '',
+ 		client: ''
+ 	};
+ 
+ 	let manualMetrics: Record<MetricKey, string> = {
+ 		P: '',
+ 		K: '',
+ 		Ca: '',
+ 		Mg: '',
+ 		S: '',
+ 		Na: '',
+@@ -315,50 +386,64 @@
+ 			message: csvStageDefaults.idle.label,
+ 			detail: null
+ 		};
+ 		if (csvFileInput) {
+ 			csvFileInput.value = '';
+ 		}
+ 		if (csvUploadForm) {
+ 			csvUploadForm.reset();
+ 		}
+ 		submitting = false;
+ 	}
+ 
+ 	function handleCsvFileChange(event: Event) {
+ 		const input = event.currentTarget as HTMLInputElement;
+ 		const [file] = input.files ?? [];
+ 		if (!file) {
+ 			resetCsvUploadState();
+ 			return;
+ 		}
+ 		csvFile = file;
+ 		csvFileName = file.name;
+ 		uploadError = null;
+ 		setCsvProgress('idle', undefined, undefined, null);
+ 	}
+ 
++	function downloadSampleCsv() {
++		if (typeof document === 'undefined') return;
++		const csvContent = sampleCsvHeadings.join(',') + '\n';
++		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
++		const url = URL.createObjectURL(blob);
++		const link = document.createElement('a');
++		link.href = url;
++		link.download = 'soil-tests-sample.csv';
++		document.body.appendChild(link);
++		link.click();
++		document.body.removeChild(link);
++		URL.revokeObjectURL(url);
++	}
++
+ 	function clearCsvFile() {
+ 		if (submitting) return;
+ 		resetCsvUploadState();
+ 		uploadError = null;
+ 	}
+ 
+ 	async function handleCsvProgressUpdate(update: CsvProgressUpdate) {
+ 		if (!update) return;
+ 		if (update.jobId && activeCsvJobId && update.jobId !== activeCsvJobId) return;
+ 		if (update.jobId && !activeCsvJobId) {
+ 			activeCsvJobId = update.jobId;
+ 		}
+ 
+ 		setCsvProgress(update.stage, update.percent, update.message, update.detail);
+ 
+ 		if (update.stage === 'error') {
+ 			uploadError = update.detail ?? update.message ?? 'CSV import failed.';
+ 		} else if (uploadError) {
+ 			uploadError = null;
+ 		}
+ 
+ 		submitting = update.stage !== 'complete' && update.stage !== 'error';
+ 
+ 		if (update.stage === 'complete') {
+ 			// Allow selecting the same file again once the import is done.
+@@ -396,51 +481,53 @@
+ 		uploadError = null;
+ 		submitting = false;
+ 		if (mode === 'csv') {
+ 			resetCsvUploadState();
+ 		}
+ 	}
+ 
+ 	function closeUploader() {
+ 		showUploader = false;
+ 		submitting = false;
+ 		uploadError = null;
+ 		resetCsvUploadState();
+ 	}
+ 
+ 	function toPaddockOptions(values: PaddockSummary[]): PaddockOption[] {
+ 		return values
+ 			.map((value) => ({
+ 				id: value.id,
+ 				name: value.name,
+ 				farm: value.farm,
+ 				label: `${value.id} — ${value.name}${value.farm ? ` (${value.farm})` : ''}`
+ 			}))
+ 			.sort((a, b) => a.id - b.id);
+ 	}
+ 
+-	async function loadTests({ showSpinner = false }: { showSpinner?: boolean } = {}): Promise<boolean> {
++	async function loadTests({
++		showSpinner = false
++	}: { showSpinner?: boolean } = {}): Promise<boolean> {
+ 		if (showSpinner) {
+ 			loading = true;
+ 		}
+ 		error = null;
+ 		try {
+ 			const result = await fetchSoilTests();
+ 			tests = result.tests;
+ 			paddockOptions = toPaddockOptions(result.paddocks);
+ 			return true;
+ 		} catch (err: unknown) {
+ 			error = err instanceof Error ? err.message : 'Failed loading soil tests';
+ 			return false;
+ 		} finally {
+ 			if (showSpinner) {
+ 				loading = false;
+ 			}
+ 		}
+ 	}
+ 
+ 	function resetManualForm() {
+ 		manualForm = {
+ 			fieldId: '',
+ 			sampleName: '',
+ 			sampleId: '',
+ 			sampleDate: '',
+@@ -606,57 +693,57 @@
+ 			if (!response.ok) throw new Error(`Upload failed (${response.status})`);
+ 			const json = await response.json();
+ 			if (json?.jobId) {
+ 				activeCsvJobId = json.jobId;
+ 			}
+ 		} catch (err) {
+ 			const message = err instanceof Error ? err.message : 'Failed to upload CSV';
+ 			await handleCsvProgressUpdate({ stage: 'error', message, detail: message, jobId });
+ 		}
+ 	}
+ 
+ 	onMount(() => {
+ 		void loadTests({ showSpinner: true });
+ 	});
+ 
+ 	onMount(() => {
+ 		const handler = (event: Event) => onCsvProgressEvent(event);
+ 		window.addEventListener(CSV_PROGRESS_EVENT_NAME, handler);
+ 		return () => {
+ 			window.removeEventListener(CSV_PROGRESS_EVENT_NAME, handler);
+ 		};
+ 	});
+ 
+ 	$: filtered = q
+ 		? tests.filter((test) => {
+-			const haystack = `${test.paddockName} ${test.fieldId} ${test.sampleName ?? ''} ${test.sampleId} ${test.farm ?? ''}`.toLowerCase();
+-			return haystack.includes(q.toLowerCase());
+-		})
++				const haystack =
++					`${test.paddockName} ${test.fieldId} ${test.sampleName ?? ''} ${test.sampleId} ${test.farm ?? ''}`.toLowerCase();
++				return haystack.includes(q.toLowerCase());
++			})
+ 		: tests;
+ </script>
+ 
+-
+ <svelte:window on:keydown={handleGlobalKeydown} />
+ 
+ {#if toasts.length}
+ 	<div
+ 		class="pointer-events-none fixed top-4 right-4 z-[2100] flex max-w-sm flex-col gap-2"
+ 		aria-live="polite"
+ 	>
+ 		{#each toasts as toast (toast.id)}
+ 			<div
+ 				class={`pointer-events-auto flex items-start gap-3 rounded-md border px-3 py-2 text-sm shadow-lg backdrop-blur-sm ${toastClassByVariant[toast.variant]}`}
+ 				role={toast.variant === 'error' ? 'alert' : 'status'}
+ 			>
+ 				<span class="flex-1">{toast.message}</span>
+ 				<button
+ 					class="ml-2 text-xs text-current opacity-70 transition hover:opacity-100 focus:ring-2 focus:ring-current/40 focus:outline-none"
+ 					type="button"
+ 					on:click={() => dismissToast(toast.id)}
+ 					aria-label="Dismiss notification"
+ 				>
+ 					×
+ 				</button>
+ 			</div>
+ 		{/each}
+ 	</div>
+ {/if}
+@@ -895,59 +982,103 @@
+ 									/>
+ 								</label>
+ 							{/each}
+ 						</div>
+ 					</fieldset>
+ 
+ 					{#if uploadError}
+ 						<div class="modal__error">{uploadError}</div>
+ 					{/if}
+ 
+ 					<footer class="modal__footer">
+ 						<button type="button" on:click={closeUploader} class="modal__secondary">Cancel</button>
+ 						<button
+ 							type="submit"
+ 							class="modal__primary"
+ 							disabled={submitting || manualMetricCount === 0}
+ 							title={manualMetricCount === 0 ? 'Add at least one metric to save' : undefined}
+ 						>
+ 							{submitting ? 'Saving…' : 'Save test'}
+ 						</button>
+ 					</footer>
+ 				</form>
+ 			{:else}
+ 				<form class="modal__body" on:submit={handleCsvSubmit} bind:this={csvUploadForm}>
+ 					<p class="text-muted text-sm">
+-						Upload a CSV exported from the lab. Expected headers include <code>fieldID</code>,
+-						<code>name_sample</code>, <code>sample_date</code>, and metric columns such as
+-						<code>P</code>, <code>K</code>, <code>Ca</code>, <code>Mg</code>, <code>S</code>,
+-						<code>Na</code>, <code>ph_water</code>.
++						Upload a CSV exported from the lab and double-check the headings below match your file
++						exactly.
+ 					</p>
++					<ul class="csv-guidance__tips">
++						{#each csvUploaderTips as tip}
++							<li>{tip}</li>
++						{/each}
++					</ul>
++					<div class="csv-guidance">
++						<div class="csv-guidance__table-wrapper">
++							<table class="csv-guidance__table">
++								<thead>
++									<tr>
++										<th scope="col">Heading</th>
++										<th scope="col">How it's used</th>
++									</tr>
++								</thead>
++								<tbody>
++									{#each csvColumnInfo as column}
++										{#if column.metrics}
++											<tr class="csv-guidance__metrics-note">
++												<td colspan="2">
++													At least one metric value is required before you upload. Leave unused
++													metric cells blank.
++												</td>
++											</tr>
++										{/if}
++										<tr class:csv-guidance__row--metrics={column.metrics}>
++											<td>
++												<div class="csv-guidance__codes">
++													{#each column.headings as heading}
++														<code>{heading}</code>
++													{/each}
++												</div>
++												{#if column.required}
++													<span class="required csv-guidance__required-tag">required</span>
++												{/if}
++												<div class="csv-guidance__datatype">{column.datatype}</div>
++											</td>
++											<td>
++												<div class="csv-guidance__description">{column.description}</div>
++											</td>
++										</tr>
++									{/each}
++								</tbody>
++							</table>
++						</div>
++					</div>
++					<button type="button" class="csv-guidance__download" on:click={downloadSampleCsv}>
++						Download sample CSV
++					</button>
+ 					<p class="text-muted text-xs">
+-						The file will be POSTed to <code>{uploadEndpoint('import')}</code> as
+-						<code>multipart/form-data</code>
+-						with the file field named <code>file</code>.
++						The sample includes the header row so you can paste lab results directly.
+ 					</p>
+ 					<label class="modal__dropzone">
+ 						<input
+ 							type="file"
+ 							accept=".csv"
+ 							name="file"
+ 							required
+ 							on:change={handleCsvFileChange}
+ 							bind:this={csvFileInput}
+ 						/>
+ 						<span>{csvFile ? 'Change CSV file' : 'Choose CSV file'}</span>
+ 					</label>
+ 					{#if csvFile || csvFileName}
+ 						<div class="modal__selected-file" role="status" aria-live="polite">
+ 							<div class="modal__selected-file-summary">
+ 								<span class="modal__selected-file-label">
+ 									{csvProgress.stage === 'complete' ? 'Last uploaded file' : 'Selected file'}
+ 								</span>
+ 								<span class="modal__selected-file-name">{csvFile?.name ?? csvFileName}</span>
+ 							</div>
+ 							{#if csvFile}
+ 								<button
+ 									type="button"
+ 									class="modal__selected-file-clear"
+ 									on:click={clearCsvFile}
+@@ -1100,50 +1231,176 @@
+ 		border: 1px solid rgba(255, 255, 255, 0.12);
+ 		border-radius: 0.5rem;
+ 		padding: 0.5rem 0.65rem;
+ 		color: #f8fafc;
+ 		outline: none;
+ 	}
+ 
+ 	.modal__fieldset {
+ 		border: 1px solid rgba(255, 255, 255, 0.08);
+ 		border-radius: 0.75rem;
+ 		padding: 1rem;
+ 	}
+ 
+ 	.modal__fieldset legend {
+ 		font-size: 0.9rem;
+ 		padding: 0 0.35rem;
+ 		opacity: 0.8;
+ 	}
+ 
+ 	.modal__hint {
+ 		font-size: 0.75rem;
+ 		color: rgba(248, 250, 252, 0.6);
+ 		margin-bottom: 0.5rem;
+ 	}
+ 
++	.csv-guidance {
++		border: 1px solid rgba(148, 163, 184, 0.2);
++		border-radius: 0.75rem;
++		background: rgba(15, 23, 42, 0.75);
++		overflow: hidden;
++	}
++
++	.csv-guidance__table-wrapper {
++		overflow-x: auto;
++	}
++
++	.csv-guidance__table {
++		width: 100%;
++		border-collapse: collapse;
++	}
++
++	.csv-guidance__table th,
++	.csv-guidance__table td {
++		padding: 0.65rem 0.85rem;
++		font-size: 0.8rem;
++		color: rgba(248, 250, 252, 0.85);
++	}
++
++	.csv-guidance__table th {
++		text-transform: uppercase;
++		letter-spacing: 0.04em;
++		font-size: 0.7rem;
++		color: rgba(248, 250, 252, 0.6);
++		background: rgba(148, 163, 184, 0.15);
++		border-bottom: 1px solid rgba(148, 163, 184, 0.2);
++	}
++
++	.csv-guidance__table td {
++		border-top: 1px solid rgba(148, 163, 184, 0.18);
++		vertical-align: top;
++	}
++
++	.csv-guidance__table tbody tr:first-child td {
++		border-top: none;
++	}
++
++	.csv-guidance__codes {
++		display: flex;
++		flex-wrap: wrap;
++		gap: 0.35rem;
++	}
++
++	.csv-guidance__codes code {
++		background: rgba(15, 23, 42, 0.75);
++		border: 1px solid rgba(148, 163, 184, 0.35);
++		border-radius: 0.35rem;
++		padding: 0.15rem 0.45rem;
++		font-size: 0.75rem;
++		color: rgba(226, 232, 240, 0.95);
++	}
++
++	.csv-guidance__required-tag {
++		display: inline-flex;
++		margin-top: 0.4rem;
++	}
++
++	.csv-guidance__datatype {
++		margin-top: 0.45rem;
++		font-size: 0.7rem;
++		color: rgba(148, 163, 184, 0.85);
++	}
++
++	.csv-guidance__description {
++		font-size: 0.8rem;
++		color: rgba(226, 232, 240, 0.9);
++		line-height: 1.5;
++	}
++
++	.csv-guidance__row--metrics td {
++		background: rgba(59, 130, 246, 0.08);
++	}
++
++	.csv-guidance__metrics-note td {
++		font-size: 0.75rem;
++		color: rgba(191, 219, 254, 0.9);
++		background: rgba(59, 130, 246, 0.12);
++		border-top: 1px solid rgba(59, 130, 246, 0.2);
++		border-bottom: 1px solid rgba(59, 130, 246, 0.2);
++	}
++
++	.csv-guidance__tips {
++		margin: 0;
++		padding-left: 1.25rem;
++		font-size: 0.75rem;
++		color: rgba(226, 232, 240, 0.7);
++	}
++
++	.csv-guidance__tips li + li {
++		margin-top: 0.35rem;
++	}
++
++	.csv-guidance__download {
++		align-self: flex-start;
++		margin-top: 0.5rem;
++		background: rgba(59, 130, 246, 0.18);
++		border: 1px solid rgba(59, 130, 246, 0.35);
++		color: rgba(191, 219, 254, 0.95);
++		border-radius: 0.5rem;
++		padding: 0.45rem 0.85rem;
++		font-size: 0.8rem;
++		cursor: pointer;
++	}
++
++	.csv-guidance__download:hover {
++		background: rgba(59, 130, 246, 0.28);
++		border-color: rgba(59, 130, 246, 0.55);
++		color: #fff;
++	}
++
++	.csv-guidance__download:focus-visible {
++		outline: 2px solid rgba(191, 219, 254, 0.8);
++		outline-offset: 2px;
++	}
++
++	@media (max-width: 640px) {
++		.csv-guidance__table th,
++		.csv-guidance__table td {
++			padding: 0.55rem 0.65rem;
++		}
++	}
++
+ 	.modal__dropzone {
+ 		margin-top: 0.5rem;
+ 		border: 2px dashed rgba(255, 255, 255, 0.16);
+ 		border-radius: 0.75rem;
+ 		padding: 1.5rem;
+ 		text-align: center;
+ 		display: flex;
+ 		flex-direction: column;
+ 		gap: 0.5rem;
+ 		align-items: center;
+ 		color: rgba(248, 250, 252, 0.85);
+ 	}
+ 
+ 	.modal__dropzone input[type='file'] {
+ 		display: none;
+ 	}
+ 
+ 	.modal__dropzone span {
+ 		border-radius: 0.5rem;
+ 		border: 1px solid rgba(255, 255, 255, 0.14);
+ 		padding: 0.5rem 1rem;
+ 		font-size: 0.85rem;
+ 		cursor: pointer;
+ 	}
+ 

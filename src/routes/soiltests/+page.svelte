@@ -5,21 +5,22 @@
 	import CONFIG from '$lib/config';
 	import { uploadEndpoint } from '$lib/utils';
 	import {
-		CSV_PROGRESS_EVENT_NAME,
-		csvStageDefaults,
-		fetchSoilTests,
-		formatDate,
-		formatNumber,
 		metricColumns,
 		metricPlaceholders,
+		optionalColumns,
 		type BulkDeleteResponse,
-		type CsvProgressStage,
-		type CsvProgressState,
-		type CsvProgressUpdate,
 		type MetricKey,
 		type PaddockSummary,
 		type SoilTest
-	} from './helpers';
+	} from '$lib/soil-tests/schema';
+	import {
+		CSV_PROGRESS_EVENT_NAME,
+		csvStageDefaults,
+		type CsvProgressStage,
+		type CsvProgressState,
+		type CsvProgressUpdate
+	} from '$lib/soil-tests/progress';
+	import { fetchSoilTests, formatDate, formatNumber } from '$lib/soil-tests/utils';
 
 	type ToastVariant = 'success' | 'error' | 'warning';
 	type Toast = { id: number; message: string; variant: ToastVariant };
@@ -47,6 +48,9 @@
 		warning: 'border-amber-400/40 bg-amber-500/15 text-amber-100',
 		error: 'border-red-500/50 bg-red-500/15 text-red-100'
 	};
+
+	const sampleCsvDownloadPath = '/samples/soil-tests.csv';
+	const sampleCsvDownloadName = 'soil-tests-sample.csv';
 
 	function dismissToast(id: number) {
 		const timeout = toastTimeouts.get(id);
@@ -224,6 +228,129 @@
 	let csvProgressPercent = csvStageDefaults.idle.percent;
 	$: csvProgressPercent = Math.min(100, Math.max(0, csvProgress.percent));
 
+	type CsvColumnInfo = {
+		headings: string[];
+		required?: boolean;
+		datatype: string;
+		description: string;
+	};
+
+	type CsvSection = {
+		id: string;
+		title: string;
+		rows: CsvColumnInfo[];
+		note?: string;
+		tone?: 'metrics' | 'optional';
+		defaultOpen?: boolean;
+	};
+
+const csvMetricHeadings: MetricKey[] = [];
+for (const column of metricColumns) {
+	csvMetricHeadings.push(column.key);
+}
+
+const optionalMetricHeadings = optionalColumns.map((column) => column.key);
+const optionalQualifierHeadings = ['grower', 'crop'] as const;
+
+	const csvSections: CsvSection[] = [
+		{
+			id: 'core-headings',
+			title: 'Core headings',
+			defaultOpen: true,
+			rows: [
+				{
+					headings: ['fieldID'],
+					required: true,
+					datatype: 'Whole number (e.g. 101)',
+					description: 'Matches the paddock Field ID shown in Soil tests. Numbers only.'
+				},
+				{
+					headings: ['name_sample'],
+					required: true,
+					datatype: 'Text (e.g. "North Flats 2024")',
+					description: 'Friendly lab sample name.'
+				},
+				{
+					headings: ['id_sample', 'sample_id'],
+					required: true,
+					datatype: 'Whole number (e.g. 552301)',
+					description: 'Lab reference number (either "id_sample" or "sample_id").'
+				},
+				{
+					headings: ['sample_date'],
+					required: true,
+					datatype: 'Date in YYYY-MM-DD',
+					description: 'ISO date. Format as text in spreadsheets to avoid auto changes.'
+				},
+				{
+					headings: ['client'],
+					datatype: 'Text (optional)',
+					description: 'Requester name. Leave blank if none.'
+				}
+			]
+		},
+		{
+			id: 'metric-headings',
+			title: 'Metric headings',
+			tone: 'metrics',
+			defaultOpen: true,
+			note: 'Include at least one metric column. Leave unused metric cells blank.',
+			rows: [
+				{
+					headings: csvMetricHeadings,
+					datatype: 'Decimal number (e.g. 56.7)',
+					description: 'Soil nutrient metrics — include at least one column.'
+				}
+			]
+		},
+	{
+		id: 'optional-metric-headings',
+		title: 'Optional metric headings',
+		tone: 'optional',
+		defaultOpen: false,
+		note: 'Extra numeric metrics exported by some labs. Include them when available; otherwise omit the columns.',
+		rows: [
+			{
+				headings: optionalMetricHeadings,
+				datatype: 'Numeric values (see lab units)',
+				description: 'Supplementary lab metrics such as Cl, Cu, Fe, Mn, Zn, EC, buffer pH, and depth readings.'
+			}
+		]
+	},
+	{
+		id: 'optional-qualifiers',
+		title: 'Optional qualifiers',
+		tone: 'optional',
+		defaultOpen: false,
+		note: 'Context columns that appear in some exports. Safe to omit if your lab does not provide them.',
+		rows: [
+			{
+				headings: Array.from(optionalQualifierHeadings),
+				datatype: 'Text',
+				description: 'High-level context such as grower or crop.'
+			}
+		]
+	}
+];
+
+	let csvSectionOpen: Record<string, boolean> = csvSections.reduce<Record<string, boolean>>(
+		(accumulator, section) => {
+			accumulator[section.id] = section.defaultOpen ?? true;
+			return accumulator;
+		},
+		{}
+	);
+
+	const csvUploaderTips = [
+		'Keep the first row exactly matching the headings shown below.',
+		'Save the file as comma-separated values (CSV) encoded in UTF-8.',
+		'Dates must stay in YYYY-MM-DD format and numbers should not include units or extra text.'
+	];
+
+	function toggleCsvSection(id: string) {
+		csvSectionOpen = { ...csvSectionOpen, [id]: !csvSectionOpen[id] };
+	}
+
 	let activeCsvJobId: string | null = null;
 
 	type ManualForm = {
@@ -242,15 +369,15 @@
 		client: ''
 	};
 
-	let manualMetrics: Record<MetricKey, string> = {
-		P: '',
-		K: '',
-		Ca: '',
-		Mg: '',
-		S: '',
-		Na: '',
-		pH: ''
-	};
+function createEmptyMetrics(): Record<MetricKey, string> {
+	const empty = {} as Record<MetricKey, string>;
+	for (const column of metricColumns) {
+		empty[column.key] = '';
+	}
+	return empty;
+}
+
+	let manualMetrics: Record<MetricKey, string> = createEmptyMetrics();
 
 	let manualMetricCount = 0;
 
@@ -281,10 +408,16 @@
 			.slice(0, MAX_PADDOCK_SUGGESTIONS);
 	})();
 
-	$: manualMetricCount = metricColumns.reduce((count, { key }) => {
-		const value = manualMetrics[key];
-		return value && value.trim() ? count + 1 : count;
-	}, 0);
+	$: {
+		let count = 0;
+		for (const column of metricColumns) {
+			const value = manualMetrics[column.key];
+			if (value && value.trim()) {
+				count += 1;
+			}
+		}
+		manualMetricCount = count;
+	}
 
 	function setCsvProgress(
 		stage: CsvProgressStage,
@@ -418,7 +551,9 @@
 			.sort((a, b) => a.id - b.id);
 	}
 
-	async function loadTests({ showSpinner = false }: { showSpinner?: boolean } = {}): Promise<boolean> {
+	async function loadTests({
+		showSpinner = false
+	}: { showSpinner?: boolean } = {}): Promise<boolean> {
 		if (showSpinner) {
 			loading = true;
 		}
@@ -446,15 +581,7 @@
 			sampleDate: '',
 			client: ''
 		};
-		manualMetrics = {
-			P: '',
-			K: '',
-			Ca: '',
-			Mg: '',
-			S: '',
-			Na: '',
-			pH: ''
-		};
+		manualMetrics = createEmptyMetrics();
 	}
 
 	async function handleManualSubmit(event: SubmitEvent) {
@@ -628,12 +755,12 @@
 
 	$: filtered = q
 		? tests.filter((test) => {
-			const haystack = `${test.paddockName} ${test.fieldId} ${test.sampleName ?? ''} ${test.sampleId} ${test.farm ?? ''}`.toLowerCase();
-			return haystack.includes(q.toLowerCase());
-		})
+				const haystack =
+					`${test.paddockName} ${test.fieldId} ${test.sampleName ?? ''} ${test.sampleId} ${test.farm ?? ''}`.toLowerCase();
+				return haystack.includes(q.toLowerCase());
+			})
 		: tests;
 </script>
-
 
 <svelte:window on:keydown={handleGlobalKeydown} />
 
@@ -917,16 +1044,86 @@
 			{:else}
 				<form class="modal__body" on:submit={handleCsvSubmit} bind:this={csvUploadForm}>
 					<p class="text-muted text-sm">
-						Upload a CSV exported from the lab. Expected headers include <code>fieldID</code>,
-						<code>name_sample</code>, <code>sample_date</code>, and metric columns such as
-						<code>P</code>, <code>K</code>, <code>Ca</code>, <code>Mg</code>, <code>S</code>,
-						<code>Na</code>, <code>ph_water</code>.
+						Upload a CSV exported from the lab and double-check the headings below match your file
+						exactly.
 					</p>
-					<p class="text-muted text-xs">
-						The file will be POSTed to <code>{uploadEndpoint('import')}</code> as
-						<code>multipart/form-data</code>
-						with the file field named <code>file</code>.
-					</p>
+					<ul class="csv-guidance__tips">
+						{#each csvUploaderTips as tip}
+							<li>{tip}</li>
+						{/each}
+					</ul>
+					<div class="csv-guidance">
+						<div class="csv-guidance__table-wrapper">
+							<table class="csv-guidance__table">
+								<thead>
+									<tr>
+										<th scope="col">Heading</th>
+										<th scope="col" class="csv-guidance__th-format">Format</th>
+										<th scope="col">How it's used</th>
+									</tr>
+								</thead>
+								{#each csvSections as section}
+									<tbody
+										class:csv-guidance__section--metrics={section.tone === 'metrics'}
+										class:csv-guidance__section--optional={section.tone === 'optional'}
+									>
+										<tr class="csv-guidance__section-header">
+											<th scope="row" colspan="3">
+												<button
+													type="button"
+													class="csv-guidance__section-toggle"
+													on:click={() => toggleCsvSection(section.id)}
+													aria-expanded={csvSectionOpen[section.id] ? 'true' : 'false'}
+												>
+													<span>{section.title}</span>
+													<span aria-hidden="true">{csvSectionOpen[section.id] ? '−' : '+'}</span>
+												</button>
+											</th>
+										</tr>
+										{#if csvSectionOpen[section.id]}
+											{#if section.note}
+												<tr class="csv-guidance__section-note">
+													<td colspan="3">{section.note}</td>
+												</tr>
+											{/if}
+											{#each section.rows as column}
+												<tr>
+													<td>
+														<div class="csv-guidance__codes">
+															{#each column.headings as heading}
+																<code>{heading}</code>
+															{/each}
+														</div>
+														{#if column.required}
+															<span class="required csv-guidance__required-tag">required</span>
+														{/if}
+													</td>
+													<td class="csv-guidance__format">{column.datatype}</td>
+													<td>
+														<div class="csv-guidance__description">{column.description}</div>
+													</td>
+												</tr>
+											{/each}
+										{/if}
+									</tbody>
+								{/each}
+							</table>
+						</div>
+					</div>
+					<div class="modal__csv-actions">
+							<a
+									class="modal__sample-link"
+									href={sampleCsvDownloadPath}
+									download={sampleCsvDownloadName}
+							>
+									<span aria-hidden="true">⬇</span>
+									Download sample CSV
+							</a>
+							<p class="modal__csv-hint">
+									The sample file includes the headings above and one example row you can
+									replace with your data.
+							</p>
+					</div>
 					<label class="modal__dropzone">
 						<input
 							type="file"
@@ -1036,7 +1233,6 @@
 		color: #f9fafb;
 		display: flex;
 		flex-direction: column;
-		max-height: min(90dvh, 46rem);
 	}
 
 	.modal__header {
@@ -1116,10 +1312,222 @@
 		opacity: 0.8;
 	}
 
+	.modal__csv-actions {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.75rem;
+			align-items: center;
+	}
+
 	.modal__hint {
 		font-size: 0.75rem;
 		color: rgba(248, 250, 252, 0.6);
 		margin-bottom: 0.5rem;
+	}
+
+	.modal__sample-link {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.45rem;
+			border-radius: 0.5rem;
+			border: 1px solid rgba(59, 130, 246, 0.5);
+			background: rgba(59, 130, 246, 0.18);
+			color: #f8fafc;
+			font-size: 0.85rem;
+			padding: 0.5rem 0.95rem;
+			text-decoration: none;
+			transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+	}
+
+	.modal__sample-link:hover {
+			border-color: rgba(59, 130, 246, 0.75);
+			background: rgba(59, 130, 246, 0.28);
+			transform: translateY(-1px);
+	}
+	
+	.modal__sample-link span[aria-hidden='true'] {
+			font-size: 1rem;
+	}
+
+	.modal__csv-hint {
+			font-size: 0.75rem;
+			color: rgba(248, 250, 252, 0.72);
+	}
+
+
+	.csv-guidance {
+		border: 1px solid rgba(148, 163, 184, 0.2);
+		border-radius: 0.75rem;
+		background: rgba(15, 23, 42, 0.75);
+		overflow: hidden;
+	}
+
+	.csv-guidance__table-wrapper {
+		overflow-x: auto;
+	}
+
+	.csv-guidance__table {
+		width: 100%;
+		border-collapse: collapse;
+	}
+
+	.csv-guidance__table th,
+	.csv-guidance__table td {
+		padding: 0.65rem 0.85rem;
+		font-size: 0.8rem;
+		color: rgba(248, 250, 252, 0.85);
+	}
+
+	.csv-guidance__table th {
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		font-size: 0.7rem;
+		color: rgba(248, 250, 252, 0.6);
+		background: rgba(148, 163, 184, 0.15);
+		border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+	}
+
+	.csv-guidance__table td {
+		border-top: 1px solid rgba(148, 163, 184, 0.18);
+		vertical-align: top;
+	}
+
+	.csv-guidance__th-format {
+		width: 24%;
+	}
+
+	.csv-guidance__table tbody tr:first-child td,
+	.csv-guidance__section-header + tr td,
+	.csv-guidance__section-note + tr td {
+		border-top: none;
+	}
+
+	.csv-guidance__codes {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem;
+	}
+
+	.csv-guidance__codes code {
+		background: rgba(15, 23, 42, 0.75);
+		border: 1px solid rgba(148, 163, 184, 0.35);
+		border-radius: 0.35rem;
+		padding: 0.15rem 0.45rem;
+		font-size: 0.75rem;
+		color: rgba(226, 232, 240, 0.95);
+	}
+
+	.csv-guidance__required-tag {
+		display: inline-flex;
+		margin-top: 0.4rem;
+	}
+
+	.csv-guidance__format {
+		font-size: 0.75rem;
+		color: rgba(148, 163, 184, 0.85);
+	}
+
+	.csv-guidance__description {
+		font-size: 0.8rem;
+		color: rgba(226, 232, 240, 0.9);
+		line-height: 1.5;
+	}
+
+	.csv-guidance__section-header th {
+		padding: 0;
+		border-top: 1px solid rgba(148, 163, 184, 0.2);
+		background: rgba(148, 163, 184, 0.12);
+	}
+
+	.csv-guidance__table tbody:first-of-type .csv-guidance__section-header th {
+		border-top: none;
+	}
+
+	.csv-guidance__section-toggle {
+		width: 100%;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.55rem 0.85rem;
+		background: transparent;
+		border: none;
+		color: rgba(226, 232, 240, 0.92);
+		font-size: 0.8rem;
+		font-weight: 600;
+		letter-spacing: 0.02em;
+		cursor: pointer;
+	}
+
+	.csv-guidance__section-toggle span[aria-hidden='true'] {
+		font-size: 1rem;
+	}
+
+	.csv-guidance__section-toggle:focus-visible {
+		outline: 2px solid rgba(191, 219, 254, 0.8);
+		outline-offset: 2px;
+	}
+
+	.csv-guidance__section-note td {
+		font-size: 0.75rem;
+		color: rgba(191, 219, 254, 0.92);
+		background: rgba(59, 130, 246, 0.12);
+		border-top: 1px solid rgba(59, 130, 246, 0.25);
+	}
+
+	.csv-guidance__section--metrics tr:not(.csv-guidance__section-header) td {
+		background: rgba(59, 130, 246, 0.08);
+	}
+
+	.csv-guidance__section--optional tr:not(.csv-guidance__section-header) td {
+		background: rgba(139, 92, 246, 0.08);
+	}
+
+	.csv-guidance__section--optional .csv-guidance__section-note td {
+		background: rgba(139, 92, 246, 0.14);
+		border-top-color: rgba(139, 92, 246, 0.28);
+		color: rgba(224, 231, 255, 0.95);
+	}
+
+	.csv-guidance__tips {
+		margin: 0;
+		padding-left: 1.25rem;
+		font-size: 0.75rem;
+		color: rgba(226, 232, 240, 0.7);
+	}
+
+	.csv-guidance__tips li + li {
+		margin-top: 0.35rem;
+	}
+
+	.csv-guidance__download {
+		align-self: flex-start;
+		margin-top: 0.5rem;
+		background: rgba(59, 130, 246, 0.18);
+		border: 1px solid rgba(59, 130, 246, 0.35);
+		color: rgba(191, 219, 254, 0.95);
+		border-radius: 0.5rem;
+		padding: 0.45rem 0.85rem;
+		font-size: 0.8rem;
+		cursor: pointer;
+	}
+
+	.csv-guidance__download:hover {
+		background: rgba(59, 130, 246, 0.28);
+		border-color: rgba(59, 130, 246, 0.55);
+		color: #fff;
+	}
+
+	.csv-guidance__download:focus-visible {
+		outline: 2px solid rgba(191, 219, 254, 0.8);
+		outline-offset: 2px;
+	}
+
+	@media (max-width: 640px) {
+		.csv-guidance__table th,
+		.csv-guidance__table td {
+			padding: 0.55rem 0.65rem;
+		}
 	}
 
 	.modal__dropzone {

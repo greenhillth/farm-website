@@ -26,7 +26,7 @@ Persist a single soil test that the user entered through the manual form. The fr
     "Mg": 304.95,                   // number, optional
     "S": 26.32,                     // number, optional
     "Na": 98.47,                    // number, optional
-    "pH": 5.89                      // number, optional
+    "ph_water": 5.89                // number, optional
   }
 }
 ```
@@ -34,8 +34,8 @@ Persist a single soil test that the user entered through the manual form. The fr
 ### Validation Rules
 1. `fieldId`, `sampleName`, `sampleId`, and `sampleDate` are required; trim whitespace on the string fields.
 2. `fieldId` and `sampleId` must be integers. Reject non-numeric or fractional values.
-3. `sampleDate` must parse cleanly to a `date` (UTC) or `datetime.date`.
-4. `metrics` must contain at least one of the supported metric keys (`P`, `K`, `Ca`, `Mg`, `S`, `Na`, `pH`). Reject payloads with no metrics or non-numeric values.
+3. `sampleDate` must parse cleanly to a `date` (UTC) or `datetime.date`. Excel serial day counts (e.g. `45888`) should be normalised to an ISO `YYYY-MM-DD` string before storage.
+4. `metrics` must contain at least one of the supported metric keys (`P`, `K`, `Ca`, `Mg`, `S`, `Na`, `ph_water`). Reject payloads with no metrics or non-numeric values.
 5. Values should be stored in consistent units; the frontend passes raw lab values.
 6. Optionally, use the `fieldId` to join with the paddock table and confirm the field exists; return 404 if it doesn’t, or 400 with a helpful message.
 
@@ -46,7 +46,7 @@ from datetime import date
 from typing import Optional
 from pydantic import BaseModel, Field, validator
 
-METRIC_KEYS = {"P", "K", "Ca", "Mg", "S", "Na", "pH"}
+METRIC_KEYS = {"P", "K", "Ca", "Mg", "S", "Na", "ph_water"}
 
 class MetricsPayload(BaseModel):
     P: Optional[float] = None
@@ -55,9 +55,9 @@ class MetricsPayload(BaseModel):
     Mg: Optional[float] = Field(None, alias="Mg")
     S: Optional[float] = None
     Na: Optional[float] = None
-    pH: Optional[float] = Field(None, alias="pH")
+    ph_water: Optional[float] = Field(None, alias="ph_water")
 
-    @validator("P", "K", "Ca", "Mg", "S", "Na", "pH", pre=True)
+    @validator("P", "K", "Ca", "Mg", "S", "Na", "ph_water", pre=True)
     def allow_empty(cls, v):
         if v in (None, "", "null"):
             return None
@@ -99,7 +99,7 @@ class ManualTestPayload(BaseModel):
   "sampleName": "Cemetery core",
   "sampleDate": "2014-07-23",
   "client": "Botanical Resources",
-  "metrics": { "P": 56.72, "K": 562.81, "pH": 5.89 }
+  "metrics": { "P": 56.72, "K": 562.81, "ph_water": 5.89 }
 }
 ```
 
@@ -126,9 +126,10 @@ Accept a CSV file exported from the lab, parse every row into soil test records,
   * `fieldID` (required) – must map to paddock table.
   * `id_sample` (required, integer)
   * `name_sample` (required for readability)
-  * `sample_date` (required) – parse to ISO date.
-  * `client`, `grower`, `crop` (optional metadata)
-  * Metric columns: `P`, `K`, `Ca`, `Mg`, `S`, `Na`, `Cl`, `Cu`, `Fe`, `Mn`, `Zn`, `B`, `Al`, `EC`, `ph_water`, `ph_cacl2`, `buffer_pH`, `total_C`, `total_N`, `soil_depth_from`, `soil_depth_to`, etc.
+  * `sample_date` (required) – ISO `YYYY-MM-DD` **or** an Excel serial day count (e.g. `45888`).
+  * Core metrics: `P`, `K`, `Ca`, `Mg`, `S`, `Na`, `ph_water`.
+  * Optional metrics: `olsen_P`, `Cl`, `Cu`, `Fe`, `Mn`, `Zn`, `B`, `Al`, `EC`, `ph_cacl2`, `buffer_pH`, `total_C`, `total_N`, `soil_depth_from`, `soil_depth_to`.
+  * Optional qualifiers: `grower`, `crop`, `client`.
 
 You don’t need to ingest every column; the frontend currently expects the metrics subset listed above plus whatever extra you want to store.
 
@@ -147,8 +148,22 @@ You don’t need to ingest every column; the frontend currently expects the metr
 
 2. **Basic validation**:
    * Fail with `400` if no rows.
-   * Ensure `fieldID` and `sample_date` columns exist.
-   * For each row, trim whitespace, convert numbers (use `float()`), and parse the date (prefer `datetime.strptime(value, '%Y-%m-%d')` but add fallback patterns).
+   * Ensure `fieldID`, `id_sample`, and `sample_date` columns exist.
+   * For each row, trim whitespace, convert numbers (use `float()`), and parse the date. Accept ISO strings and Excel serial day counts:
+     ```python
+     from datetime import datetime, timedelta
+
+     EXCEL_EPOCH = datetime(1899, 12, 30)
+
+     def normalise_sample_date(raw: str) -> datetime:
+         raw = raw.strip()
+         if raw.isdigit():
+             serial = int(raw)
+             if serial > 59:  # Excel leap-year bug
+                 serial -= 1
+             return EXCEL_EPOCH + timedelta(days=serial)
+         return datetime.fromisoformat(raw)
+     ```
    * If a row lacks metrics completely, either skip it with a warning, or treat as error depending on your policy.
 
 3. **Duplicate handling**:
