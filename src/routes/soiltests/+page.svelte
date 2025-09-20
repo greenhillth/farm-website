@@ -4,30 +4,24 @@
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import CONFIG from '$lib/config';
 	import { uploadEndpoint } from '$lib/utils';
+	import {
+		CSV_PROGRESS_EVENT_NAME,
+		csvStageDefaults,
+		fetchSoilTests,
+		formatDate,
+		formatNumber,
+		metricColumns,
+		metricPlaceholders,
+		type BulkDeleteResponse,
+		type CsvProgressStage,
+		type CsvProgressState,
+		type CsvProgressUpdate,
+		type MetricKey,
+		type SoilTest
+	} from './helpers';
 
-	const metricColumns = [
-		{ key: 'P', label: 'P' },
-		{ key: 'K', label: 'K' },
-		{ key: 'Ca', label: 'Ca' },
-		{ key: 'Mg', label: 'Mg' },
-		{ key: 'S', label: 'S' },
-		{ key: 'Na', label: 'Na' },
-		{ key: 'pH', label: 'pH (H2O)' }
-	] as const;
-
-	type MetricKey = (typeof metricColumns)[number]['key'];
-
-	type SoilTest = {
-		id: number;
-		fieldId: string;
-		paddockName: string;
-		farm?: string;
-		sampleId?: string | null;
-		sampleName?: string | null;
-		sampleDate?: string | null;
-		client?: string | null;
-		metrics: Partial<Record<MetricKey, number>>;
-	};
+	type ToastVariant = 'success' | 'error' | 'warning';
+	type Toast = { id: number; message: string; variant: ToastVariant };
 
 	let tests: SoilTest[] = [];
 	let q = '';
@@ -43,9 +37,6 @@
 	let selectedIds: Set<SoilTest['id']> = new Set();
 	let selectedCount = 0;
 	$: selectedCount = selectedIds.size;
-
-	type ToastVariant = 'success' | 'error' | 'warning';
-	type Toast = { id: number; message: string; variant: ToastVariant };
 
 	let toasts: Toast[] = [];
 	let toastCounter = 0;
@@ -147,12 +138,6 @@
 		}
 	}
 
-	type BulkDeleteResponse = {
-		deleted?: number;
-		ids?: SoilTest['id'][];
-		failedIds?: SoilTest['id'][];
-	};
-
 	async function doBulkDelete() {
 		if (selectedCount === 0 || deletingTests) return;
 		deletingTests = true;
@@ -227,43 +212,6 @@
 	let csvFileInput: HTMLInputElement | null = null;
 	let csvUploadForm: HTMLFormElement | null = null;
 
-	type CsvProgressStage =
-		| 'idle'
-		| 'uploading'
-		| 'queued'
-		| 'parsing'
-		| 'importing'
-		| 'complete'
-		| 'error';
-
-	type CsvProgressState = {
-		visible: boolean;
-		stage: CsvProgressStage;
-		percent: number;
-		message: string;
-		detail?: string | null;
-	};
-
-	type CsvProgressUpdate = {
-		jobId?: string;
-		stage: CsvProgressStage;
-		percent?: number;
-		message?: string;
-		detail?: string | null;
-	};
-
-	const CSV_PROGRESS_EVENT_NAME = 'farm:csv-import-progress';
-
-	const csvStageDefaults: Record<CsvProgressStage, { label: string; percent: number }> = {
-		idle: { label: 'Waiting to upload CSV', percent: 0 },
-		uploading: { label: 'Uploading CSV file…', percent: 10 },
-		queued: { label: 'Queued for processing…', percent: 25 },
-		parsing: { label: 'Parsing CSV data…', percent: 50 },
-		importing: { label: 'Importing soil tests…', percent: 75 },
-		complete: { label: 'Import complete', percent: 100 },
-		error: { label: 'Import failed', percent: 100 }
-	};
-
 	let csvProgress: CsvProgressState = {
 		visible: false,
 		stage: 'idle',
@@ -309,16 +257,6 @@
 		const value = manualMetrics[key];
 		return value && value.trim() ? count + 1 : count;
 	}, 0);
-
-	const metricPlaceholders: Record<MetricKey, string> = {
-		P: 'e.g. 56.7',
-		K: 'e.g. 562.8',
-		Ca: 'e.g. 2595.7',
-		Mg: 'e.g. 305',
-		S: 'e.g. 26.3',
-		Na: 'e.g. 98.5',
-		pH: 'e.g. 5.9'
-	};
 
 	function setCsvProgress(
 		stage: CsvProgressStage,
@@ -377,7 +315,7 @@
 		uploadError = null;
 	}
 
-	function handleCsvProgressUpdate(update: CsvProgressUpdate) {
+	async function handleCsvProgressUpdate(update: CsvProgressUpdate) {
 		if (!update) return;
 		if (update.jobId && activeCsvJobId && update.jobId !== activeCsvJobId) return;
 		if (update.jobId && !activeCsvJobId) {
@@ -400,69 +338,19 @@
 			if (csvFileInput) {
 				csvFileInput.value = '';
 			}
+
+			const refreshed = await loadTests();
+			showToast(
+				refreshed ? 'Import complete.' : 'Import complete, but refreshing the list failed.',
+				refreshed ? 'success' : 'warning'
+			);
 		}
 	}
 
-	/**
-	 * CSV import progress events are expected to be dispatched by the backend.
-	 * Once the POST /api/soil-tests/import endpoint returns a tracking ID, open an
-	 * SSE or WebSocket connection and dispatch CustomEvents named
-	 * `farm:csv-import-progress` with a {@link CsvProgressUpdate} payload.
-	 *
-	 * Example (while backend integration is pending):
-	 * `window.dispatchEvent(new CustomEvent(CSV_PROGRESS_EVENT_NAME, { detail: { jobId, stage: 'parsing', percent: 50 } }))`
-	 */
 	function onCsvProgressEvent(event: Event) {
 		const customEvent = event as CustomEvent<CsvProgressUpdate>;
 		if (!customEvent.detail) return;
-		handleCsvProgressUpdate(customEvent.detail);
-	}
-
-	const numberFormat = new Intl.NumberFormat('en-AU', {
-		maximumFractionDigits: 2
-	});
-
-	const toNumber = (value: unknown) => {
-		const num = Number(value);
-		return Number.isFinite(num) ? num : undefined;
-	};
-
-	function formatNumber(value: number | undefined) {
-		return value === undefined ? '-' : numberFormat.format(value);
-	}
-
-	function formatDate(value: string | null | undefined) {
-		if (!value) return '-';
-		const date = new Date(value);
-		if (Number.isNaN(date.getTime())) return value;
-		return date.toLocaleDateString('en-AU', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric'
-		});
-	}
-
-	function normalisePaddockId(value: unknown) {
-		return value ? String(value) : '';
-	}
-
-	function resetManualForm() {
-		manualForm = {
-			fieldId: '',
-			sampleName: '',
-			sampleId: '',
-			sampleDate: '',
-			client: ''
-		};
-		manualMetrics = {
-			P: '',
-			K: '',
-			Ca: '',
-			Mg: '',
-			S: '',
-			Na: '',
-			pH: ''
-		};
+		void handleCsvProgressUpdate(customEvent.detail);
 	}
 
 	function openUploader(mode: 'manual' | 'csv' = 'manual') {
@@ -489,6 +377,44 @@
 		submitting = false;
 		uploadError = null;
 		resetCsvUploadState();
+	}
+
+	async function loadTests({ showSpinner = false }: { showSpinner?: boolean } = {}): Promise<boolean> {
+		if (showSpinner) {
+			loading = true;
+		}
+		error = null;
+		try {
+			const data = await fetchSoilTests();
+			tests = data;
+			return true;
+		} catch (err: unknown) {
+			error = err instanceof Error ? err.message : 'Failed loading soil tests';
+			return false;
+		} finally {
+			if (showSpinner) {
+				loading = false;
+			}
+		}
+	}
+
+	function resetManualForm() {
+		manualForm = {
+			fieldId: '',
+			sampleName: '',
+			sampleId: '',
+			sampleDate: '',
+			client: ''
+		};
+		manualMetrics = {
+			P: '',
+			K: '',
+			Ca: '',
+			Mg: '',
+			S: '',
+			Na: '',
+			pH: ''
+		};
 	}
 
 	async function handleManualSubmit(event: SubmitEvent) {
@@ -528,12 +454,31 @@
 			const endpoint = uploadEndpoint('manual');
 
 			console.info('POST to', endpoint, payload);
-			await fetch(endpoint, {
+			const response = await fetch(endpoint, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload)
 			});
+
+			if (!response.ok) {
+				let message = `Failed to submit sample (${response.status})`;
+				try {
+					const problem = await response.json();
+					if (problem && typeof problem === 'object' && 'message' in problem) {
+						message = String((problem as Record<string, unknown>).message ?? message);
+					}
+				} catch {
+					// ignore JSON parse errors and keep fallback message
+				}
+				throw new Error(message);
+			}
+
+			const refreshed = await loadTests();
 			closeUploader();
+			showToast(
+				refreshed ? 'Soil test added.' : 'Soil test added, but refreshing the list failed.',
+				refreshed ? 'success' : 'warning'
+			);
 		} catch (err) {
 			uploadError = err instanceof Error ? err.message : 'Failed to submit sample';
 		} finally {
@@ -586,69 +531,12 @@
 			}
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to upload CSV';
-			handleCsvProgressUpdate({ stage: 'error', message, detail: message, jobId });
+			await handleCsvProgressUpdate({ stage: 'error', message, detail: message, jobId });
 		}
 	}
 
-	onMount(async () => {
-		loading = true;
-		try {
-			const [testsRes, paddocksRes] = await Promise.all([
-				fetch(CONFIG.backend.latestTest),
-				fetch(CONFIG.backend.farm)
-			]);
-
-			if (!testsRes.ok) throw new Error(`Tests request failed (${testsRes.status})`);
-			if (!paddocksRes.ok) throw new Error(`Paddock lookup failed (${paddocksRes.status})`);
-
-			const [testsJson, paddocksJson] = await Promise.all([testsRes.json(), paddocksRes.json()]);
-
-			const paddockLookup = new Map<string, { name: string; farm?: string }>();
-			for (const feature of paddocksJson?.features ?? []) {
-				const props = feature?.properties ?? {};
-				const id = normalisePaddockId(props.fieldID ?? props.ADSFLDID ?? props.FIELDID ?? props.id);
-				if (!id) continue;
-				const name = String(props.fieldName ?? props.FIELDNAME ?? 'Unnamed paddock');
-				const farm = props.FARM ? String(props.FARM) : undefined;
-				paddockLookup.set(id, { name, farm });
-			}
-
-			tests = (testsJson ?? [])
-				.map((row: any) => {
-					const fieldId = normalisePaddockId(row.fieldID);
-					const paddock = paddockLookup.get(fieldId);
-					const metrics: SoilTest['metrics'] = {
-						P: toNumber(row.P ?? row.p),
-						K: toNumber(row.K ?? row.k),
-						Ca: toNumber(row.Ca ?? row.CA),
-						Mg: toNumber(row.Mg ?? row.MG),
-						S: toNumber(row.S ?? row.s),
-						Na: toNumber(row.Na ?? row.NA ?? row.sodium),
-						pH: toNumber(row.ph_water ?? row.pH ?? row.PH)
-					};
-
-					return {
-						id: Number(row.id ?? 0),
-						fieldId,
-						paddockName: paddock?.name ?? 'Unknown paddock',
-						farm: paddock?.farm ?? (row.farm ? String(row.farm) : undefined),
-						sampleId: row.id_sample ?? null,
-						sampleName: row.name_sample ?? null,
-						sampleDate: row.sample_date ?? null,
-						client: row.client ?? null,
-						metrics
-					} satisfies SoilTest;
-				})
-				.sort((a: SoilTest, b: SoilTest) => {
-					const aDate = a.sampleDate ? new Date(a.sampleDate).getTime() : 0;
-					const bDate = b.sampleDate ? new Date(b.sampleDate).getTime() : 0;
-					return bDate - aDate;
-				});
-		} catch (err: unknown) {
-			error = err instanceof Error ? err.message : 'Failed loading soil tests';
-		} finally {
-			loading = false;
-		}
+	onMount(() => {
+		void loadTests({ showSpinner: true });
 	});
 
 	onMount(() => {
@@ -661,13 +549,12 @@
 
 	$: filtered = q
 		? tests.filter((test) => {
-				const haystack = `${test.paddockName} ${test.fieldId} ${test.sampleName ?? ''} ${
-					test.sampleId ?? ''
-				} ${test.farm ?? ''}`.toLowerCase();
-				return haystack.includes(q.toLowerCase());
-			})
+			const haystack = `${test.paddockName} ${test.fieldId} ${test.sampleName ?? ''} ${test.sampleId ?? ''} ${test.farm ?? ''}`.toLowerCase();
+			return haystack.includes(q.toLowerCase());
+		})
 		: tests;
 </script>
+
 
 <svelte:window on:keydown={handleGlobalKeydown} />
 
