@@ -14,7 +14,9 @@ const CONFIG = {
 		upload: {
 			test: {
 				manual: `${apiBase}/soil-tests/manual`,
-				import: `${apiBase}/soil-tests/import`
+				import: `${apiBase}/soil-tests/import`,
+				status: (jobId: string) => `${apiBase}/soil-tests/import/${jobId}/status`,
+				cancel: (jobId: string) => `${apiBase}/soil-tests/import/${jobId}`
 			}
 		}
 	},

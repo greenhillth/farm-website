@@ -29,6 +29,16 @@
 	let q = '';
 	let loading = true;
 	let error: string | null = null;
+	type PrimarySortColumn = 'date' | 'sample' | 'paddock' | 'farm' | 'client';
+
+	type SortState =
+		| { type: PrimarySortColumn; direction: 'asc' | 'desc' }
+		| { type: 'metric'; key: MetricKey; direction: 'asc' | 'desc' };
+
+	let sortState: SortState = { type: 'date', direction: 'desc' };
+	let sortedTests: SoilTest[] = [];
+	let sortDescription = '';
+
 	let showUploader = false;
 	let uploadMode: 'manual' | 'csv' = 'manual';
 	let uploadError: string | null = null;
@@ -69,6 +79,7 @@
 	}
 
 	onDestroy(() => {
+		stopProgressPolling();
 		toastTimeouts.forEach((timeout) => clearTimeout(timeout));
 		toastTimeouts.clear();
 	});
@@ -249,8 +260,8 @@ for (const column of metricColumns) {
 	csvMetricHeadings.push(column.key);
 }
 
-const optionalMetricHeadings = optionalColumns.map((column) => column.key);
-const optionalQualifierHeadings = ['grower', 'crop'] as const;
+	const optionalMetricHeadings = optionalColumns.map((column) => column.key);
+	const optionalQualifierHeadings = ['grower', 'crop'] as const;
 
 	const csvSections: CsvSection[] = [
 		{
@@ -351,7 +362,9 @@ const optionalQualifierHeadings = ['grower', 'crop'] as const;
 		csvSectionOpen = { ...csvSectionOpen, [id]: !csvSectionOpen[id] };
 	}
 
-	let activeCsvJobId: string | null = null;
+let activeCsvJobId: string | null = null;
+let progressPollTimer: ReturnType<typeof setTimeout> | null = null;
+let progressPollAbort: AbortController | null = null;
 
 	type ManualForm = {
 		fieldId: string | number;
@@ -437,7 +450,74 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 		};
 	}
 
+function stopProgressPolling() {
+	if (progressPollTimer) {
+		clearTimeout(progressPollTimer);
+		progressPollTimer = null;
+	}
+	if (progressPollAbort) {
+		progressPollAbort.abort();
+		progressPollAbort = null;
+	}
+}
+
+type CsvProgressResponse = CsvProgressUpdate & {
+	pollAfterMs?: number;
+};
+
+async function pollImportJob(jobId: string, defaultDelay: number) {
+	const controller = progressPollAbort;
+	if (!controller) return;
+	try {
+		const response = await fetch(CONFIG.backend.upload.test.status(jobId), {
+			signal: controller.signal
+		});
+		if (!response.ok) {
+			if (response.status === 404 || response.status === 410) {
+				throw new Error('Import job not found.');
+			}
+			throw new Error(`Progress request failed (${response.status})`);
+		}
+		const payload = (await response.json()) as CsvProgressResponse;
+		const update: CsvProgressUpdate = {
+			jobId,
+			stage: payload.stage ?? 'queued',
+			percent: payload.percent,
+			message: payload.message,
+			detail: payload.detail
+		};
+		await handleCsvProgressUpdate(update);
+		if (controller.signal.aborted) return;
+		if (update.stage === 'complete' || update.stage === 'error') {
+			stopProgressPolling();
+			return;
+		}
+		const nextDelay = Math.max(500, typeof payload.pollAfterMs === 'number' ? payload.pollAfterMs : defaultDelay);
+		if (progressPollAbort !== controller) return;
+		progressPollTimer = setTimeout(() => {
+			if (progressPollAbort === controller) {
+				void pollImportJob(jobId, nextDelay);
+			}
+		}, nextDelay);
+	} catch (err) {
+		if (controller.signal.aborted) return;
+		console.error('Failed to poll soil test import progress', err);
+		const message = err instanceof Error ? err.message : 'Failed to fetch progress';
+		await handleCsvProgressUpdate({ jobId, stage: 'error', message, detail: message });
+		stopProgressPolling();
+	}
+}
+
+function startProgressPolling(jobId: string, initialDelay = 2000) {
+	stopProgressPolling();
+	const controller = new AbortController();
+	progressPollAbort = controller;
+	const fallbackDelay = Math.max(500, initialDelay);
+	void pollImportJob(jobId, fallbackDelay);
+}
+
 	function resetCsvUploadState() {
+		stopProgressPolling();
 		activeCsvJobId = null;
 		csvFile = null;
 		csvFileName = null;
@@ -476,6 +556,11 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 		uploadError = null;
 	}
 
+	function openCsvFileDialog() {
+		if (submitting) return;
+		csvFileInput?.click();
+	}
+
 	async function handleCsvProgressUpdate(update: CsvProgressUpdate) {
 		if (!update) return;
 		if (update.jobId && activeCsvJobId && update.jobId !== activeCsvJobId) return;
@@ -494,6 +579,7 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 		submitting = update.stage !== 'complete' && update.stage !== 'error';
 
 		if (update.stage === 'complete') {
+			stopProgressPolling();
 			// Allow selecting the same file again once the import is done.
 			csvFile = null;
 			if (csvFileInput) {
@@ -505,6 +591,8 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 				refreshed ? 'Import complete.' : 'Import complete, but refreshing the list failed.',
 				refreshed ? 'success' : 'warning'
 			);
+		} else if (update.stage === 'error') {
+			stopProgressPolling();
 		}
 	}
 
@@ -533,11 +621,136 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 		}
 	}
 
+	function toggleMetricSort(key: MetricKey) {
+		if (sortState.type === 'metric' && sortState.key === key) {
+			if (sortState.direction === 'desc') {
+				sortState = { type: 'metric', key, direction: 'asc' };
+			} else {
+				sortState = { type: 'date', direction: 'desc' };
+			}
+		} else {
+			sortState = { type: 'metric', key, direction: 'desc' };
+		}
+	}
+
+	function metricSortIndicator(key: MetricKey): string {
+		if (sortState.type !== 'metric' || sortState.key !== key) return '−';
+		return sortState.direction === 'desc' ? '▼' : '▲';
+	}
+
+	function togglePrimarySort(column: PrimarySortColumn) {
+		if (sortState.type === column) {
+			sortState = {
+				type: column,
+				direction: sortState.direction === 'desc' ? 'asc' : 'desc'
+			};
+		} else {
+			const initialDirection = column === 'date' ? 'desc' : 'asc';
+			sortState = { type: column, direction: initialDirection };
+		}
+	}
+
+	function primarySortIndicator(column: PrimarySortColumn): string {
+		if (sortState.type !== column) return '−';
+		return sortState.direction === 'desc' ? '▼' : '▲';
+	}
+
+	function sortTests(list: SoilTest[], state: SortState): SoilTest[] {
+		const copy = [...list];
+		if (state.type === 'date') {
+			return copy.sort((a, b) => {
+				const aDate = a.sampleDate ? new Date(a.sampleDate).getTime() : -Infinity;
+				const bDate = b.sampleDate ? new Date(b.sampleDate).getTime() : -Infinity;
+				return state.direction === 'desc' ? bDate - aDate : aDate - bDate;
+			});
+		}
+		if (state.type === 'sample') {
+			return copy.sort((a, b) => {
+				const compare = (a.sampleName ?? '').localeCompare(b.sampleName ?? '', undefined, {
+					numeric: true,
+					sensitivity: 'base'
+				});
+				return state.direction === 'desc' ? -compare : compare;
+			});
+		}
+		if (state.type === 'paddock') {
+			return copy.sort((a, b) => {
+				const compare = a.paddockName.localeCompare(b.paddockName, undefined, {
+					numeric: true,
+					sensitivity: 'base'
+				});
+				return state.direction === 'desc' ? -compare : compare;
+			});
+		}
+		if (state.type === 'farm') {
+			return copy.sort((a, b) => {
+				const compare = (a.farm ?? '').localeCompare(b.farm ?? '', undefined, {
+					numeric: true,
+					sensitivity: 'base'
+				});
+				return state.direction === 'desc' ? -compare : compare;
+			});
+		}
+		if (state.type === 'client') {
+			return copy.sort((a, b) => {
+				const compare = (a.client ?? '').localeCompare(b.client ?? '', undefined, {
+					numeric: true,
+					sensitivity: 'base'
+				});
+				return state.direction === 'desc' ? -compare : compare;
+			});
+		}
+		return copy.sort((a, b) => {
+			const aRaw = a.metrics[state.key];
+			const bRaw = b.metrics[state.key];
+			const aVal =
+				typeof aRaw === 'number'
+					? aRaw
+					: state.direction === 'desc'
+						? Number.NEGATIVE_INFINITY
+						: Number.POSITIVE_INFINITY;
+			const bVal =
+				typeof bRaw === 'number'
+					? bRaw
+					: state.direction === 'desc'
+						? Number.NEGATIVE_INFINITY
+						: Number.POSITIVE_INFINITY;
+			return state.direction === 'desc' ? bVal - aVal : aVal - bVal;
+		});
+	}
+
+	function currentSortDescription(): string {
+		if (sortState.type === 'date') {
+			return `Sorted by sample date (${sortState.direction === 'desc' ? 'newest' : 'oldest'} first)`;
+		}
+		if (
+			sortState.type === 'sample' ||
+			sortState.type === 'paddock' ||
+			sortState.type === 'farm' ||
+			sortState.type === 'client'
+		) {
+			const prettyLabel =
+				sortState.type === 'sample'
+					? 'sample name'
+					: sortState.type === 'paddock'
+						? 'paddock'
+						: sortState.type === 'farm'
+							? 'farm'
+							: 'client';
+			return `Sorted by ${prettyLabel} (${sortState.direction === 'desc' ? 'Z→A' : 'A→Z'})`;
+		}
+		const metricState = sortState as Extract<SortState, { type: 'metric' }>;
+		const column = metricColumns.find((metric) => metric.key === metricState.key);
+		const label = column?.label ?? metricState.key;
+		return `Sorted by ${label} (${metricState.direction === 'desc' ? 'highest' : 'lowest'} first)`;
+	}
+
 	function closeUploader() {
 		showUploader = false;
 		submitting = false;
 		uploadError = null;
 		resetCsvUploadState();
+		void loadTests();
 	}
 
 	function toPaddockOptions(values: PaddockSummary[]): PaddockOption[] {
@@ -709,6 +922,8 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 		uploadError = null;
 		submitting = true;
 
+		stopProgressPolling();
+
 		const jobId =
 			typeof crypto !== 'undefined' && 'randomUUID' in crypto
 				? crypto.randomUUID()
@@ -728,16 +943,28 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 		);
 
 		try {
-			// TODO: Replace stub with real upload request and progress tracking.
 			const response = await fetch(endpoint, { method: 'POST', body: data });
 			if (!response.ok) throw new Error(`Upload failed (${response.status})`);
-			const json = await response.json();
-			if (json?.jobId) {
-				activeCsvJobId = json.jobId;
-			}
+			const payload = (await response.json()) as CsvProgressUpdate & {
+				jobId?: string;
+				pollAfterMs?: number;
+			};
+			const serverJobId = typeof payload?.jobId === 'string' ? payload.jobId : jobId;
+			activeCsvJobId = serverJobId;
+			await handleCsvProgressUpdate({
+				jobId: serverJobId,
+				stage: payload?.stage ?? 'queued',
+				percent: payload?.percent,
+				message:
+					payload?.message ?? 'Upload received. Waiting for processing updates from the server…',
+				detail: payload?.detail
+			});
+			const initialDelay = typeof payload?.pollAfterMs === 'number' ? payload.pollAfterMs : 2000;
+			startProgressPolling(serverJobId, initialDelay);
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to upload CSV';
 			await handleCsvProgressUpdate({ stage: 'error', message, detail: message, jobId });
+			stopProgressPolling();
 		}
 	}
 
@@ -753,13 +980,14 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 		};
 	});
 
+	$: sortedTests = sortTests(tests, sortState);
 	$: filtered = q
-		? tests.filter((test) => {
-				const haystack =
-					`${test.paddockName} ${test.fieldId} ${test.sampleName ?? ''} ${test.sampleId} ${test.farm ?? ''}`.toLowerCase();
+		? sortedTests.filter((test) => {
+				const haystack = `${test.paddockName} ${test.fieldId} ${test.sampleName ?? ''} ${test.sampleId} ${test.farm ?? ''}`.toLowerCase();
 				return haystack.includes(q.toLowerCase());
 			})
-		: tests;
+		: sortedTests;
+	$: sortDescription = currentSortDescription();
 </script>
 
 <svelte:window on:keydown={handleGlobalKeydown} />
@@ -801,8 +1029,9 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 				bind:value={q}
 				class="border-border focus:ring-accent/40 w-full rounded-md border bg-white/5 px-3 py-2 text-sm outline-none focus:ring-2 sm:max-w-md"
 			/>
-			<div class="text-muted flex flex-wrap items-center gap-3 text-xs">
-				<span>Showing {filtered.length} of {tests.length} samples</span>
+			<div class="flex flex-wrap items-center gap-3 text-xs sm:ml-auto">
+				<span class="text-muted">Showing {filtered.length} of {tests.length} samples</span>
+				<span class="hidden sm:inline text-muted">{sortDescription}</span>
 				<div class="flex items-center gap-2">
 					<button
 						type="button"
@@ -859,13 +1088,73 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 									<span class="sr-only">Select soil test</span>
 								{/if}
 							</th>
-							<th class="py-2 pr-4">Sample</th>
-							<th class="py-2 pr-4">Paddock</th>
-							<th class="py-2 pr-4">Farm</th>
-							<th class="py-2 pr-4">Sample date</th>
-							<th class="py-2 pr-4">Client</th>
+							<th class="py-2 pr-4">
+								<button
+									type="button"
+									class="table-sort"
+									on:click={() => togglePrimarySort('sample')}
+									aria-label="Sort sample name"
+								>
+									<span>Sample</span>
+									<span class="table-sort__icon">{primarySortIndicator('sample')}</span>
+								</button>
+							</th>
+							<th class="py-2 pr-4">
+								<button
+									type="button"
+									class="table-sort"
+									on:click={() => togglePrimarySort('paddock')}
+									aria-label="Sort paddock"
+								>
+									<span>Paddock</span>
+									<span class="table-sort__icon">{primarySortIndicator('paddock')}</span>
+								</button>
+							</th>
+							<th class="py-2 pr-4">
+								<button
+									type="button"
+									class="table-sort"
+									on:click={() => togglePrimarySort('farm')}
+									aria-label="Sort farm"
+								>
+									<span>Farm</span>
+									<span class="table-sort__icon">{primarySortIndicator('farm')}</span>
+								</button>
+							</th>
+							<th class="py-2 pr-4">
+								<button
+									type="button"
+									class="table-sort"
+									on:click={() => togglePrimarySort('date')}
+									aria-label="Sort sample date"
+								>
+									<span>Sample date</span>
+									<span class="table-sort__icon">{primarySortIndicator('date')}</span>
+								</button>
+							</th>
+							<th class="py-2 pr-4">
+								<button
+									type="button"
+									class="table-sort"
+									on:click={() => togglePrimarySort('client')}
+									aria-label="Sort client"
+								>
+									<span>Client</span>
+									<span class="table-sort__icon">{primarySortIndicator('client')}</span>
+								</button>
+							</th>
 							{#each metricColumns as column}
-								<th class="py-2 pr-2 text-right">{column.label}</th>
+								<th class="py-2 pr-2 text-right">
+									<button
+										type="button"
+										class="table-sort table-sort--metric"
+										on:click={() => toggleMetricSort(column.key)}
+										aria-label={`Sort ${column.label}`}
+									>
+										<span>{column.label}</span>
+										<span class="table-sort__icon">{metricSortIndicator(column.key)}</span>
+									</button>
+								</th>
 							{/each}
 						</tr>
 					</thead>
@@ -1124,7 +1413,7 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 									replace with your data.
 							</p>
 					</div>
-					<label class="modal__dropzone">
+					<label class="modal__dropzone" class:modal__dropzone--hidden={Boolean(csvFile)}>
 						<input
 							type="file"
 							accept=".csv"
@@ -1143,17 +1432,29 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 								</span>
 								<span class="modal__selected-file-name">{csvFile?.name ?? csvFileName}</span>
 							</div>
-							{#if csvFile}
-								<button
-									type="button"
-									class="modal__selected-file-clear"
-									on:click={clearCsvFile}
-									aria-label="Remove selected file"
-									disabled={submitting}
-								>
-									×
-								</button>
-							{/if}
+							<div class="modal__selected-file-actions">
+								{#if csvFile}
+									<button
+										type="button"
+										class="modal__selected-file-change"
+										on:click={openCsvFileDialog}
+										disabled={submitting}
+									>
+										Change file
+									</button>
+								{/if}
+								{#if csvFile}
+									<button
+										type="button"
+										class="modal__selected-file-clear"
+										on:click={clearCsvFile}
+										aria-label="Remove selected file"
+										disabled={submitting}
+									>
+										×
+									</button>
+								{/if}
+							</div>
 						</div>
 					{/if}
 					{#if csvProgress.visible}
@@ -1174,10 +1475,14 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 						<div class="modal__error">{uploadError}</div>
 					{/if}
 					<footer class="modal__footer">
-						<button type="button" on:click={closeUploader} class="modal__secondary">Cancel</button>
-						<button type="submit" class="modal__primary" disabled={submitting || !csvFile}>
-							{submitting ? 'Uploading…' : 'Upload CSV'}
-						</button>
+						<button type="button" on:click={closeUploader} class="modal__secondary">{csvProgress.stage === 'complete' ? 'Close' : 'Cancel'}</button>
+						{#if csvProgress.stage === 'complete' && !csvFile}
+							<button type="button" class="modal__primary" on:click={closeUploader}>Exit</button>
+						{:else}
+							<button type="submit" class="modal__primary" disabled={submitting || !csvFile}>
+								{submitting ? 'Uploading…' : 'Upload CSV'}
+							</button>
+						{/if}
 					</footer>
 				</form>
 			{/if}
@@ -1229,6 +1534,8 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 		border-radius: 0.75rem;
 		max-width: 42rem;
 		width: min(100%, 42rem);
+		max-height: min(92vh, 62rem);
+		overflow: hidden;
 		box-shadow: 0 25px 60px rgba(15, 23, 42, 0.45);
 		color: #f9fafb;
 		display: flex;
@@ -1282,6 +1589,8 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+		flex: 1;
+		min-height: 0;
 	}
 
 	.modal__field {
@@ -1359,17 +1668,41 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 		border: 1px solid rgba(148, 163, 184, 0.2);
 		border-radius: 0.75rem;
 		background: rgba(15, 23, 42, 0.75);
+		display: flex;
+		flex-direction: column;
 		overflow: hidden;
 	}
 
 	.csv-guidance__table-wrapper {
 		overflow-x: auto;
-	}
+		overflow-y: auto;
+		max-height: clamp(20rem, 55vh, 32rem);
+		padding-right: 0.75rem;
+		margin-right: 0;
+		scrollbar-width: thin;
+		scrollbar-color: rgba(148, 163, 184, 0.6) transparent;
+		overscroll-behavior: contain;
+}
+
+	.csv-guidance__table-wrapper::-webkit-scrollbar {
+		width: 6px;
+}
+
+	.csv-guidance__table-wrapper::-webkit-scrollbar-thumb {
+		background: rgba(148, 163, 184, 0.6);
+		border-radius: 999px;
+}
+
+	.csv-guidance__table-wrapper::-webkit-scrollbar-thumb:hover {
+		background: rgba(148, 163, 184, 0.8);
+}
 
 	.csv-guidance__table {
 		width: 100%;
 		border-collapse: collapse;
-	}
+		table-layout: fixed;
+		--csv-header-height: 2.2rem;
+}
 
 	.csv-guidance__table th,
 	.csv-guidance__table td {
@@ -1382,10 +1715,14 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		font-size: 0.7rem;
-		color: rgba(248, 250, 252, 0.6);
-		background: rgba(148, 163, 184, 0.15);
-		border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-	}
+		color: rgba(248, 250, 252, 0.7);
+		background: rgba(30, 41, 59, 0.96);
+		border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+		position: sticky;
+		top: 0;
+		z-index: 3;
+		height: var(--csv-header-height);
+}
 
 	.csv-guidance__table td {
 		border-top: 1px solid rgba(148, 163, 184, 0.18);
@@ -1436,8 +1773,12 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 	.csv-guidance__section-header th {
 		padding: 0;
 		border-top: 1px solid rgba(148, 163, 184, 0.2);
-		background: rgba(148, 163, 184, 0.12);
-	}
+		background: rgba(24, 32, 44, 0.95);
+		position: sticky;
+		top: var(--csv-header-height);
+		z-index: 2;
+		box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.5), 0 1px 0 rgba(15, 23, 42, 0.65);
+}
 
 	.csv-guidance__table tbody:first-of-type .csv-guidance__section-header th {
 		border-top: none;
@@ -1555,6 +1896,10 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 		cursor: pointer;
 	}
 
+	.modal__dropzone--hidden {
+		display: none;
+	}
+
 	.modal__selected-file {
 		margin-top: 0.75rem;
 		padding: 0.75rem 1rem;
@@ -1562,9 +1907,9 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 		border: 1px solid rgba(148, 163, 184, 0.25);
 		background: rgba(148, 163, 184, 0.18);
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
+		flex-wrap: wrap;
 		gap: 0.75rem;
+		align-items: flex-start;
 	}
 
 	.modal__selected-file-summary {
@@ -1585,6 +1930,35 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 		font-weight: 600;
 		color: #f8fafc;
 		word-break: break-all;
+	}
+
+	.modal__selected-file-actions {
+		display: flex;
+		flex: 1;
+		justify-content: flex-end;
+		gap: 0.5rem;
+		align-items: center;
+		min-width: 8rem;
+	}
+
+	.modal__selected-file-change {
+		background: rgba(59, 130, 246, 0.12);
+		border: 1px solid rgba(59, 130, 246, 0.45);
+		color: rgba(191, 219, 254, 0.95);
+		border-radius: 999px;
+		padding: 0.35rem 0.85rem;
+		font-size: 0.75rem;
+		cursor: pointer;
+	}
+
+	.modal__selected-file-change:focus-visible {
+		outline: 2px solid rgba(191, 219, 254, 0.65);
+		outline-offset: 2px;
+	}
+
+	.modal__selected-file-change[disabled] {
+		opacity: 0.6;
+		cursor: not-allowed;
 	}
 
 	.modal__selected-file-clear {
@@ -1686,6 +2060,38 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 	.modal__primary[disabled] {
 		opacity: 0.6;
 		cursor: progress;
+	}
+
+	.table-sort {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		background: transparent;
+		border: none;
+		color: inherit;
+		font: inherit;
+		cursor: pointer;
+	}
+
+	.table-sort--metric {
+		justify-content: flex-end;
+		width: 100%;
+		margin-left: auto;
+	}
+
+	.table-sort:focus-visible {
+		outline: 2px solid rgba(191, 219, 254, 0.65);
+		outline-offset: 2px;
+	}
+
+	.table-sort__icon {
+		font-size: 0.7rem;
+		opacity: 0.7;
+	}
+
+	.table-sort:hover .table-sort__icon,
+	.table-sort:focus-visible .table-sort__icon {
+		opacity: 1;
 	}
 
 	.required {
