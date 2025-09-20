@@ -2,14 +2,15 @@ node_modules
 .vscode
 package-lock.json
 __pycache__
+.gitignore
 
 # Output
 .output
 .vercel
 .netlify
 .wrangler
-frontend/.svelte-kit
-frontend/build
+.svelte-kit
+build
 
 # OS
 .DS_Store
@@ -26,3 +27,4 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 pics/*
+

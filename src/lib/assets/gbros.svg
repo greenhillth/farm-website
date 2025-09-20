@@ -20,14 +20,7 @@
        id="image1"
        x="-46.503773"
        y="2.9104218"
-       style="display:none;opacity:0" /><path
-       style="opacity:1;fill:#ffffff;fill-rule:evenodd;stroke-width:0.264999"
-       id="rect1"
-       width="210"
-       height="210"
-       x="0"
-       y="0.17994858"
-       d="m 35,0.17994858 140,0 A 35,35 45 0 1 210,35.179949 V 175.17995 a 35,35 135 0 1 -35,35 H 35 a 35,35 45 0 1 -35,-35 V 35.179949 A 35,35 135 0 1 35,0.17994858 Z" /></g><g
+       style="display:none;opacity:0.375887" /></g><g
      id="layer2"
      style="display:inline"><path
        style="opacity:1;fill:#659b32;fill-opacity:1;stroke-width:0.264583"

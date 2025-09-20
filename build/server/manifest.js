@@ -7,17 +7,17 @@ function __memo(fn) {
 return {
 	appDir: "_app",
 	appPath: "_app",
-	assets: new Set(["img/aerial-map.jpg","img/background.webp","img/confused-dad-1.jpg","img/logo-square.svg","img/logo.png","img/manual-card.webp","img/map-card.webp","img/paddock-4.jpg","img/paddock-card.webp","img/sharepoint.jpg","img/sharepoint.svg","img/soil-card.webp","img/soil.jpg","img/tom-and-alex.jpg","img/tractor-1.jpg","img/weather-station.webp","robots.txt","video/pysn.mp4"]),
+	assets: new Set(["img/aerial-map.jpg","img/background.webp","img/confused-dad-1.jpg","img/gbros-rounded.svg","img/gbros.svg","img/gbros.webp","img/logo-square.svg","img/logo.png","img/manual-card.webp","img/map-card.webp","img/paddock-4.jpg","img/paddock-card.webp","img/sharepoint.jpg","img/sharepoint.svg","img/soil-card.webp","img/soil.jpg","img/tom-and-alex.jpg","img/tractor-1.jpg","img/weather-station.webp","robots.txt","video/pysn.mp4"]),
 	mimeTypes: {".jpg":"image/jpeg",".webp":"image/webp",".svg":"image/svg+xml",".png":"image/png",".txt":"text/plain",".mp4":"video/mp4"},
 	_: {
-		client: {start:"_app/immutable/entry/start.QSdMTdGn.js",app:"_app/immutable/entry/app.DqckNjM7.js",imports:["_app/immutable/entry/start.QSdMTdGn.js","_app/immutable/chunks/DTYDvhzr.js","_app/immutable/chunks/BQITOQ2H.js","_app/immutable/chunks/DQ7jUk8X.js","_app/immutable/chunks/BpVGysJh.js","_app/immutable/chunks/BPPT-HsW.js","_app/immutable/chunks/CsBJ9ToZ.js","_app/immutable/entry/app.DqckNjM7.js","_app/immutable/chunks/DQ7jUk8X.js","_app/immutable/chunks/BpVGysJh.js","_app/immutable/chunks/DsnmJJEf.js","_app/immutable/chunks/BQITOQ2H.js","_app/immutable/chunks/BPPT-HsW.js","_app/immutable/chunks/CM66DKVZ.js","_app/immutable/chunks/DbgaR2Qa.js","_app/immutable/chunks/CSrG6tpm.js","_app/immutable/chunks/C9W0NbdG.js","_app/immutable/chunks/CsBJ9ToZ.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
+		client: {start:"_app/immutable/entry/start.PLWDgZg_.js",app:"_app/immutable/entry/app.fxZ7uZ0x.js",imports:["_app/immutable/entry/start.PLWDgZg_.js","_app/immutable/chunks/VuTTStca.js","_app/immutable/chunks/BQITOQ2H.js","_app/immutable/chunks/DQ7jUk8X.js","_app/immutable/chunks/BpVGysJh.js","_app/immutable/chunks/BPPT-HsW.js","_app/immutable/chunks/CsBJ9ToZ.js","_app/immutable/entry/app.fxZ7uZ0x.js","_app/immutable/chunks/DQ7jUk8X.js","_app/immutable/chunks/BpVGysJh.js","_app/immutable/chunks/DsnmJJEf.js","_app/immutable/chunks/BQITOQ2H.js","_app/immutable/chunks/BPPT-HsW.js","_app/immutable/chunks/CM66DKVZ.js","_app/immutable/chunks/DbgaR2Qa.js","_app/immutable/chunks/CSrG6tpm.js","_app/immutable/chunks/C9W0NbdG.js","_app/immutable/chunks/CsBJ9ToZ.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
 		nodes: [
-			__memo(() => import('./chunks/0-DPbjZHx4.js')),
-			__memo(() => import('./chunks/1-CTC8P-b2.js')),
+			__memo(() => import('./chunks/0-CGtHhBE6.js')),
+			__memo(() => import('./chunks/1-9sg91KYD.js')),
 			__memo(() => import('./chunks/2-DGT6dCVW.js')),
 			__memo(() => import('./chunks/3-Vft7cZPM.js')),
 			__memo(() => import('./chunks/4-DI3erMVV.js')),
-			__memo(() => import('./chunks/5-DDGxdKm2.js')),
+			__memo(() => import('./chunks/5-BzkpqQr6.js')),
 			__memo(() => import('./chunks/6-CF1QjSjY.js')),
 			__memo(() => import('./chunks/7-CCCxZJNe.js')),
 			__memo(() => import('./chunks/8-DDZhLGJU.js')),

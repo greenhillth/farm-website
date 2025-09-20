@@ -145,7 +145,7 @@
     ]
   },
   "src/lib/assets/favicon.svg": {
-    "file": "_app/immutable/assets/favicon.DRH03K5g.svg",
+    "file": "_app/immutable/assets/favicon.BoR511CM.svg",
     "src": "src/lib/assets/favicon.svg"
   },
   "src/routes/+layout.svelte": {
@@ -160,7 +160,7 @@
       "_app/immutable/assets/_layout.Cn7hvNeQ.css"
     ],
     "assets": [
-      "_app/immutable/assets/favicon.DRH03K5g.svg"
+      "_app/immutable/assets/favicon.BoR511CM.svg"
     ]
   },
   "src/routes/+page.svelte": {
