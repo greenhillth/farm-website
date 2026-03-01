@@ -1,8 +1,10 @@
-import { F as getContext, P as store_get, M as ensure_array_like, Q as attr_class, E as attr, G as escape_html, R as attr_style, S as unsubscribe_stores, B as pop, z as push } from "../../../chunks/index2.js";
+import { g as getContext, i as store_get, j as attr_class, a as attr, b as ensure_array_like, e as escape_html, k as attr_style, u as unsubscribe_stores } from "../../../chunks/index2.js";
 import { o as onDestroy } from "../../../chunks/index-server.js";
 import "@sveltejs/kit/internal";
 import "../../../chunks/exports.js";
 import "../../../chunks/utils.js";
+import "@sveltejs/kit/internal/server";
+import "../../../chunks/root.js";
 import "../../../chunks/state.svelte.js";
 import "clsx";
 import { C as CONFIG } from "../../../chunks/config.js";
@@ -28,19 +30,15 @@ const page = {
   }
 };
 var leafletSrc$1 = { exports: {} };
-/* @preserve
- * Leaflet 1.9.4, a JS library for interactive maps. https://leafletjs.com
- * (c) 2010-2023 Vladimir Agafonkin, (c) 2010-2011 CloudMade
- */
 var leafletSrc = leafletSrc$1.exports;
 var hasRequiredLeafletSrc;
 function requireLeafletSrc() {
   if (hasRequiredLeafletSrc) return leafletSrc$1.exports;
   hasRequiredLeafletSrc = 1;
-  (function(module, exports) {
+  (function(module, exports$1) {
     (function(global, factory) {
-      factory(exports);
-    })(leafletSrc, (function(exports2) {
+      factory(exports$1);
+    })(leafletSrc, (function(exports$12) {
       var version = "1.9.4";
       function extend(dest) {
         var i, j, len, src;
@@ -9496,90 +9494,90 @@ function requireLeafletSrc() {
       Map2.ScrollWheelZoom = ScrollWheelZoom;
       Map2.TapHold = TapHold;
       Map2.TouchZoom = TouchZoom;
-      exports2.Bounds = Bounds;
-      exports2.Browser = Browser;
-      exports2.CRS = CRS;
-      exports2.Canvas = Canvas;
-      exports2.Circle = Circle;
-      exports2.CircleMarker = CircleMarker;
-      exports2.Class = Class;
-      exports2.Control = Control;
-      exports2.DivIcon = DivIcon;
-      exports2.DivOverlay = DivOverlay;
-      exports2.DomEvent = DomEvent;
-      exports2.DomUtil = DomUtil;
-      exports2.Draggable = Draggable;
-      exports2.Evented = Evented;
-      exports2.FeatureGroup = FeatureGroup;
-      exports2.GeoJSON = GeoJSON;
-      exports2.GridLayer = GridLayer;
-      exports2.Handler = Handler;
-      exports2.Icon = Icon;
-      exports2.ImageOverlay = ImageOverlay;
-      exports2.LatLng = LatLng;
-      exports2.LatLngBounds = LatLngBounds;
-      exports2.Layer = Layer;
-      exports2.LayerGroup = LayerGroup;
-      exports2.LineUtil = LineUtil;
-      exports2.Map = Map2;
-      exports2.Marker = Marker;
-      exports2.Mixin = Mixin;
-      exports2.Path = Path;
-      exports2.Point = Point;
-      exports2.PolyUtil = PolyUtil;
-      exports2.Polygon = Polygon;
-      exports2.Polyline = Polyline;
-      exports2.Popup = Popup;
-      exports2.PosAnimation = PosAnimation;
-      exports2.Projection = index;
-      exports2.Rectangle = Rectangle;
-      exports2.Renderer = Renderer;
-      exports2.SVG = SVG;
-      exports2.SVGOverlay = SVGOverlay;
-      exports2.TileLayer = TileLayer;
-      exports2.Tooltip = Tooltip;
-      exports2.Transformation = Transformation;
-      exports2.Util = Util;
-      exports2.VideoOverlay = VideoOverlay;
-      exports2.bind = bind;
-      exports2.bounds = toBounds;
-      exports2.canvas = canvas;
-      exports2.circle = circle;
-      exports2.circleMarker = circleMarker;
-      exports2.control = control;
-      exports2.divIcon = divIcon;
-      exports2.extend = extend;
-      exports2.featureGroup = featureGroup;
-      exports2.geoJSON = geoJSON;
-      exports2.geoJson = geoJson;
-      exports2.gridLayer = gridLayer;
-      exports2.icon = icon;
-      exports2.imageOverlay = imageOverlay;
-      exports2.latLng = toLatLng;
-      exports2.latLngBounds = toLatLngBounds;
-      exports2.layerGroup = layerGroup;
-      exports2.map = createMap;
-      exports2.marker = marker;
-      exports2.point = toPoint;
-      exports2.polygon = polygon;
-      exports2.polyline = polyline;
-      exports2.popup = popup;
-      exports2.rectangle = rectangle;
-      exports2.setOptions = setOptions;
-      exports2.stamp = stamp;
-      exports2.svg = svg;
-      exports2.svgOverlay = svgOverlay;
-      exports2.tileLayer = tileLayer;
-      exports2.tooltip = tooltip;
-      exports2.transformation = toTransformation;
-      exports2.version = version;
-      exports2.videoOverlay = videoOverlay;
+      exports$12.Bounds = Bounds;
+      exports$12.Browser = Browser;
+      exports$12.CRS = CRS;
+      exports$12.Canvas = Canvas;
+      exports$12.Circle = Circle;
+      exports$12.CircleMarker = CircleMarker;
+      exports$12.Class = Class;
+      exports$12.Control = Control;
+      exports$12.DivIcon = DivIcon;
+      exports$12.DivOverlay = DivOverlay;
+      exports$12.DomEvent = DomEvent;
+      exports$12.DomUtil = DomUtil;
+      exports$12.Draggable = Draggable;
+      exports$12.Evented = Evented;
+      exports$12.FeatureGroup = FeatureGroup;
+      exports$12.GeoJSON = GeoJSON;
+      exports$12.GridLayer = GridLayer;
+      exports$12.Handler = Handler;
+      exports$12.Icon = Icon;
+      exports$12.ImageOverlay = ImageOverlay;
+      exports$12.LatLng = LatLng;
+      exports$12.LatLngBounds = LatLngBounds;
+      exports$12.Layer = Layer;
+      exports$12.LayerGroup = LayerGroup;
+      exports$12.LineUtil = LineUtil;
+      exports$12.Map = Map2;
+      exports$12.Marker = Marker;
+      exports$12.Mixin = Mixin;
+      exports$12.Path = Path;
+      exports$12.Point = Point;
+      exports$12.PolyUtil = PolyUtil;
+      exports$12.Polygon = Polygon;
+      exports$12.Polyline = Polyline;
+      exports$12.Popup = Popup;
+      exports$12.PosAnimation = PosAnimation;
+      exports$12.Projection = index;
+      exports$12.Rectangle = Rectangle;
+      exports$12.Renderer = Renderer;
+      exports$12.SVG = SVG;
+      exports$12.SVGOverlay = SVGOverlay;
+      exports$12.TileLayer = TileLayer;
+      exports$12.Tooltip = Tooltip;
+      exports$12.Transformation = Transformation;
+      exports$12.Util = Util;
+      exports$12.VideoOverlay = VideoOverlay;
+      exports$12.bind = bind;
+      exports$12.bounds = toBounds;
+      exports$12.canvas = canvas;
+      exports$12.circle = circle;
+      exports$12.circleMarker = circleMarker;
+      exports$12.control = control;
+      exports$12.divIcon = divIcon;
+      exports$12.extend = extend;
+      exports$12.featureGroup = featureGroup;
+      exports$12.geoJSON = geoJSON;
+      exports$12.geoJson = geoJson;
+      exports$12.gridLayer = gridLayer;
+      exports$12.icon = icon;
+      exports$12.imageOverlay = imageOverlay;
+      exports$12.latLng = toLatLng;
+      exports$12.latLngBounds = toLatLngBounds;
+      exports$12.layerGroup = layerGroup;
+      exports$12.map = createMap;
+      exports$12.marker = marker;
+      exports$12.point = toPoint;
+      exports$12.polygon = polygon;
+      exports$12.polyline = polyline;
+      exports$12.popup = popup;
+      exports$12.rectangle = rectangle;
+      exports$12.setOptions = setOptions;
+      exports$12.stamp = stamp;
+      exports$12.svg = svg;
+      exports$12.svgOverlay = svgOverlay;
+      exports$12.tileLayer = tileLayer;
+      exports$12.tooltip = tooltip;
+      exports$12.transformation = toTransformation;
+      exports$12.version = version;
+      exports$12.videoOverlay = videoOverlay;
       var oldL = window.L;
-      exports2.noConflict = function() {
+      exports$12.noConflict = function() {
         window.L = oldL;
         return this;
       };
-      window.L = exports2;
+      window.L = exports$12;
     }));
   })(leafletSrc$1, leafletSrc$1.exports);
   return leafletSrc$1.exports;
@@ -9755,213 +9753,209 @@ function computeLegendPercents(metric, stats, scaleReady) {
     optMidPct
   };
 }
-function _page($$payload, $$props) {
-  push();
-  var $$store_subs;
-  let activeMetricObj;
-  const quickLinks$1 = quickLinks;
-  const metricOptions = CONFIG.soilMetrics;
-  if (metricOptions.length === 0) {
-    throw new Error("CONFIG.soilMetrics is empty; need at least one metric.");
-  }
-  const metricsById = new Map(metricOptions.map((m) => [m.id, m]));
-  const defaultMetric = metricOptions[0].id;
-  const { url: imageryUrl, ...imageryOptions } = CONFIG.map;
-  const baseLayerConfigs = [
-    {
-      id: "imagery",
-      label: "Satellite",
-      description: "High-resolution aerial imagery for situational awareness.",
-      url: imageryUrl,
-      options: imageryOptions
-    },
-    {
-      id: "streets",
-      label: "Streets",
-      description: "OpenStreetMap base map with roads and place labels.",
-      url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-      options: { attribution: "© OpenStreetMap contributors", maxZoom: 19 }
+function _page($$renderer, $$props) {
+  $$renderer.component(($$renderer2) => {
+    var $$store_subs;
+    let activeMetricObj;
+    const quickLinks$1 = quickLinks;
+    const metricOptions = CONFIG.soilMetrics;
+    if (metricOptions.length === 0) {
+      throw new Error("CONFIG.soilMetrics is empty; need at least one metric.");
     }
-  ];
-  let map = null;
-  let paddockLayer = null;
-  let showLabels = true;
-  let showBoundaries = true;
-  let activeBaseLayer = baseLayerConfigs[0]?.id ?? "imagery";
-  let activeMetric = defaultMetric;
-  let activeBase = baseLayerConfigs.find((layer) => layer.id === activeBaseLayer);
-  let soilMetricsByField = /* @__PURE__ */ new Map();
-  let activeMetricStats = null;
-  let activeMetricPaddockCount = 0;
-  let metricScaleReady = false;
-  let isStreetsBase = activeBaseLayer === "streets";
-  let legendPercents = EMPTY_LEGEND_PERCENTS;
-  let legendDetails = EMPTY_LEGEND_DETAILS;
-  let paddockIdentities = /* @__PURE__ */ new Map();
-  const tileLayerCache = /* @__PURE__ */ new Map();
-  onDestroy(() => {
-    tileLayerCache.forEach((layer) => layer.remove());
-    tileLayerCache.clear();
-    map?.remove();
-    map = null;
-  });
-  let metricFromQuery = null;
-  metricFromQuery = store_get($$store_subs ??= {}, "$page", page).url.searchParams.get("metric");
-  {
-    if (metricFromQuery && metricsById.has(metricFromQuery)) {
-      if (metricFromQuery !== activeMetric) {
-        activeMetric = metricFromQuery;
-      }
-    } else if (activeMetric !== defaultMetric) {
-      activeMetric = defaultMetric;
-    }
-  }
-  activeMetricObj = metricsById.get(activeMetric);
-  metricScaleReady = activeMetricObj.id !== "none" && typeof activeMetricObj.c_min === "number" && typeof activeMetricObj.c_max === "number" && activeMetricObj.c_max > activeMetricObj.c_min;
-  {
-    activeMetricStats = computeMetricStats(activeMetricObj, soilMetricsByField);
-  }
-  legendPercents = computeLegendPercents(activeMetricObj, activeMetricStats, metricScaleReady);
-  legendDetails = computeLegendDetails(activeMetricObj, activeMetricStats, soilMetricsByField, paddockIdentities);
-  isStreetsBase = activeBaseLayer === "streets";
-  activeBase = baseLayerConfigs.find((layer) => layer.id === activeBaseLayer);
-  if (map && paddockLayer) {
-    {
-      if (!map.hasLayer(paddockLayer)) {
-        paddockLayer.addTo(map);
-      }
-    }
-  }
-  const each_array = ensure_array_like(
-    // --- URL -> activeMetric sync (type-safe via metricsById) ---
-    baseLayerConfigs
-  );
-  const each_array_1 = ensure_array_like(metricOptions);
-  const each_array_2 = ensure_array_like(quickLinks$1);
-  $$payload.out.push(`<div class="map-shell relative flex h-dvh min-h-[540px] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"><aside${attr_class(`map-sidebar relative flex h-full shrink-0 overflow-visible transition-[width] duration-300 ease-in-out ${"w-80 max-w-full"}`, "svelte-w85nl5")}><div data-tooltip-boundary=""${attr_class(
-    `sidebar-panel bg-panel/95 text-muted flex h-full w-full flex-col gap-6 border-r border-white/10 text-sm transition-[padding,opacity] duration-300 ease-in-out ${"pointer-events-auto overflow-x-visible overflow-y-auto px-6 py-6 opacity-100"}`,
-    "svelte-w85nl5"
-  )}${attr("aria-hidden", false)}><header class="flex items-start gap-4 text-white"><a href="/" class="flex items-center gap-3"><img src="/img/logo.png" alt="Greenhill Bros logo" class="h-10 w-10 rounded-md border border-white/10 bg-white/10 p-1"/> <div class="leading-tight"><p class="text-muted/70 text-xs tracking-wider uppercase">Greenhill Bros Farm</p> <h1 class="text-lg font-semibold">Interactive map</h1></div></a> <div class="ml-auto"><button class="border-border/80 text-muted focus:ring-accent/40 rounded-md border bg-white/5 p-2 hover:bg-white/10 hover:text-white focus:ring-2 focus:outline-none" aria-label="Collapse sidebar"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"></path></svg></button></div></header> <nav id="map-controls" aria-label="Map controls" class="space-y-8"><section class="space-y-3"><div><h2 class="text-muted/70 text-xs font-semibold tracking-wider uppercase">Base map</h2> <p class="text-muted/60 mt-1 text-xs">Choose the imagery used beneath the farm overlays.</p></div> <div class="flex flex-wrap gap-2"><!--[-->`);
-  for (let $$index = 0, $$length = each_array.length; $$index < $$length; $$index++) {
-    let layer = each_array[$$index];
-    $$payload.out.push(`<button type="button"${attr_class(
-      `focus-visible:ring-accent/40 inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition focus:outline-none focus-visible:ring-2 ${activeBaseLayer === layer.id ? "border-accent/60 bg-accent/20 text-white shadow" : "text-muted border-white/10 bg-white/5 hover:border-white/20 hover:text-white"}`,
-      "svelte-w85nl5"
-    )}${attr("aria-pressed", activeBaseLayer === layer.id)}>${escape_html(layer.label)}</button>`);
-  }
-  $$payload.out.push(`<!--]--></div> `);
-  if (activeBase) {
-    $$payload.out.push("<!--[-->");
-    $$payload.out.push(`<p class="text-muted/70 text-xs">${escape_html(activeBase.description)}</p>`);
-  } else {
-    $$payload.out.push("<!--[!-->");
-  }
-  $$payload.out.push(`<!--]--></section> <section class="space-y-3"><div><h2 class="text-muted/70 text-xs font-semibold tracking-wider uppercase">Overlays</h2> <p class="text-muted/60 mt-1 text-xs">Switch between soil metrics as datasets become available.</p></div> <div class="flex flex-wrap gap-2"><!--[-->`);
-  for (let $$index_1 = 0, $$length = each_array_1.length; $$index_1 < $$length; $$index_1++) {
-    let metric = each_array_1[$$index_1];
-    $$payload.out.push(`<button type="button"${attr_class(
-      `focus-visible:ring-accent/40 rounded-md border px-3 py-2 text-sm transition focus:outline-none focus-visible:ring-2 ${activeMetric === metric.id ? "border-accent/60 bg-accent/20 text-white shadow" : "text-muted border-white/10 bg-white/5 hover:border-white/20 hover:text-white"}`,
-      "svelte-w85nl5"
-    )}${attr("aria-pressed", activeMetric === metric.id)}>${escape_html(metric.label)}</button>`);
-  }
-  $$payload.out.push(`<!--]--></div> <div class="text-muted/60 space-y-2 text-xs">`);
-  if (activeMetricObj.id === "none") {
-    $$payload.out.push("<!--[-->");
-    $$payload.out.push(`<p>Choose a dataset to colour paddocks using recent soil test data.</p>`);
-  } else {
-    $$payload.out.push("<!--[!-->");
-    {
-      $$payload.out.push("<!--[!-->");
+    const metricsById = new Map(metricOptions.map((m) => [m.id, m]));
+    const defaultMetric = metricOptions[0].id;
+    const { url: imageryUrl, ...imageryOptions } = CONFIG.map;
+    const baseLayerConfigs = [
       {
-        $$payload.out.push("<!--[!-->");
-        if (!metricScaleReady) {
-          $$payload.out.push("<!--[-->");
-          $$payload.out.push(`<p>We don't have a colour scale configured for ${escape_html(activeMetricObj.label)} yet.</p>`);
-        } else {
-          $$payload.out.push("<!--[!-->");
-          if (activeMetricStats) {
-            $$payload.out.push("<!--[-->");
-            const stats = activeMetricStats;
-            const perc = legendPercents;
-            const details = legendDetails;
-            const cmin = typeof activeMetricObj.c_min === "number" ? activeMetricObj.c_min : null;
-            const cmax = typeof activeMetricObj.c_max === "number" ? activeMetricObj.c_max : null;
-            const unitSuffix = activeMetricObj.unit ? ` ${activeMetricObj.unit}` : "";
-            $$payload.out.push(`<p>Colouring ${escape_html(activeMetricPaddockCount)} paddock${escape_html("s")} using ${escape_html(activeMetricObj.label)}.</p> <div class="text-muted/70 space-y-2 rounded-md border border-white/10 bg-white/5 p-3 text-[11px]"><div class="text-center font-semibold">Scale${escape_html(unitSuffix ? ` (${activeMetricObj.unit})` : "")}</div> <div class="relative h-2 w-full rounded-full"><div class="pointer-events-none absolute inset-0 rounded-full"${attr_style(`background: ${VIRIDIS_GRADIENT};`)}></div> `);
-            if (perc.showOpt) {
-              $$payload.out.push("<!--[-->");
-              $$payload.out.push(`<button type="button" class="group absolute inset-y-[-6px] flex items-center justify-center bg-transparent p-0 focus:outline-none"${attr_style(`left:${perc.optLoPct}%; width:${perc.optWidth}%`)}${attr("aria-label", `Optimal range ${formatLegendTick(details.opt.range?.[0])}${unitSuffix} to ${formatLegendTick(details.opt.range?.[1])}${unitSuffix}`)}><div class="pointer-events-none absolute inset-0 rounded-full bg-white/30"></div> <div class="pointer-events-none absolute -top-24 left-1/2 hidden w-60 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block" role="tooltip"><div class="font-semibold">Optimal ${escape_html(formatLegendTick(details.opt.range?.[0]))}${escape_html(unitSuffix)} – ${escape_html(formatLegendTick(details.opt.range?.[1]))}${escape_html(unitSuffix)}</div> `);
-              if (details.opt.within.total > 0) {
-                $$payload.out.push("<!--[-->");
-                $$payload.out.push(`<div class="mt-1 text-[10px] text-slate-200/80">${escape_html(details.opt.within.count)} of ${escape_html(details.opt.within.total)} paddocks (${escape_html(formatPercent(details.opt.within.pct))})</div>`);
-              } else {
-                $$payload.out.push("<!--[!-->");
-                $$payload.out.push(`<div class="mt-1 text-[10px] text-slate-200/80">No sampled paddocks yet</div>`);
-              }
-              $$payload.out.push(`<!--]--></div></button>`);
-            } else {
-              $$payload.out.push("<!--[!-->");
-            }
-            $$payload.out.push(`<!--]--> <button type="button" class="group absolute -top-3 flex h-8 w-8 -translate-x-1/2 cursor-default items-end justify-center bg-transparent p-0 focus:outline-none"${attr_style(`left:${perc.lowPct}%`)}${attr("aria-label", `Minimum value ${formatLegendTick(details.min.value)}${unitSuffix}`)}><div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div> <div class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block" role="tooltip"><div class="font-semibold">Min ${escape_html(formatLegendTick(details.min.value))}${escape_html(unitSuffix)}</div> <div class="mt-1 text-[10px] text-slate-200/80">Paddocks: ${escape_html(formatFieldList(details.min.fields))}</div></div></button> <button type="button" class="group absolute -top-3 flex h-8 w-8 -translate-x-1/2 cursor-default items-end justify-center bg-transparent p-0 focus:outline-none"${attr_style(`left:${perc.highPct}%`)}${attr("aria-label", `Maximum value ${formatLegendTick(details.max.value)}${unitSuffix}`)}><div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div> <div class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block" role="tooltip"><div class="font-semibold">Max ${escape_html(formatLegendTick(details.max.value))}${escape_html(unitSuffix)}</div> <div class="mt-1 text-[10px] text-slate-200/80">Paddocks: ${escape_html(formatFieldList(details.max.fields))}</div></div></button></div> <div class="text-muted/60 flex justify-between text-[11px]"><span>${escape_html(formatLegendTick(cmin))}</span> <span>${escape_html(formatLegendTick(cmax))}</span></div> <div class="text-muted/60 flex justify-between text-[10px]"><span>Median: <span class="font-semibold">${escape_html(formatLegendTick(stats.median))}${escape_html(unitSuffix)}</span></span></div> `);
-            if (details.opt.range) {
-              $$payload.out.push("<!--[-->");
-              $$payload.out.push(`<div class="text-[10px] text-emerald-200/90">${escape_html(details.opt.within.count)} of ${escape_html(details.opt.within.total)} paddocks within optimal
-										(${escape_html(formatPercent(details.opt.within.pct))})</div>`);
-            } else {
-              $$payload.out.push("<!--[!-->");
-            }
-            $$payload.out.push(`<!--]--></div>`);
-          } else {
-            $$payload.out.push("<!--[!-->");
-            $$payload.out.push(`<p>No paddocks have recent samples for ${escape_html(activeMetricObj.label)} yet.</p>`);
-          }
-          $$payload.out.push(`<!--]-->`);
-        }
-        $$payload.out.push(`<!--]-->`);
+        id: "imagery",
+        label: "Satellite",
+        description: "High-resolution aerial imagery for situational awareness.",
+        url: imageryUrl,
+        options: imageryOptions
+      },
+      {
+        id: "streets",
+        label: "Streets",
+        description: "OpenStreetMap base map with roads and place labels.",
+        url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        options: { attribution: "© OpenStreetMap contributors", maxZoom: 19 }
       }
-      $$payload.out.push(`<!--]-->`);
-    }
-    $$payload.out.push(`<!--]-->`);
-  }
-  $$payload.out.push(`<!--]--></div></section> <section class="space-y-3"><div><h2 class="text-muted/70 text-xs font-semibold tracking-wider uppercase">Display</h2> <p class="text-muted/60 mt-1 text-xs">Toggle contextual information on top of the base map.</p></div> <div class="space-y-2"><label class="text-muted focus-within:border-accent/60 flex items-center gap-3 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm transition hover:border-white/20 hover:text-white"><input type="checkbox" class="accent-accent"${attr("checked", showBoundaries, true)}/> <span>Show field boundaries</span></label> <label class="text-muted focus-within:border-accent/60 flex items-center gap-3 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm transition hover:border-white/20 hover:text-white"><input type="checkbox" class="accent-accent disabled:opacity-50"${attr("checked", showLabels, true)}${attr("disabled", !showBoundaries, true)}/> <span>Show paddock labels</span></label></div> <button type="button" class="text-muted focus-visible:ring-accent/40 inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm transition hover:border-white/20 hover:text-white focus:outline-none focus-visible:ring-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4"><path fill-rule="evenodd" d="M10 3.5a6.5 6.5 0 1 0 6.03 9h-1.7a4.75 4.75 0 1 1 0-4h1.7A6.5 6.5 0 0 0 10 3.5Zm.75.75V2a.75.75 0 0 0-1.5 0v2.25a.75.75 0 0 0 1.5 0ZM4.28 5.53a.75.75 0 0 0 0-1.06l-1.59-1.6a.75.75 0 1 0-1.06 1.07l1.59 1.59a.75.75 0 0 0 1.06 0Zm-1.59 9.6 1.59 1.59a.75.75 0 0 1-1.06 1.06l-1.59-1.58a.75.75 0 1 1 1.06-1.06ZM16.5 5.75a.75.75 0 0 1 1.5 0v2.25a.75.75 0 0 1-1.5 0V5.75Zm.53 8.47.8.8a.75.75 0 0 1-1.06 1.06l-.8-.8a.75.75 0 0 1 1.06-1.06Z" clip-rule="evenodd"></path></svg> Reset view</button></section> <section class="text-muted/70 rounded-md border border-white/10 bg-white/5 px-4 py-3 text-xs">`);
-  {
-    $$payload.out.push("<!--[-->");
-    $$payload.out.push(`<p>Loading paddock boundaries…</p>`);
-  }
-  $$payload.out.push(`<!--]--></section></nav> <nav aria-label="Quick links" class="space-y-1 text-sm"><!--[-->`);
-  for (let $$index_2 = 0, $$length = each_array_2.length; $$index_2 < $$length; $$index_2++) {
-    let link = each_array_2[$$index_2];
-    $$payload.out.push(`<a${attr("href", link.href)} class="text-muted flex items-center justify-between rounded-md px-3 py-2 transition hover:bg-white/5 hover:text-white"><span>${escape_html(link.label)}</span> <span aria-hidden="true" class="text-muted/70 text-xs">→</span></a>`);
-  }
-  $$payload.out.push(`<!--]--></nav></div></aside> <main class="map-main bg-bg relative min-w-0 flex-1"><div${attr_class("map-canvas absolute inset-0", void 0, { "labels-hidden": !showLabels })}></div> `);
-  {
-    $$payload.out.push("<!--[!-->");
-  }
-  $$payload.out.push(`<!--]--> `);
-  if (activeMetricObj.id !== defaultMetric) {
-    $$payload.out.push("<!--[-->");
-    $$payload.out.push(`<div${attr_class(
-      `pointer-events-none absolute ${"top-3"} left-4 z-[1100] max-w-xs rounded-xl border px-4 py-3 text-xs shadow-lg backdrop-blur ${isStreetsBase ? "border-white/50 bg-slate-950/95 text-slate-200 shadow-black/40" : "border-border/80 bg-panel/80 text-muted"}`,
-      "svelte-w85nl5"
-    )}><div class="text-sm font-semibold text-white">${escape_html(activeMetricObj.label)}</div> <p${attr_class(`mt-1 leading-relaxed ${isStreetsBase ? "text-slate-100" : "text-muted"}`, "svelte-w85nl5")}>${escape_html(activeMetricObj.description)}</p> <p${attr_class(`mt-1 leading-relaxed font-semibold ${isStreetsBase ? "text-slate-200" : "text-muted/70"}`, "svelte-w85nl5")}>Optimal range: ${escape_html(activeMetricObj.range_optimal[0])}${escape_html(activeMetricObj.unit)} to ${escape_html(activeMetricObj.range_optimal[1])}${escape_html(activeMetricObj.unit)}</p></div>`);
-  } else {
-    $$payload.out.push("<!--[!-->");
-  }
-  $$payload.out.push(`<!--]--> `);
-  {
-    $$payload.out.push("<!--[!-->");
+    ];
+    let map = null;
+    let paddockLayer = null;
+    let titleLayer = null;
+    let showLabels = true;
+    let showBoundaries = true;
+    let showTitles = false;
+    let activeBaseLayer = baseLayerConfigs[0]?.id ?? "imagery";
+    let activeMetric = defaultMetric;
+    let activeBase = baseLayerConfigs.find((layer) => layer.id === activeBaseLayer);
+    let soilMetricsByField = /* @__PURE__ */ new Map();
+    let activeMetricStats = null;
+    let activeMetricPaddockCount = 0;
+    let metricScaleReady = false;
+    let isStreetsBase = activeBaseLayer === "streets";
+    let legendPercents = EMPTY_LEGEND_PERCENTS;
+    let legendDetails = EMPTY_LEGEND_DETAILS;
+    let paddockIdentities = /* @__PURE__ */ new Map();
+    const tileLayerCache = /* @__PURE__ */ new Map();
+    onDestroy(() => {
+      tileLayerCache.forEach((layer) => layer.remove());
+      tileLayerCache.clear();
+      map?.remove();
+      map = null;
+    });
+    let metricFromQuery = null;
+    metricFromQuery = store_get($$store_subs ??= {}, "$page", page).url.searchParams.get("metric");
     {
-      $$payload.out.push("<!--[-->");
-      $$payload.out.push(`<div class="map-status svelte-w85nl5" aria-live="polite"><p class="text-muted text-sm">Preparing paddock boundaries…</p></div>`);
+      if (metricFromQuery && metricsById.has(metricFromQuery)) {
+        if (metricFromQuery !== activeMetric) {
+          activeMetric = metricFromQuery;
+        }
+      } else if (activeMetric !== defaultMetric) {
+        activeMetric = defaultMetric;
+      }
     }
-    $$payload.out.push(`<!--]-->`);
-  }
-  $$payload.out.push(`<!--]--> <a href="/"${attr_class(
-    `map-home focus-visible:ring-accent/40 absolute top-4 right-4 z-[1000] inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition hover:text-white focus:outline-none focus-visible:ring-2 ${isStreetsBase ? "border-white/60 bg-slate-950/95 text-white shadow-xl hover:border-white/80" : "bg-panel/95 border-white/10 text-white shadow-lg hover:border-white/30"}`,
-    "svelte-w85nl5"
-  )} aria-label="Back to home"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5"><path d="M12 3.172 3 10.5V21h6v-6h6v6h6V10.5L12 3.172z"></path></svg> <span class="hidden sm:inline">Home</span></a></main></div>`);
-  if ($$store_subs) unsubscribe_stores($$store_subs);
-  pop();
+    activeMetricObj = metricsById.get(activeMetric);
+    metricScaleReady = activeMetricObj.id !== "none" && typeof activeMetricObj.c_min === "number" && typeof activeMetricObj.c_max === "number" && activeMetricObj.c_max > activeMetricObj.c_min;
+    {
+      activeMetricStats = computeMetricStats(activeMetricObj, soilMetricsByField);
+    }
+    legendPercents = computeLegendPercents(activeMetricObj, activeMetricStats, metricScaleReady);
+    legendDetails = computeLegendDetails(activeMetricObj, activeMetricStats, soilMetricsByField, paddockIdentities);
+    isStreetsBase = activeBaseLayer === "streets";
+    activeBase = baseLayerConfigs.find((layer) => layer.id === activeBaseLayer);
+    if (map && paddockLayer) {
+      {
+        if (!map.hasLayer(paddockLayer)) {
+          paddockLayer.addTo(map);
+        }
+      }
+    }
+    if (map && titleLayer) {
+      if (map.hasLayer(titleLayer)) {
+        map.removeLayer(titleLayer);
+      }
+    }
+    $$renderer2.push(`<div class="map-shell relative flex h-dvh min-h-[540px] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"><aside${attr_class(
+      // --- URL -> activeMetric sync (type-safe via metricsById) ---
+      `map-sidebar relative flex h-full shrink-0 overflow-visible transition-[width] duration-300 ease-in-out ${"w-80 max-w-full"}`,
+      "svelte-w85nl5"
+    )}><div data-tooltip-boundary=""${attr_class(
+      `sidebar-panel bg-panel/95 text-muted flex h-full w-full flex-col gap-6 border-r border-white/10 text-sm transition-[padding,opacity] duration-300 ease-in-out ${"pointer-events-auto overflow-x-visible overflow-y-auto px-6 py-6 opacity-100"}`,
+      "svelte-w85nl5"
+    )}${attr("aria-hidden", false)}><header class="flex items-start gap-4 text-white"><a href="/" class="flex items-center gap-3"><img src="/img/logo.png" alt="Greenhill Bros logo" class="h-10 w-10 rounded-md border border-white/10 bg-white/10 p-1"/> <div class="leading-tight"><p class="text-muted/70 text-xs tracking-wider uppercase">Greenhill Bros Farm</p> <h1 class="text-lg font-semibold">Interactive map</h1></div></a> <div class="ml-auto"><button class="border-border/80 text-muted focus:ring-accent/40 rounded-md border bg-white/5 p-2 hover:bg-white/10 hover:text-white focus:ring-2 focus:outline-none" aria-label="Collapse sidebar"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"></path></svg></button></div></header> <nav id="map-controls" aria-label="Map controls" class="space-y-8"><section class="space-y-3"><div><h2 class="text-muted/70 text-xs font-semibold tracking-wider uppercase">Base map</h2> <p class="text-muted/60 mt-1 text-xs">Choose the imagery used beneath the farm overlays.</p></div> <div class="flex flex-wrap gap-2"><!--[-->`);
+    const each_array = ensure_array_like(baseLayerConfigs);
+    for (let $$index = 0, $$length = each_array.length; $$index < $$length; $$index++) {
+      let layer = each_array[$$index];
+      $$renderer2.push(`<button type="button"${attr_class(
+        `focus-visible:ring-accent/40 inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition focus:outline-none focus-visible:ring-2 ${activeBaseLayer === layer.id ? "border-accent/60 bg-accent/20 text-white shadow" : "text-muted border-white/10 bg-white/5 hover:border-white/20 hover:text-white"}`,
+        "svelte-w85nl5"
+      )}${attr("aria-pressed", activeBaseLayer === layer.id)}>${escape_html(layer.label)}</button>`);
+    }
+    $$renderer2.push(`<!--]--></div> `);
+    if (activeBase) {
+      $$renderer2.push("<!--[-->");
+      $$renderer2.push(`<p class="text-muted/70 text-xs">${escape_html(activeBase.description)}</p>`);
+    } else {
+      $$renderer2.push("<!--[!-->");
+    }
+    $$renderer2.push(`<!--]--></section> <section class="space-y-3"><div><h2 class="text-muted/70 text-xs font-semibold tracking-wider uppercase">Overlays</h2> <p class="text-muted/60 mt-1 text-xs">Switch between soil metrics as datasets become available.</p></div> <div class="flex flex-wrap gap-2"><!--[-->`);
+    const each_array_1 = ensure_array_like(metricOptions);
+    for (let $$index_1 = 0, $$length = each_array_1.length; $$index_1 < $$length; $$index_1++) {
+      let metric = each_array_1[$$index_1];
+      $$renderer2.push(`<button type="button"${attr_class(
+        `focus-visible:ring-accent/40 rounded-md border px-3 py-2 text-sm transition focus:outline-none focus-visible:ring-2 ${activeMetric === metric.id ? "border-accent/60 bg-accent/20 text-white shadow" : "text-muted border-white/10 bg-white/5 hover:border-white/20 hover:text-white"}`,
+        "svelte-w85nl5"
+      )}${attr("aria-pressed", activeMetric === metric.id)}>${escape_html(metric.label)}</button>`);
+    }
+    $$renderer2.push(`<!--]--></div> <div class="text-muted/60 space-y-2 text-xs">`);
+    if (activeMetricObj.id === "none") {
+      $$renderer2.push("<!--[-->");
+      $$renderer2.push(`<p>Choose a dataset to colour paddocks using recent soil test data.</p>`);
+    } else if (!metricScaleReady) {
+      $$renderer2.push("<!--[3-->");
+      $$renderer2.push(`<p>We don't have a colour scale configured for ${escape_html(activeMetricObj.label)} yet.</p>`);
+    } else if (activeMetricStats) {
+      $$renderer2.push("<!--[4-->");
+      const stats = activeMetricStats;
+      const perc = legendPercents;
+      const details = legendDetails;
+      const cmin = typeof activeMetricObj.c_min === "number" ? activeMetricObj.c_min : null;
+      const cmax = typeof activeMetricObj.c_max === "number" ? activeMetricObj.c_max : null;
+      const unitSuffix = activeMetricObj.unit ? ` ${activeMetricObj.unit}` : "";
+      $$renderer2.push(`<p>Colouring ${escape_html(activeMetricPaddockCount)} paddock${escape_html("s")} using ${escape_html(activeMetricObj.label)}.</p> <div class="text-muted/70 space-y-2 rounded-md border border-white/10 bg-white/5 p-3 text-[11px]"><div class="text-center font-semibold">Scale${escape_html(unitSuffix ? ` (${activeMetricObj.unit})` : "")}</div> <div class="relative h-2 w-full rounded-full"><div class="pointer-events-none absolute inset-0 rounded-full"${attr_style(`background: ${VIRIDIS_GRADIENT};`)}></div> `);
+      if (perc.showOpt) {
+        $$renderer2.push("<!--[-->");
+        $$renderer2.push(`<button type="button" class="group absolute inset-y-[-6px] flex items-center justify-center bg-transparent p-0 focus:outline-none"${attr_style(`left:${perc.optLoPct}%; width:${perc.optWidth}%`)}${attr("aria-label", `Optimal range ${formatLegendTick(details.opt.range?.[0])}${unitSuffix} to ${formatLegendTick(details.opt.range?.[1])}${unitSuffix}`)}><div class="pointer-events-none absolute inset-0 rounded-full bg-white/30"></div> <div class="pointer-events-none absolute -top-24 left-1/2 hidden w-60 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block" role="tooltip"><div class="font-semibold">Optimal ${escape_html(formatLegendTick(details.opt.range?.[0]))}${escape_html(unitSuffix)} – ${escape_html(formatLegendTick(details.opt.range?.[1]))}${escape_html(unitSuffix)}</div> `);
+        if (details.opt.within.total > 0) {
+          $$renderer2.push("<!--[-->");
+          $$renderer2.push(`<div class="mt-1 text-[10px] text-slate-200/80">${escape_html(details.opt.within.count)} of ${escape_html(details.opt.within.total)} paddocks (${escape_html(formatPercent(details.opt.within.pct))})</div>`);
+        } else {
+          $$renderer2.push("<!--[!-->");
+          $$renderer2.push(`<div class="mt-1 text-[10px] text-slate-200/80">No sampled paddocks yet</div>`);
+        }
+        $$renderer2.push(`<!--]--></div></button>`);
+      } else {
+        $$renderer2.push("<!--[!-->");
+      }
+      $$renderer2.push(`<!--]--> <button type="button" class="group absolute -top-3 flex h-8 w-8 -translate-x-1/2 cursor-default items-end justify-center bg-transparent p-0 focus:outline-none"${attr_style(`left:${perc.lowPct}%`)}${attr("aria-label", `Minimum value ${formatLegendTick(details.min.value)}${unitSuffix}`)}><div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div> <div class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block" role="tooltip"><div class="font-semibold">Min ${escape_html(formatLegendTick(details.min.value))}${escape_html(unitSuffix)}</div> <div class="mt-1 text-[10px] text-slate-200/80">Paddocks: ${escape_html(formatFieldList(details.min.fields))}</div></div></button> <button type="button" class="group absolute -top-3 flex h-8 w-8 -translate-x-1/2 cursor-default items-end justify-center bg-transparent p-0 focus:outline-none"${attr_style(`left:${perc.highPct}%`)}${attr("aria-label", `Maximum value ${formatLegendTick(details.max.value)}${unitSuffix}`)}><div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div> <div class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block" role="tooltip"><div class="font-semibold">Max ${escape_html(formatLegendTick(details.max.value))}${escape_html(unitSuffix)}</div> <div class="mt-1 text-[10px] text-slate-200/80">Paddocks: ${escape_html(formatFieldList(details.max.fields))}</div></div></button></div> <div class="text-muted/60 flex justify-between text-[11px]"><span>${escape_html(formatLegendTick(cmin))}</span> <span>${escape_html(formatLegendTick(cmax))}</span></div> <div class="text-muted/60 flex justify-between text-[10px]"><span>Median: <span class="font-semibold">${escape_html(formatLegendTick(stats.median))}${escape_html(unitSuffix)}</span></span></div> `);
+      if (details.opt.range) {
+        $$renderer2.push("<!--[-->");
+        $$renderer2.push(`<div class="text-[10px] text-emerald-200/90">${escape_html(details.opt.within.count)} of ${escape_html(details.opt.within.total)} paddocks within optimal
+										(${escape_html(formatPercent(details.opt.within.pct))})</div>`);
+      } else {
+        $$renderer2.push("<!--[!-->");
+      }
+      $$renderer2.push(`<!--]--></div>`);
+    } else {
+      $$renderer2.push("<!--[!-->");
+      $$renderer2.push(`<p>No paddocks have recent samples for ${escape_html(activeMetricObj.label)} yet.</p>`);
+    }
+    $$renderer2.push(`<!--]--></div></section> <section class="space-y-3"><div><h2 class="text-muted/70 text-xs font-semibold tracking-wider uppercase">Display</h2> <p class="text-muted/60 mt-1 text-xs">Toggle contextual information on top of the base map.</p></div> <div class="space-y-2"><label class="text-muted focus-within:border-accent/60 flex items-center gap-3 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm transition hover:border-white/20 hover:text-white"><input type="checkbox" class="accent-accent"${attr("checked", showBoundaries, true)}/> <span>Show field boundaries</span></label> <label class="text-muted focus-within:border-accent/60 flex items-center gap-3 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm transition hover:border-white/20 hover:text-white"><input type="checkbox" class="accent-accent disabled:opacity-50"${attr("checked", showLabels, true)}${attr("disabled", !showBoundaries, true)}/> <span>Show paddock labels</span></label> <label class="text-muted focus-within:border-accent/60 flex items-center gap-3 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm transition hover:border-white/20 hover:text-white"><input type="checkbox" class="accent-accent"${attr("checked", showTitles, true)}/> <span>Show title boundaries</span></label> `);
+    {
+      $$renderer2.push("<!--[!-->");
+    }
+    $$renderer2.push(`<!--]--></div> <button type="button" class="text-muted focus-visible:ring-accent/40 inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm transition hover:border-white/20 hover:text-white focus:outline-none focus-visible:ring-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4"><path fill-rule="evenodd" d="M10 3.5a6.5 6.5 0 1 0 6.03 9h-1.7a4.75 4.75 0 1 1 0-4h1.7A6.5 6.5 0 0 0 10 3.5Zm.75.75V2a.75.75 0 0 0-1.5 0v2.25a.75.75 0 0 0 1.5 0ZM4.28 5.53a.75.75 0 0 0 0-1.06l-1.59-1.6a.75.75 0 1 0-1.06 1.07l1.59 1.59a.75.75 0 0 0 1.06 0Zm-1.59 9.6 1.59 1.59a.75.75 0 0 1-1.06 1.06l-1.59-1.58a.75.75 0 1 1 1.06-1.06ZM16.5 5.75a.75.75 0 0 1 1.5 0v2.25a.75.75 0 0 1-1.5 0V5.75Zm.53 8.47.8.8a.75.75 0 0 1-1.06 1.06l-.8-.8a.75.75 0 0 1 1.06-1.06Z" clip-rule="evenodd"></path></svg> Reset view</button></section> <section class="text-muted/70 rounded-md border border-white/10 bg-white/5 px-4 py-3 text-xs">`);
+    {
+      $$renderer2.push("<!--[-->");
+      $$renderer2.push(`<p>Loading paddock boundaries…</p>`);
+    }
+    $$renderer2.push(`<!--]--></section></nav> <nav aria-label="Quick links" class="space-y-1 text-sm"><!--[-->`);
+    const each_array_2 = ensure_array_like(quickLinks$1);
+    for (let $$index_2 = 0, $$length = each_array_2.length; $$index_2 < $$length; $$index_2++) {
+      let link = each_array_2[$$index_2];
+      $$renderer2.push(`<a${attr("href", link.href)} class="text-muted flex items-center justify-between rounded-md px-3 py-2 transition hover:bg-white/5 hover:text-white"><span>${escape_html(link.label)}</span> <span aria-hidden="true" class="text-muted/70 text-xs">→</span></a>`);
+    }
+    $$renderer2.push(`<!--]--></nav></div></aside> <main class="map-main bg-bg relative min-w-0 flex-1"><div${attr_class("map-canvas absolute inset-0", void 0, { "labels-hidden": !showLabels })}></div> `);
+    {
+      $$renderer2.push("<!--[!-->");
+    }
+    $$renderer2.push(`<!--]--> `);
+    if (activeMetricObj.id !== defaultMetric) {
+      $$renderer2.push("<!--[-->");
+      $$renderer2.push(`<div${attr_class(
+        `pointer-events-none absolute ${"top-3"} left-4 z-[1100] max-w-xs rounded-xl border px-4 py-3 text-xs shadow-lg backdrop-blur ${isStreetsBase ? "border-white/50 bg-slate-950/95 text-slate-200 shadow-black/40" : "border-border/80 bg-panel/80 text-muted"}`,
+        "svelte-w85nl5"
+      )}><div class="text-sm font-semibold text-white">${escape_html(activeMetricObj.label)}</div> <p${attr_class(`mt-1 leading-relaxed ${isStreetsBase ? "text-slate-100" : "text-muted"}`, "svelte-w85nl5")}>${escape_html(activeMetricObj.description)}</p> <p${attr_class(`mt-1 leading-relaxed font-semibold ${isStreetsBase ? "text-slate-200" : "text-muted/70"}`, "svelte-w85nl5")}>Optimal range: ${escape_html(activeMetricObj.range_optimal[0])}${escape_html(activeMetricObj.unit)} to ${escape_html(activeMetricObj.range_optimal[1])}${escape_html(activeMetricObj.unit)}</p></div>`);
+    } else {
+      $$renderer2.push("<!--[!-->");
+    }
+    $$renderer2.push(`<!--]--> `);
+    {
+      $$renderer2.push("<!--[1-->");
+      $$renderer2.push(`<div class="map-status svelte-w85nl5" aria-live="polite"><p class="text-muted text-sm">Preparing paddock boundaries…</p></div>`);
+    }
+    $$renderer2.push(`<!--]--> <a href="/"${attr_class(
+      `map-home focus-visible:ring-accent/40 absolute top-4 right-4 z-[1000] inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition hover:text-white focus:outline-none focus-visible:ring-2 ${isStreetsBase ? "border-white/60 bg-slate-950/95 text-white shadow-xl hover:border-white/80" : "bg-panel/95 border-white/10 text-white shadow-lg hover:border-white/30"}`,
+      "svelte-w85nl5"
+    )} aria-label="Back to home"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5"><path d="M12 3.172 3 10.5V21h6v-6h6v6h6V10.5L12 3.172z"></path></svg> <span class="hidden sm:inline">Home</span></a> `);
+    {
+      $$renderer2.push("<!--[!-->");
+    }
+    $$renderer2.push(`<!--]--></main></div>`);
+    if ($$store_subs) unsubscribe_stores($$store_subs);
+  });
 }
 export {
   _page as default

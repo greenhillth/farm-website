@@ -1,53 +1,53 @@
-import { K as fallback, E as attr, G as escape_html, M as ensure_array_like, N as bind_props, B as pop, z as push, O as spread_props } from "../../chunks/index2.js";
-function Card($$payload, $$props) {
-  push();
-  let href = $$props["href"];
-  let title = $$props["title"];
-  let description = fallback($$props["description"], "");
-  let tags = fallback($$props["tags"], () => [], true);
-  let image = fallback($$props["image"], null);
-  let imageAlt = fallback($$props["imageAlt"], "");
-  let badge = fallback($$props["badge"], null);
-  $$payload.out.push(`<a class="group block"${attr("href", href)}${attr("aria-label", title)}><article class="relative overflow-hidden rounded-xl bg-panel border border-border shadow-sm transition-transform duration-200 ease-out will-change-transform group-hover:scale-[1.02]">`);
-  if (image) {
-    $$payload.out.push("<!--[-->");
-    $$payload.out.push(`<div class="aspect-[16/9] overflow-hidden"><img${attr("src", image)}${attr("alt", imageAlt)} class="h-full w-full object-cover transition-transform duration-200 ease-out group-hover:scale-105 select-none"/></div>`);
-  } else {
-    $$payload.out.push("<!--[!-->");
-    $$payload.out.push(`<div class="aspect-[16/9] bg-gradient-to-br from-accent/20 via-transparent to-border/40"></div>`);
-  }
-  $$payload.out.push(`<!--]--> <div class="p-4 md:p-5">`);
-  if (badge) {
-    $$payload.out.push("<!--[-->");
-    $$payload.out.push(`<div class="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-xs mb-2">${escape_html(badge)}</div>`);
-  } else {
-    $$payload.out.push("<!--[!-->");
-  }
-  $$payload.out.push(`<!--]--> <h3 class="text-white font-semibold leading-snug">${escape_html(title)}</h3> `);
-  if (description) {
-    $$payload.out.push("<!--[-->");
-    $$payload.out.push(`<p class="mt-1 text-sm text-muted">${escape_html(description)}</p>`);
-  } else {
-    $$payload.out.push("<!--[!-->");
-  }
-  $$payload.out.push(`<!--]--> `);
-  if (tags.length) {
-    $$payload.out.push("<!--[-->");
-    const each_array = ensure_array_like(tags);
-    $$payload.out.push(`<div class="mt-3 flex flex-wrap gap-2"><!--[-->`);
-    for (let $$index = 0, $$length = each_array.length; $$index < $$length; $$index++) {
-      let t = each_array[$$index];
-      $$payload.out.push(`<span class="inline-flex items-center rounded-full border border-border bg-white/5 px-2 py-0.5 text-xs text-muted">#${escape_html(t)}</span>`);
+import { f as fallback, a as attr, e as escape_html, b as ensure_array_like, c as bind_props, d as spread_props } from "../../chunks/index2.js";
+function Card($$renderer, $$props) {
+  $$renderer.component(($$renderer2) => {
+    let href = $$props["href"];
+    let title = $$props["title"];
+    let description = fallback($$props["description"], "");
+    let tags = fallback($$props["tags"], () => [], true);
+    let image = fallback($$props["image"], null);
+    let imageAlt = fallback($$props["imageAlt"], "");
+    let badge = fallback($$props["badge"], null);
+    $$renderer2.push(`<a class="group block"${attr("href", href)}${attr("aria-label", title)}><article class="relative overflow-hidden rounded-xl bg-panel border border-border shadow-sm transition-transform duration-200 ease-out will-change-transform group-hover:scale-[1.02]">`);
+    if (image) {
+      $$renderer2.push("<!--[-->");
+      $$renderer2.push(`<div class="aspect-[16/9] overflow-hidden"><img${attr("src", image)}${attr("alt", imageAlt)} class="h-full w-full object-cover transition-transform duration-200 ease-out group-hover:scale-105 select-none"/></div>`);
+    } else {
+      $$renderer2.push("<!--[!-->");
+      $$renderer2.push(`<div class="aspect-[16/9] bg-gradient-to-br from-accent/20 via-transparent to-border/40"></div>`);
     }
-    $$payload.out.push(`<!--]--></div>`);
-  } else {
-    $$payload.out.push("<!--[!-->");
-  }
-  $$payload.out.push(`<!--]--></div></article></a>`);
-  bind_props($$props, { href, title, description, tags, image, imageAlt, badge });
-  pop();
+    $$renderer2.push(`<!--]--> <div class="p-4 md:p-5">`);
+    if (badge) {
+      $$renderer2.push("<!--[-->");
+      $$renderer2.push(`<div class="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-xs mb-2">${escape_html(badge)}</div>`);
+    } else {
+      $$renderer2.push("<!--[!-->");
+    }
+    $$renderer2.push(`<!--]--> <h3 class="text-white font-semibold leading-snug">${escape_html(title)}</h3> `);
+    if (description) {
+      $$renderer2.push("<!--[-->");
+      $$renderer2.push(`<p class="mt-1 text-sm text-muted">${escape_html(description)}</p>`);
+    } else {
+      $$renderer2.push("<!--[!-->");
+    }
+    $$renderer2.push(`<!--]--> `);
+    if (tags.length) {
+      $$renderer2.push("<!--[-->");
+      $$renderer2.push(`<div class="mt-3 flex flex-wrap gap-2"><!--[-->`);
+      const each_array = ensure_array_like(tags);
+      for (let $$index = 0, $$length = each_array.length; $$index < $$length; $$index++) {
+        let t = each_array[$$index];
+        $$renderer2.push(`<span class="inline-flex items-center rounded-full border border-border bg-white/5 px-2 py-0.5 text-xs text-muted">#${escape_html(t)}</span>`);
+      }
+      $$renderer2.push(`<!--]--></div>`);
+    } else {
+      $$renderer2.push("<!--[!-->");
+    }
+    $$renderer2.push(`<!--]--></div></article></a>`);
+    bind_props($$props, { href, title, description, tags, image, imageAlt, badge });
+  });
 }
-function _page($$payload) {
+function _page($$renderer) {
   const items = [
     {
       href: "/map",
@@ -131,13 +131,13 @@ function _page($$payload) {
       badge: "Help"
     }
   ];
+  $$renderer.push(`<div class="home-shell svelte-1uha8ag"><div class="home-shell__bg svelte-1uha8ag" aria-hidden="true"></div> <main class="relative container mx-auto px-4 py-8 svelte-1uha8ag"><header class="mb-6 flex items-center justify-between gap-4"><h1 class="text-xl font-semibold md:text-2xl">Greenhill Bros Farm</h1> <a href="/map" class="text-muted text-sm hover:text-white">Open map →</a></header> <section class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"><!--[-->`);
   const each_array = ensure_array_like(items);
-  $$payload.out.push(`<div class="home-shell svelte-1uha8ag"><div class="home-shell__bg svelte-1uha8ag" aria-hidden="true"></div> <main class="relative container mx-auto px-4 py-8 svelte-1uha8ag"><header class="mb-6 flex items-center justify-between gap-4"><h1 class="text-xl font-semibold md:text-2xl">Greenhill Bros Farm</h1> <a href="/map" class="text-muted text-sm hover:text-white">Open map →</a></header> <section class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"><!--[-->`);
   for (let $$index = 0, $$length = each_array.length; $$index < $$length; $$index++) {
     let i = each_array[$$index];
-    Card($$payload, spread_props([i]));
+    Card($$renderer, spread_props([i]));
   }
-  $$payload.out.push(`<!--]--></section></main></div>`);
+  $$renderer.push(`<!--]--></section></main></div>`);
 }
 export {
   _page as default

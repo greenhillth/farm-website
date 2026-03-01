@@ -10,19 +10,19 @@ return {
 	assets: new Set(["img/aerial-map.jpg","img/background.webp","img/confused-dad-1.jpg","img/gbros-rounded.svg","img/gbros.svg","img/gbros.webp","img/logo-square.svg","img/logo.png","img/manual-card.webp","img/map-card.webp","img/paddock-4.jpg","img/paddock-card.webp","img/sharepoint.jpg","img/sharepoint.svg","img/soil-card.webp","img/soil.jpg","img/tom-and-alex.jpg","img/tractor-1.jpg","img/weather-station.webp","robots.txt","samples/soil-tests.csv","video/pysn.mp4"]),
 	mimeTypes: {".jpg":"image/jpeg",".webp":"image/webp",".svg":"image/svg+xml",".png":"image/png",".txt":"text/plain",".csv":"text/csv",".mp4":"video/mp4"},
 	_: {
-		client: {start:"_app/immutable/entry/start.Y8oTfNOn.js",app:"_app/immutable/entry/app.BwWt6AzM.js",imports:["_app/immutable/entry/start.Y8oTfNOn.js","_app/immutable/chunks/CBkjmUdE.js","_app/immutable/chunks/DGtjQllA.js","_app/immutable/chunks/DsSUZBsh.js","_app/immutable/chunks/9EmW-GsR.js","_app/immutable/chunks/CX9GW7SH.js","_app/immutable/chunks/5IiInUXS.js","_app/immutable/entry/app.BwWt6AzM.js","_app/immutable/chunks/DsSUZBsh.js","_app/immutable/chunks/9EmW-GsR.js","_app/immutable/chunks/DsnmJJEf.js","_app/immutable/chunks/DGtjQllA.js","_app/immutable/chunks/CX9GW7SH.js","_app/immutable/chunks/D-WHDOiA.js","_app/immutable/chunks/B4zGmnkn.js","_app/immutable/chunks/B6_lBng7.js","_app/immutable/chunks/DDlElFAC.js","_app/immutable/chunks/5IiInUXS.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
+		client: {start:"_app/immutable/entry/start.CM6pYCY4.js",app:"_app/immutable/entry/app.CgS1qhgS.js",imports:["_app/immutable/entry/start.CM6pYCY4.js","_app/immutable/chunks/Dl_-jij7.js","_app/immutable/chunks/DyE--mCz.js","_app/immutable/chunks/DxtC1dWa.js","_app/immutable/chunks/DhDNuMY7.js","_app/immutable/entry/app.CgS1qhgS.js","_app/immutable/chunks/DyE--mCz.js","_app/immutable/chunks/BbdDiNu8.js","_app/immutable/chunks/gMANoNyM.js","_app/immutable/chunks/DhDNuMY7.js","_app/immutable/chunks/qtWtAah2.js","_app/immutable/chunks/CQRSbJO_.js","_app/immutable/chunks/BO9nOoVN.js","_app/immutable/chunks/BEAiq2bU.js","_app/immutable/chunks/BFYe4vL5.js","_app/immutable/chunks/DxtC1dWa.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
 		nodes: [
-			__memo(() => import('./chunks/0-BxquB-fi.js')),
-			__memo(() => import('./chunks/1-VnEfvC6s.js')),
-			__memo(() => import('./chunks/2-Bl2VDA1L.js')),
-			__memo(() => import('./chunks/3-Bzt1lQ95.js')),
-			__memo(() => import('./chunks/4-DrlPI5gI.js')),
-			__memo(() => import('./chunks/5-BOkqd9OK.js')),
-			__memo(() => import('./chunks/6-DmJ-eXrv.js')),
-			__memo(() => import('./chunks/7-DbJnKy5L.js')),
-			__memo(() => import('./chunks/8-BDuZeT7x.js')),
-			__memo(() => import('./chunks/9-zo1zYjw3.js')),
-			__memo(() => import('./chunks/10-DT7LkN2m.js'))
+			__memo(() => import('./chunks/0-3QhSMGma.js')),
+			__memo(() => import('./chunks/1-C2ntrki0.js')),
+			__memo(() => import('./chunks/2-rZAxW5EP.js')),
+			__memo(() => import('./chunks/3-CitpHrzf.js')),
+			__memo(() => import('./chunks/4-D-UyXmbZ.js')),
+			__memo(() => import('./chunks/5-Cc51AF9e.js')),
+			__memo(() => import('./chunks/6-OudY8swX.js')),
+			__memo(() => import('./chunks/7-B5Vt81cZ.js')),
+			__memo(() => import('./chunks/8-Bqpwkwts.js')),
+			__memo(() => import('./chunks/9-B-jOlwke.js')),
+			__memo(() => import('./chunks/10-C0XnDaPv.js'))
 		],
 		remotes: {
 			

@@ -4,6 +4,7 @@ const CONFIG = {
   api: apiBase,
   backend: {
     farm: `${apiBase}/farm`,
+    titles: `${apiBase}/farm/titles`,
     geojson: `${apiBase}/farm`,
     weather: `${apiBase}/weather`,
     currentWeather: `${apiBase}/weather/current`,
@@ -13,7 +14,9 @@ const CONFIG = {
     upload: {
       test: {
         manual: `${apiBase}/soil-tests/manual`,
-        import: `${apiBase}/soil-tests/import`
+        import: `${apiBase}/soil-tests/import`,
+        status: (jobId) => `${apiBase}/soil-tests/import/${jobId}/status`,
+        cancel: (jobId) => `${apiBase}/soil-tests/import/${jobId}`
       }
     }
   },

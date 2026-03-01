@@ -2,6 +2,128 @@ import type { PathOptions } from 'leaflet';
 
 import { linearGradientCSS } from './utils';
 
+// ─── Title-boundary related types ──────────────────────────────────────────
+
+export type TitleFeatureProperties = {
+	objectID: number;
+	pid: number;
+	potPid: number;
+	volume: string;
+	folio: number;
+	titleRef: string;
+	address: string;
+	ownershipPct: string;
+	owners: string[];
+};
+
+/** Colour palette for ownership-based fills */
+const TITLE_OWNERSHIP_COLORS: Record<string, string> = {
+	'100%': '#2563eb',
+	'50%': '#9333ea',
+	'33%': '#dc2626'
+};
+const TITLE_DEFAULT_COLOR = '#0891b2';
+
+export const DEFAULT_TITLE_STYLE: PathOptions = {
+	color: '#facc15',
+	weight: 2,
+	fillColor: TITLE_DEFAULT_COLOR,
+	fillOpacity: 0.18,
+	dashArray: '6 4'
+};
+
+const TITLE_HOVER_STYLE: Partial<PathOptions> = {
+	weight: 3,
+	fillOpacity: 0.35
+};
+
+/**
+ * Format the owners array into readable names.
+ * The API returns alternating first/last pairs: ["Stuart","Greenhill","Matthew","Greenhill"]
+ */
+export function formatOwners(owners: string[]): string {
+	if (!Array.isArray(owners) || owners.length === 0) return 'Unknown';
+	const names: string[] = [];
+	for (let i = 0; i < owners.length; i += 2) {
+		const first = owners[i] ?? '';
+		const last = owners[i + 1] ?? '';
+		names.push(`${first} ${last}`.trim());
+	}
+	return names.filter(Boolean).join(', ') || 'Unknown';
+}
+
+function titleFillColor(ownershipPct: string): string {
+	return TITLE_OWNERSHIP_COLORS[ownershipPct] ?? TITLE_DEFAULT_COLOR;
+}
+
+function buildTitleTooltipHtml(props: TitleFeatureProperties): string {
+	const ownerNames = formatOwners(props.owners);
+	const parts: string[] = [
+		`<div><strong>${props.address || 'Untitled property'}</strong></div>`,
+		`<div>Owners: ${ownerNames}</div>`,
+		`<div>Ownership: ${props.ownershipPct || '–'}</div>`,
+		`<div class="text-[0.7rem] opacity-80">Title: ${props.titleRef || '–'}</div>`
+	];
+	return parts.join('');
+}
+
+/** Build a GeoJSON layer for title boundary polygons. */
+export function buildTitleLayer(
+	geojson: any,
+	L: typeof import('leaflet'),
+	onClick?: (props: TitleFeatureProperties, latlng: L.LatLng) => void
+) {
+	return L.geoJSON(geojson, {
+		style: (feature: any) => {
+			const pct: string = feature?.properties?.ownershipPct ?? '';
+			return {
+				...DEFAULT_TITLE_STYLE,
+				fillColor: titleFillColor(pct)
+			};
+		},
+		onEachFeature: (feature: any, layer: any) => {
+			const props = (feature?.properties ?? {}) as TitleFeatureProperties;
+			const typedLayer = layer as typeof layer & { __baseStyle?: PathOptions };
+			const baseStyle = {
+				...DEFAULT_TITLE_STYLE,
+				fillColor: titleFillColor(props.ownershipPct ?? '')
+			};
+			typedLayer.__baseStyle = baseStyle;
+
+			const tooltipHtml = buildTitleTooltipHtml(props);
+			if (typeof layer.bindTooltip === 'function') {
+				layer.bindTooltip(tooltipHtml, {
+					sticky: true,
+					direction: 'top',
+					className: 'title-tooltip',
+					opacity: 0.95
+				});
+			}
+
+			if (typeof layer.setStyle === 'function') {
+				layer.on('mouseover', () => {
+					layer.setStyle({
+						...baseStyle,
+						...TITLE_HOVER_STYLE
+					});
+					if (typeof layer.bringToFront === 'function') {
+						layer.bringToFront();
+					}
+				});
+				layer.on('mouseout', () => {
+					layer.setStyle(baseStyle);
+				});
+			}
+
+			if (onClick && typeof layer.on === 'function') {
+				layer.on('click', (e: any) => {
+					onClick(props, e.latlng);
+				});
+			}
+		}
+	});
+}
+
 export const DEFAULT_PADDOCK_STYLE = {
   color: "#374151",
   weight: 1,

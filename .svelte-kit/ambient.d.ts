@@ -5,219 +5,346 @@
 /// <reference types="@sveltejs/kit" />
 
 /**
- * Environment variables [loaded by Vite](https://vitejs.dev/guide/env-and-mode.html#env-files) from `.env` files and `process.env`. Like [`$env/dynamic/private`](https://svelte.dev/docs/kit/$env-dynamic-private), this module cannot be imported into client-side code. This module only includes variables that _do not_ begin with [`config.kit.env.publicPrefix`](https://svelte.dev/docs/kit/configuration#env) _and do_ start with [`config.kit.env.privatePrefix`](https://svelte.dev/docs/kit/configuration#env) (if configured).
+ * This module provides access to environment variables that are injected _statically_ into your bundle at build time and are limited to _private_ access.
  * 
- * _Unlike_ [`$env/dynamic/private`](https://svelte.dev/docs/kit/$env-dynamic-private), the values exported from this module are statically injected into your bundle at build time, enabling optimisations like dead code elimination.
+ * |         | Runtime                                                                    | Build time                                                               |
+ * | ------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+ * | Private | [`$env/dynamic/private`](https://svelte.dev/docs/kit/$env-dynamic-private) | [`$env/static/private`](https://svelte.dev/docs/kit/$env-static-private) |
+ * | Public  | [`$env/dynamic/public`](https://svelte.dev/docs/kit/$env-dynamic-public)   | [`$env/static/public`](https://svelte.dev/docs/kit/$env-static-public)   |
+ * 
+ * Static environment variables are [loaded by Vite](https://vitejs.dev/guide/env-and-mode.html#env-files) from `.env` files and `process.env` at build time and then statically injected into your bundle at build time, enabling optimisations like dead code elimination.
+ * 
+ * **_Private_ access:**
+ * 
+ * - This module cannot be imported into client-side code
+ * - This module only includes variables that _do not_ begin with [`config.kit.env.publicPrefix`](https://svelte.dev/docs/kit/configuration#env) _and do_ start with [`config.kit.env.privatePrefix`](https://svelte.dev/docs/kit/configuration#env) (if configured)
+ * 
+ * For example, given the following build time environment:
+ * 
+ * ```env
+ * ENVIRONMENT=production
+ * PUBLIC_BASE_URL=http://site.com
+ * ```
+ * 
+ * With the default `publicPrefix` and `privatePrefix`:
  * 
  * ```ts
- * import { API_KEY } from '$env/static/private';
+ * import { ENVIRONMENT, PUBLIC_BASE_URL } from '$env/static/private';
+ * 
+ * console.log(ENVIRONMENT); // => "production"
+ * console.log(PUBLIC_BASE_URL); // => throws error during build
  * ```
  * 
- * Note that all environment variables referenced in your code should be declared (for example in an `.env` file), even if they don't have a value until the app is deployed:
- * 
- * ```
- * MY_FEATURE_FLAG=""
- * ```
- * 
- * You can override `.env` values from the command line like so:
- * 
- * ```sh
- * MY_FEATURE_FLAG="enabled" npm run dev
- * ```
+ * The above values will be the same _even if_ different values for `ENVIRONMENT` or `PUBLIC_BASE_URL` are set at runtime, as they are statically replaced in your code with their build time values.
  */
 declare module '$env/static/private' {
-	export const LESSOPEN: string;
-	export const VSCODE_CWD: string;
-	export const VSCODE_ESM_ENTRYPOINT: string;
-	export const CONDA_PROMPT_MODIFIER: string;
-	export const USER: string;
-	export const CODEX_INTERNAL_ORIGINATOR_OVERRIDE: string;
-	export const VSCODE_NLS_CONFIG: string;
-	export const npm_config_user_agent: string;
-	export const VSCODE_WSL_EXT_LOCATION: string;
-	export const VSCODE_HANDLES_UNCAUGHT_ERRORS: string;
-	export const npm_node_execpath: string;
-	export const SHLVL: string;
-	export const npm_config_noproxy: string;
-	export const HOME: string;
-	export const CONDA_SHLVL: string;
-	export const NVM_BIN: string;
-	export const VSCODE_IPC_HOOK_CLI: string;
-	export const npm_package_json: string;
 	export const NVM_INC: string;
-	export const npm_config_userconfig: string;
-	export const npm_config_local_prefix: string;
-	export const DBUS_SESSION_BUS_ADDRESS: string;
-	export const npm_config_engine_strict: string;
-	export const _CE_M: string;
-	export const WSL_DISTRO_NAME: string;
-	export const _CONDA_ROOT: string;
-	export const COLOR: string;
-	export const NVM_DIR: string;
-	export const WAYLAND_DISPLAY: string;
-	export const APPLICATION_INSIGHTS_NO_STATSBEAT: string;
-	export const LOGNAME: string;
-	export const NAME: string;
-	export const WSL_INTEROP: string;
-	export const VSCODE_HANDLES_SIGPIPE: string;
-	export const PULSE_SERVER: string;
-	export const _: string;
-	export const npm_config_prefix: string;
-	export const npm_config_npm_version: string;
-	export const RUST_LOG: string;
-	export const TERM: string;
-	export const npm_config_cache: string;
-	export const _CE_CONDA: string;
-	export const npm_config_node_gyp: string;
-	export const PATH: string;
+	export const TERM_PROGRAM: string;
 	export const NODE: string;
-	export const npm_package_name: string;
-	export const XDG_RUNTIME_DIR: string;
-	export const DISPLAY: string;
-	export const CODEX_SANDBOX_NETWORK_DISABLED: string;
-	export const LANG: string;
-	export const LS_COLORS: string;
-	export const npm_lifecycle_script: string;
-	export const CONDA_PYTHON_EXE: string;
-	export const SHELL: string;
-	export const npm_package_version: string;
-	export const npm_lifecycle_event: string;
-	export const ELECTRON_RUN_AS_NODE: string;
-	export const LESSCLOSE: string;
-	export const CONDA_DEFAULT_ENV: string;
-	export const _CONDA_EXE: string;
-	export const npm_config_globalconfig: string;
-	export const npm_config_init_module: string;
-	export const PWD: string;
-	export const npm_execpath: string;
-	export const CONDA_EXE: string;
+	export const _P9K_TTY: string;
 	export const NVM_CD_FLAGS: string;
-	export const XDG_DATA_DIRS: string;
-	export const npm_config_global_prefix: string;
-	export const npm_command: string;
+	export const TERM: string;
+	export const SHELL: string;
+	export const TMPDIR: string;
+	export const HOMEBREW_REPOSITORY: string;
+	export const CONDA_SHLVL: string;
+	export const VSCODE_PYTHON_AUTOACTIVATE_GUARD: string;
+	export const TERM_PROGRAM_VERSION: string;
+	export const CONDA_PROMPT_MODIFIER: string;
+	export const ZDOTDIR: string;
+	export const MallocNanoZone: string;
+	export const TERM_SESSION_ID: string;
+	export const npm_config_local_prefix: string;
+	export const ZSH: string;
+	export const NO_PROXY: string;
+	export const _CONDA_EXE: string;
+	export const USER: string;
+	export const NVM_DIR: string;
+	export const PROXY_URL: string;
+	export const LS_COLORS: string;
+	export const COMMAND_MODE: string;
+	export const CONDA_EXE: string;
+	export const SSH_AUTH_SOCK: string;
+	export const VSCODE_PROFILE_INITIALIZED: string;
+	export const __CF_USER_TEXT_ENCODING: string;
+	export const npm_execpath: string;
+	export const TERM_FEATURES: string;
+	export const PAGER: string;
+	export const _CE_CONDA: string;
+	export const LSCOLORS: string;
+	export const TERMINFO_DIRS: string;
+	export const PATH: string;
+	export const npm_package_json: string;
+	export const _: string;
+	export const USER_ZDOTDIR: string;
+	export const __CFBundleIdentifier: string;
 	export const CONDA_PREFIX: string;
-	export const WSL2_GUI_APPS_ENABLED: string;
-	export const HOSTTYPE: string;
-	export const WSLENV: string;
-	export const INIT_CWD: string;
-	export const EDITOR: string;
+	export const npm_command: string;
+	export const PWD: string;
+	export const VSCODE_NONCE: string;
+	export const npm_lifecycle_event: string;
+	export const P9K_SSH: string;
+	export const AZURE_CONNSTR: string;
+	export const npm_package_name: string;
+	export const P9K_TTY: string;
+	export const LANG: string;
+	export const ITERM_PROFILE: string;
+	export const VSCODE_GIT_ASKPASS_EXTRA_ARGS: string;
+	export const XPC_FLAGS: string;
+	export const npm_package_version: string;
+	export const _CE_M: string;
+	export const _CONDA_ROOT: string;
+	export const XPC_SERVICE_NAME: string;
+	export const VSCODE_INJECTION: string;
+	export const SHLVL: string;
+	export const HOME: string;
+	export const COLORFGBG: string;
+	export const VSCODE_GIT_ASKPASS_MAIN: string;
+	export const LC_TERMINAL_VERSION: string;
+	export const no_proxy: string;
+	export const HOMEBREW_PREFIX: string;
+	export const ITERM_SESSION_ID: string;
+	export const LOGNAME: string;
+	export const LESS: string;
+	export const CONDA_PYTHON_EXE: string;
+	export const npm_lifecycle_script: string;
+	export const VSCODE_GIT_IPC_HANDLE: string;
+	export const NVM_BIN: string;
+	export const CONDA_DEFAULT_ENV: string;
+	export const BUN_INSTALL: string;
+	export const npm_config_user_agent: string;
+	export const VSCODE_GIT_ASKPASS_NODE: string;
+	export const GIT_ASKPASS: string;
+	export const INFOPATH: string;
+	export const HOMEBREW_CELLAR: string;
+	export const _P9K_SSH_TTY: string;
+	export const LC_TERMINAL: string;
+	export const OSLogRateLimit: string;
+	export const npm_node_execpath: string;
+	export const COLORTERM: string;
+	export const NODE_ENV: string;
 }
 
 /**
- * Similar to [`$env/static/private`](https://svelte.dev/docs/kit/$env-static-private), except that it only includes environment variables that begin with [`config.kit.env.publicPrefix`](https://svelte.dev/docs/kit/configuration#env) (which defaults to `PUBLIC_`), and can therefore safely be exposed to client-side code.
+ * This module provides access to environment variables that are injected _statically_ into your bundle at build time and are _publicly_ accessible.
  * 
- * Values are replaced statically at build time.
+ * |         | Runtime                                                                    | Build time                                                               |
+ * | ------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+ * | Private | [`$env/dynamic/private`](https://svelte.dev/docs/kit/$env-dynamic-private) | [`$env/static/private`](https://svelte.dev/docs/kit/$env-static-private) |
+ * | Public  | [`$env/dynamic/public`](https://svelte.dev/docs/kit/$env-dynamic-public)   | [`$env/static/public`](https://svelte.dev/docs/kit/$env-static-public)   |
+ * 
+ * Static environment variables are [loaded by Vite](https://vitejs.dev/guide/env-and-mode.html#env-files) from `.env` files and `process.env` at build time and then statically injected into your bundle at build time, enabling optimisations like dead code elimination.
+ * 
+ * **_Public_ access:**
+ * 
+ * - This module _can_ be imported into client-side code
+ * - **Only** variables that begin with [`config.kit.env.publicPrefix`](https://svelte.dev/docs/kit/configuration#env) (which defaults to `PUBLIC_`) are included
+ * 
+ * For example, given the following build time environment:
+ * 
+ * ```env
+ * ENVIRONMENT=production
+ * PUBLIC_BASE_URL=http://site.com
+ * ```
+ * 
+ * With the default `publicPrefix` and `privatePrefix`:
  * 
  * ```ts
- * import { PUBLIC_BASE_URL } from '$env/static/public';
+ * import { ENVIRONMENT, PUBLIC_BASE_URL } from '$env/static/public';
+ * 
+ * console.log(ENVIRONMENT); // => throws error during build
+ * console.log(PUBLIC_BASE_URL); // => "http://site.com"
  * ```
+ * 
+ * The above values will be the same _even if_ different values for `ENVIRONMENT` or `PUBLIC_BASE_URL` are set at runtime, as they are statically replaced in your code with their build time values.
  */
 declare module '$env/static/public' {
 	
 }
 
 /**
- * This module provides access to runtime environment variables, as defined by the platform you're running on. For example if you're using [`adapter-node`](https://github.com/sveltejs/kit/tree/main/packages/adapter-node) (or running [`vite preview`](https://svelte.dev/docs/kit/cli)), this is equivalent to `process.env`. This module only includes variables that _do not_ begin with [`config.kit.env.publicPrefix`](https://svelte.dev/docs/kit/configuration#env) _and do_ start with [`config.kit.env.privatePrefix`](https://svelte.dev/docs/kit/configuration#env) (if configured).
+ * This module provides access to environment variables set _dynamically_ at runtime and that are limited to _private_ access.
  * 
- * This module cannot be imported into client-side code.
+ * |         | Runtime                                                                    | Build time                                                               |
+ * | ------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+ * | Private | [`$env/dynamic/private`](https://svelte.dev/docs/kit/$env-dynamic-private) | [`$env/static/private`](https://svelte.dev/docs/kit/$env-static-private) |
+ * | Public  | [`$env/dynamic/public`](https://svelte.dev/docs/kit/$env-dynamic-public)   | [`$env/static/public`](https://svelte.dev/docs/kit/$env-static-public)   |
+ * 
+ * Dynamic environment variables are defined by the platform you're running on. For example if you're using [`adapter-node`](https://github.com/sveltejs/kit/tree/main/packages/adapter-node) (or running [`vite preview`](https://svelte.dev/docs/kit/cli)), this is equivalent to `process.env`.
+ * 
+ * **_Private_ access:**
+ * 
+ * - This module cannot be imported into client-side code
+ * - This module includes variables that _do not_ begin with [`config.kit.env.publicPrefix`](https://svelte.dev/docs/kit/configuration#env) _and do_ start with [`config.kit.env.privatePrefix`](https://svelte.dev/docs/kit/configuration#env) (if configured)
+ * 
+ * > [!NOTE] In `dev`, `$env/dynamic` includes environment variables from `.env`. In `prod`, this behavior will depend on your adapter.
+ * 
+ * > [!NOTE] To get correct types, environment variables referenced in your code should be declared (for example in an `.env` file), even if they don't have a value until the app is deployed:
+ * >
+ * > ```env
+ * > MY_FEATURE_FLAG=
+ * > ```
+ * >
+ * > You can override `.env` values from the command line like so:
+ * >
+ * > ```sh
+ * > MY_FEATURE_FLAG="enabled" npm run dev
+ * > ```
+ * 
+ * For example, given the following runtime environment:
+ * 
+ * ```env
+ * ENVIRONMENT=production
+ * PUBLIC_BASE_URL=http://site.com
+ * ```
+ * 
+ * With the default `publicPrefix` and `privatePrefix`:
  * 
  * ```ts
  * import { env } from '$env/dynamic/private';
- * console.log(env.DEPLOYMENT_SPECIFIC_VARIABLE);
- * ```
  * 
- * > [!NOTE] In `dev`, `$env/dynamic` always includes environment variables from `.env`. In `prod`, this behavior will depend on your adapter.
+ * console.log(env.ENVIRONMENT); // => "production"
+ * console.log(env.PUBLIC_BASE_URL); // => undefined
+ * ```
  */
 declare module '$env/dynamic/private' {
 	export const env: {
-		LESSOPEN: string;
-		VSCODE_CWD: string;
-		VSCODE_ESM_ENTRYPOINT: string;
-		CONDA_PROMPT_MODIFIER: string;
-		USER: string;
-		CODEX_INTERNAL_ORIGINATOR_OVERRIDE: string;
-		VSCODE_NLS_CONFIG: string;
-		npm_config_user_agent: string;
-		VSCODE_WSL_EXT_LOCATION: string;
-		VSCODE_HANDLES_UNCAUGHT_ERRORS: string;
-		npm_node_execpath: string;
-		SHLVL: string;
-		npm_config_noproxy: string;
-		HOME: string;
-		CONDA_SHLVL: string;
-		NVM_BIN: string;
-		VSCODE_IPC_HOOK_CLI: string;
-		npm_package_json: string;
 		NVM_INC: string;
-		npm_config_userconfig: string;
-		npm_config_local_prefix: string;
-		DBUS_SESSION_BUS_ADDRESS: string;
-		npm_config_engine_strict: string;
-		_CE_M: string;
-		WSL_DISTRO_NAME: string;
-		_CONDA_ROOT: string;
-		COLOR: string;
-		NVM_DIR: string;
-		WAYLAND_DISPLAY: string;
-		APPLICATION_INSIGHTS_NO_STATSBEAT: string;
-		LOGNAME: string;
-		NAME: string;
-		WSL_INTEROP: string;
-		VSCODE_HANDLES_SIGPIPE: string;
-		PULSE_SERVER: string;
-		_: string;
-		npm_config_prefix: string;
-		npm_config_npm_version: string;
-		RUST_LOG: string;
-		TERM: string;
-		npm_config_cache: string;
-		_CE_CONDA: string;
-		npm_config_node_gyp: string;
-		PATH: string;
+		TERM_PROGRAM: string;
 		NODE: string;
-		npm_package_name: string;
-		XDG_RUNTIME_DIR: string;
-		DISPLAY: string;
-		CODEX_SANDBOX_NETWORK_DISABLED: string;
-		LANG: string;
-		LS_COLORS: string;
-		npm_lifecycle_script: string;
-		CONDA_PYTHON_EXE: string;
-		SHELL: string;
-		npm_package_version: string;
-		npm_lifecycle_event: string;
-		ELECTRON_RUN_AS_NODE: string;
-		LESSCLOSE: string;
-		CONDA_DEFAULT_ENV: string;
-		_CONDA_EXE: string;
-		npm_config_globalconfig: string;
-		npm_config_init_module: string;
-		PWD: string;
-		npm_execpath: string;
-		CONDA_EXE: string;
+		_P9K_TTY: string;
 		NVM_CD_FLAGS: string;
-		XDG_DATA_DIRS: string;
-		npm_config_global_prefix: string;
-		npm_command: string;
+		TERM: string;
+		SHELL: string;
+		TMPDIR: string;
+		HOMEBREW_REPOSITORY: string;
+		CONDA_SHLVL: string;
+		VSCODE_PYTHON_AUTOACTIVATE_GUARD: string;
+		TERM_PROGRAM_VERSION: string;
+		CONDA_PROMPT_MODIFIER: string;
+		ZDOTDIR: string;
+		MallocNanoZone: string;
+		TERM_SESSION_ID: string;
+		npm_config_local_prefix: string;
+		ZSH: string;
+		NO_PROXY: string;
+		_CONDA_EXE: string;
+		USER: string;
+		NVM_DIR: string;
+		PROXY_URL: string;
+		LS_COLORS: string;
+		COMMAND_MODE: string;
+		CONDA_EXE: string;
+		SSH_AUTH_SOCK: string;
+		VSCODE_PROFILE_INITIALIZED: string;
+		__CF_USER_TEXT_ENCODING: string;
+		npm_execpath: string;
+		TERM_FEATURES: string;
+		PAGER: string;
+		_CE_CONDA: string;
+		LSCOLORS: string;
+		TERMINFO_DIRS: string;
+		PATH: string;
+		npm_package_json: string;
+		_: string;
+		USER_ZDOTDIR: string;
+		__CFBundleIdentifier: string;
 		CONDA_PREFIX: string;
-		WSL2_GUI_APPS_ENABLED: string;
-		HOSTTYPE: string;
-		WSLENV: string;
-		INIT_CWD: string;
-		EDITOR: string;
+		npm_command: string;
+		PWD: string;
+		VSCODE_NONCE: string;
+		npm_lifecycle_event: string;
+		P9K_SSH: string;
+		AZURE_CONNSTR: string;
+		npm_package_name: string;
+		P9K_TTY: string;
+		LANG: string;
+		ITERM_PROFILE: string;
+		VSCODE_GIT_ASKPASS_EXTRA_ARGS: string;
+		XPC_FLAGS: string;
+		npm_package_version: string;
+		_CE_M: string;
+		_CONDA_ROOT: string;
+		XPC_SERVICE_NAME: string;
+		VSCODE_INJECTION: string;
+		SHLVL: string;
+		HOME: string;
+		COLORFGBG: string;
+		VSCODE_GIT_ASKPASS_MAIN: string;
+		LC_TERMINAL_VERSION: string;
+		no_proxy: string;
+		HOMEBREW_PREFIX: string;
+		ITERM_SESSION_ID: string;
+		LOGNAME: string;
+		LESS: string;
+		CONDA_PYTHON_EXE: string;
+		npm_lifecycle_script: string;
+		VSCODE_GIT_IPC_HANDLE: string;
+		NVM_BIN: string;
+		CONDA_DEFAULT_ENV: string;
+		BUN_INSTALL: string;
+		npm_config_user_agent: string;
+		VSCODE_GIT_ASKPASS_NODE: string;
+		GIT_ASKPASS: string;
+		INFOPATH: string;
+		HOMEBREW_CELLAR: string;
+		_P9K_SSH_TTY: string;
+		LC_TERMINAL: string;
+		OSLogRateLimit: string;
+		npm_node_execpath: string;
+		COLORTERM: string;
+		NODE_ENV: string;
 		[key: `PUBLIC_${string}`]: undefined;
 		[key: `${string}`]: string | undefined;
 	}
 }
 
 /**
- * Similar to [`$env/dynamic/private`](https://svelte.dev/docs/kit/$env-dynamic-private), but only includes variables that begin with [`config.kit.env.publicPrefix`](https://svelte.dev/docs/kit/configuration#env) (which defaults to `PUBLIC_`), and can therefore safely be exposed to client-side code.
+ * This module provides access to environment variables set _dynamically_ at runtime and that are _publicly_ accessible.
  * 
- * Note that public dynamic environment variables must all be sent from the server to the client, causing larger network requests — when possible, use `$env/static/public` instead.
+ * |         | Runtime                                                                    | Build time                                                               |
+ * | ------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+ * | Private | [`$env/dynamic/private`](https://svelte.dev/docs/kit/$env-dynamic-private) | [`$env/static/private`](https://svelte.dev/docs/kit/$env-static-private) |
+ * | Public  | [`$env/dynamic/public`](https://svelte.dev/docs/kit/$env-dynamic-public)   | [`$env/static/public`](https://svelte.dev/docs/kit/$env-static-public)   |
+ * 
+ * Dynamic environment variables are defined by the platform you're running on. For example if you're using [`adapter-node`](https://github.com/sveltejs/kit/tree/main/packages/adapter-node) (or running [`vite preview`](https://svelte.dev/docs/kit/cli)), this is equivalent to `process.env`.
+ * 
+ * **_Public_ access:**
+ * 
+ * - This module _can_ be imported into client-side code
+ * - **Only** variables that begin with [`config.kit.env.publicPrefix`](https://svelte.dev/docs/kit/configuration#env) (which defaults to `PUBLIC_`) are included
+ * 
+ * > [!NOTE] In `dev`, `$env/dynamic` includes environment variables from `.env`. In `prod`, this behavior will depend on your adapter.
+ * 
+ * > [!NOTE] To get correct types, environment variables referenced in your code should be declared (for example in an `.env` file), even if they don't have a value until the app is deployed:
+ * >
+ * > ```env
+ * > MY_FEATURE_FLAG=
+ * > ```
+ * >
+ * > You can override `.env` values from the command line like so:
+ * >
+ * > ```sh
+ * > MY_FEATURE_FLAG="enabled" npm run dev
+ * > ```
+ * 
+ * For example, given the following runtime environment:
+ * 
+ * ```env
+ * ENVIRONMENT=production
+ * PUBLIC_BASE_URL=http://example.com
+ * ```
+ * 
+ * With the default `publicPrefix` and `privatePrefix`:
  * 
  * ```ts
  * import { env } from '$env/dynamic/public';
- * console.log(env.PUBLIC_DEPLOYMENT_SPECIFIC_VARIABLE);
+ * console.log(env.ENVIRONMENT); // => undefined, not public
+ * console.log(env.PUBLIC_BASE_URL); // => "http://example.com"
+ * ```
+ * 
+ * ```
+ * 
  * ```
  */
 declare module '$env/dynamic/public' {

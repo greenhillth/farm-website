@@ -1,10 +1,8 @@
-import { U as current_component } from "./index2.js";
+import { ah as ssr_context } from "./index2.js";
+import "clsx";
 function onDestroy(fn) {
-  var context = (
-    /** @type {Component} */
-    current_component
-  );
-  (context.d ??= []).push(fn);
+  /** @type {SSRContext} */
+  ssr_context.r.on_destroy(fn);
 }
 async function tick() {
 }

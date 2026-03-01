@@ -5,8 +5,9 @@
     "src": ".svelte-kit/generated/server/internal.js",
     "isEntry": true,
     "imports": [
-      "_internal.js",
+      "_root.js",
       "_environment.js",
+      "_internal.js",
       "_shared-server.js"
     ]
   },
@@ -58,12 +59,19 @@
     "file": "chunks/internal.js",
     "name": "internal",
     "imports": [
-      "_index2.js",
+      "_root.js",
       "_environment.js",
       "_shared-server.js"
     ],
     "dynamicImports": [
       "src/hooks.server.ts"
+    ]
+  },
+  "_root.js": {
+    "file": "chunks/root.js",
+    "name": "root",
+    "imports": [
+      "_index2.js"
     ]
   },
   "_shared-server.js": {
@@ -81,7 +89,9 @@
     "file": "chunks/state.svelte.js",
     "name": "state.svelte",
     "imports": [
-      "_index2.js"
+      "_index2.js",
+      "_exports.js",
+      "_root.js"
     ]
   },
   "_utils.js": {
@@ -116,7 +126,8 @@
       "_state.svelte.js",
       "_exports.js",
       "_utils.js",
-      "_index.js"
+      "_index.js",
+      "_root.js"
     ]
   },
   "node_modules/@sveltejs/kit/src/runtime/server/index.js": {
@@ -127,18 +138,19 @@
     "imports": [
       "_false.js",
       "_environment.js",
+      "_shared.js",
       "_exports.js",
       "_utils.js",
       "_index.js",
       "_shared-server.js",
-      "_shared.js",
       "_internal.js"
     ]
   },
   "src/hooks.server.ts": {
-    "file": "chunks/hooks.server.js",
-    "name": "hooks.server",
+    "file": "entries/hooks.server.js",
+    "name": "entries/hooks.server",
     "src": "src/hooks.server.ts",
+    "isEntry": true,
     "isDynamicEntry": true,
     "imports": [
       "_shared-server.js"
@@ -157,7 +169,7 @@
       "_index2.js"
     ],
     "css": [
-      "_app/immutable/assets/_layout.BpjGlgbM.css"
+      "_app/immutable/assets/_layout.C09U1tcy.css"
     ],
     "assets": [
       "_app/immutable/assets/favicon.BoR511CM.svg"
@@ -179,10 +191,7 @@
     "file": "entries/pages/alex/_page.svelte.js",
     "name": "entries/pages/alex/_page.svelte",
     "src": "src/routes/alex/+page.svelte",
-    "isEntry": true,
-    "imports": [
-      "_index2.js"
-    ]
+    "isEntry": true
   },
   "src/routes/api/[...path]/+server.ts": {
     "file": "entries/endpoints/api/_...path_/_server.ts.js",
@@ -213,11 +222,12 @@
       "_index-server.js",
       "_exports.js",
       "_utils.js",
+      "_root.js",
       "_state.svelte.js",
       "_config.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.D9-psSAn.css"
+      "_app/immutable/assets/_page.LK1QqhPd.css"
     ]
   },
   "src/routes/map/+page.ts": {
@@ -247,7 +257,7 @@
       "_Panel.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.BApKeEy_.css"
+      "_app/immutable/assets/_page.CVJXmhvc.css"
     ]
   },
   "src/routes/timesheet/+page.svelte": {

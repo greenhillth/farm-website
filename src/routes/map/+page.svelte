@@ -7,7 +7,8 @@ import { onDestroy, onMount } from 'svelte';
 
 import CONFIG from '$lib/config';
 import type { MetricId, MetricOption } from '$lib/config';
-import { buildBaseLayer } from '$lib/layers';
+import { buildBaseLayer, buildTitleLayer, formatOwners } from '$lib/layers';
+import type { TitleFeatureProperties } from '$lib/layers';
 
 import 'leaflet/dist/leaflet.css';
 
@@ -80,14 +81,20 @@ let navPanel: HTMLElement;
 let map: L.Map | null = null;
 let baseTileLayer: L.TileLayer | null = null;
 let paddockLayer: L.GeoJSON | null = null;
+let titleLayer: L.GeoJSON | null = null;
 let baseBounds: L.LatLngBounds | null = null;
 let farmData: any = null;
 
 let navOpen = true;
 let showLabels = true;
 let showBoundaries = true;
+let showTitles = false;
 let isLoading = true;
 let loadError: string | null = null;
+let titlesLoading = false;
+let titlesError: string | null = null;
+let titlesCount = 0;
+let selectedTitle: TitleFeatureProperties | null = null;
 
 let activeBaseLayer: string = baseLayerConfigs[0]?.id ?? 'imagery';
 let activeMetric: MetricId = defaultMetric;
@@ -213,6 +220,42 @@ async function loadFarmData() {
 	} finally {
 		isLoading = false;
 		scheduleInvalidate(120);
+	}
+}
+
+async function loadTitleBoundaries() {
+	if (!map) return;
+	if (titlesLoading) return;
+
+	titlesLoading = true;
+	titlesError = null;
+
+	try {
+		const response = await fetch(CONFIG.backend.titles);
+		if (!response.ok) {
+			throw new Error(`Request failed (${response.status})`);
+		}
+
+		const geojson = await response.json();
+		titlesCount = Array.isArray(geojson?.features) ? geojson.features.length : 0;
+
+		if (titleLayer && map.hasLayer(titleLayer)) {
+			map.removeLayer(titleLayer);
+		}
+
+		titleLayer = buildTitleLayer(geojson, L, (props) => {
+			selectedTitle = props;
+		});
+
+		if (showTitles) {
+			titleLayer.addTo(map);
+		}
+	} catch (err) {
+		console.error('Failed to load title boundaries', err);
+		titlesError = err instanceof Error ? err.message : 'Failed to load title boundaries.';
+	} finally {
+		titlesLoading = false;
+		scheduleInvalidate(80);
 	}
 }
 
@@ -435,6 +478,7 @@ onMount(() => {
 	applyBaseLayer(activeBaseLayer);
 	loadFarmData();
 	loadSoilTests();
+	loadTitleBoundaries();
 
 	resizeObserver = new ResizeObserver(() => {
 		map?.invalidateSize();
@@ -442,6 +486,10 @@ onMount(() => {
 	resizeObserver.observe(mapContainer);
 	scheduleInvalidate(80);
 });
+
+function dismissTitle() {
+	selectedTitle = null;
+}
 
 onDestroy(() => {
 	if (invalidateTimer) clearTimeout(invalidateTimer);
@@ -466,6 +514,16 @@ $: if (map && paddockLayer) {
 
 $: if (!showBoundaries) {
 	showLabels = false;
+}
+
+$: if (map && titleLayer) {
+	if (showTitles) {
+		if (!map.hasLayer(titleLayer)) {
+			titleLayer.addTo(map);
+		}
+	} else if (map.hasLayer(titleLayer)) {
+		map.removeLayer(titleLayer);
+	}
 }
 
 // --- URL -> activeMetric sync (type-safe via metricsById) ---
@@ -743,6 +801,30 @@ $: {
 							/>
 							<span>Show paddock labels</span>
 						</label>
+						<label
+							class="text-muted focus-within:border-accent/60 flex items-center gap-3 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm transition hover:border-white/20 hover:text-white"
+						>
+							<input type="checkbox" class="accent-accent" bind:checked={showTitles} />
+							<span>Show title boundaries</span>
+						</label>
+						{#if showTitles}
+							<div class="text-muted/60 text-xs pl-1">
+								{#if titlesLoading}
+									<p>Loading title boundaries…</p>
+								{:else if titlesError}
+									<p class="text-red-300">{titlesError}</p>
+									<button
+										type="button"
+										class="inline-flex items-center gap-1 rounded-md border border-red-300/40 bg-red-300/10 px-2 py-1 text-[11px] text-red-200 transition hover:border-red-300/60 hover:bg-red-300/20"
+										on:click={() => loadTitleBoundaries()}
+									>
+										Retry
+									</button>
+								{:else if titlesCount > 0}
+									<p>{titlesCount} title boundaries loaded. Click a boundary for details.</p>
+								{/if}
+							</div>
+						{/if}
 					</div>
 					<button
 						type="button"
@@ -775,7 +857,7 @@ $: {
 					{:else}
 						<p>
 							{#if paddockCount > 0}
-								Showing {paddockCount} mapped paddocks.
+								Showing {paddockCount} mapped paddocks{titlesCount > 0 ? ` and ${titlesCount} title boundaries` : ''}.
 							{:else}
 								Farm boundaries ready to explore.
 							{/if}
@@ -880,6 +962,72 @@ $: {
 			</svg>
 			<span class="hidden sm:inline">Home</span>
 		</a>
+
+		<!-- Selected title info panel -->
+		{#if selectedTitle}
+			{@const ownerNames = formatOwners(selectedTitle.owners)}
+			<div
+				class={`absolute bottom-6 right-4 z-[1100] w-80 max-w-[calc(100vw-2rem)] rounded-xl border shadow-lg backdrop-blur ${
+					isStreetsBase
+						? 'border-white/50 bg-slate-950/95 text-slate-200 shadow-black/40'
+						: 'border-border/80 bg-panel/95 text-muted'
+				}`}
+			>
+				<div class="flex items-start gap-2 border-b border-white/10 px-4 py-3">
+					<div class="min-w-0 flex-1">
+						<h3 class="text-sm font-semibold text-white truncate">
+							{selectedTitle.address || 'Untitled property'}
+						</h3>
+						<p class="text-muted/70 text-xs mt-0.5">Property title details</p>
+					</div>
+					<button
+						type="button"
+						class="text-muted hover:text-white shrink-0 rounded-md p-1 transition hover:bg-white/10"
+						on:click={dismissTitle}
+						aria-label="Close title details"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
+							<path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+						</svg>
+					</button>
+				</div>
+				<div class="px-4 py-3 space-y-2 text-xs">
+					<div class="flex justify-between gap-2">
+						<span class="text-muted/60">Title Ref</span>
+						<span class="text-right font-medium text-white">{selectedTitle.titleRef || '–'}</span>
+					</div>
+					<div class="flex justify-between gap-2">
+						<span class="text-muted/60">PID</span>
+						<span class="font-medium text-white">{selectedTitle.pid ?? '–'}</span>
+					</div>
+					<div class="flex justify-between gap-2">
+						<span class="text-muted/60">Owners</span>
+						<span class="text-right font-medium text-white">{ownerNames}</span>
+					</div>
+					<div class="flex justify-between gap-2">
+						<span class="text-muted/60">Ownership</span>
+						<span class="font-medium text-white">{selectedTitle.ownershipPct || '–'}</span>
+					</div>
+					<div class="flex justify-between gap-2">
+						<span class="text-muted/60">Volume / Folio</span>
+						<span class="font-medium text-white">{selectedTitle.volume || '–'} / {selectedTitle.folio ?? '–'}</span>
+					</div>
+					{#if selectedTitle.pid}
+					<div class="flex justify-between gap-2">
+						<span class="text-muted/60">Registry</span>
+						<a
+							href="https://www.thelist.tas.gov.au/app/content/property/property-search?propertySearchCriteria.volume=&propertySearchCriteria.folio=&propertySearchCriteria.dealingNo=&propertySearchCriteria.surname=&propertySearchCriteria.givenName=&propertySearchCriteria.companyName=&propertySearchCriteria.propertyId={selectedTitle.pid}&addressString=&propertySearchCriteria.propertyName=&streetNumber=&propertySearchCriteria.streetName="
+							target="_blank"
+							rel="noopener noreferrer"
+							class="font-medium text-blue-400 hover:text-blue-300 underline transition"
+						>
+							View on the LIST
+						</a>
+					</div>
+					{/if}
+				</div>
+			</div>
+		{/if}
 	</main>
 </div>
 
@@ -919,6 +1067,26 @@ $: {
 	}
 
 	:global(.paddock-tooltip div:last-child) {
+		font-size: 0.75rem;
+		opacity: 0.85;
+	}
+
+	:global(.title-tooltip) {
+		background-color: rgba(30, 15, 60, 0.94);
+		color: #f9fafb;
+		border-radius: 0.375rem;
+		padding: 0.35rem 0.55rem;
+		border: 1px solid rgba(250, 204, 21, 0.35);
+		box-shadow: 0 4px 12px rgba(15, 23, 42, 0.35);
+	}
+
+	:global(.title-tooltip strong) {
+		font-weight: 600;
+		display: block;
+		margin-bottom: 0.1rem;
+	}
+
+	:global(.title-tooltip div:last-child) {
 		font-size: 0.75rem;
 		opacity: 0.85;
 	}

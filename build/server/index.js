@@ -1,7 +1,9 @@
-import { r as render, s as set, L as LEGACY_PROPS, g as get, f as flushSync, d as define_property, m as mutable_source, i as init_operations, a as get_first_child, C as COMMENT_NODE, H as HYDRATION_START, b as get_next_sibling, c as HYDRATION_ERROR, e as HYDRATION_END, h as hydration_failed, j as clear_text_content, k as array_from, l as component_root, n as set_active_reaction, o as set_active_effect, p as is_array, q as active_effect, t as active_reaction, u as create_text, v as branch, w as push, x as setContext, y as pop, z as push$1, A as component_context, B as pop$1, D as BROWSER } from './chunks/index2-BeMJ0Pb9.js';
-import { t as text_decoder, b as base64_decode, d as decode_pathname, a as decode_params, n as normalize_path, c as disable_search, v as validate_layout_server_exports, e as validate_layout_exports, f as validate_page_server_exports, g as validate_page_exports, h as text_encoder$1, r as resolve, m as make_trackable, i as get_relative_path, j as base64_encode } from './chunks/utils-Bg2Rux6K.js';
-import { r as readable, w as writable } from './chunks/index-8CaVYPRe.js';
+import { D as DevalueError, i as is_primitive, g as get_type, a as is_plain_object, e as enumerable_symbols, s as stringify_key, b as stringify_string, v as valid_array_indices, B as BROWSER, u as uneval } from './chunks/index2-zcWVSpki.js';
+import { w as with_request_store, t as text_decoder, b as base64_decode, r as root, d as decode_pathname, n as normalize_path, a as disable_search, c as decode_params, v as validate_layout_server_exports, e as validate_layout_exports, f as validate_page_server_exports, g as validate_page_exports, h as text_encoder$1, i as resolve, m as make_trackable, j as get_relative_path, k as base64_encode } from './chunks/root-ByH6GHMV.js';
+import { w as writable, r as readable } from './chunks/index-CDPg5QXR.js';
 import { s as set_private_env, a as set_public_env, p as public_env } from './chunks/shared-server-DaWdgxVh.js';
+
+/** @import { StandardSchemaV1 } from '@standard-schema/spec' */
 
 class HttpError {
 	/**
@@ -69,6 +71,9 @@ class ActionFailure {
 
 const text_encoder = new TextEncoder();
 new TextDecoder();
+
+/** @import { StandardSchemaV1 } from '@standard-schema/spec' */
+
 
 // TODO 3.0: remove these types as they are not used anymore (we can't remove them yet because that would be a breaking change)
 /**
@@ -186,38 +191,6 @@ function text(body, init) {
 	});
 }
 
-/** @import { RequestEvent } from '@sveltejs/kit' */
-/** @import { RequestStore } from 'types' */
-/** @import { AsyncLocalStorage } from 'node:async_hooks' */
-
-/** @type {RequestStore | null} */
-let sync_store = null;
-
-/** @type {AsyncLocalStorage<RequestStore | null> | null} */
-let als;
-
-import('node:async_hooks')
-	.then((hooks) => (als = new hooks.AsyncLocalStorage()))
-	.catch(() => {
-		// can't use AsyncLocalStorage, but can still call getRequestEvent synchronously.
-		// this isn't behind `supports` because it's basically just StackBlitz (i.e.
-		// in-browser usage) that doesn't support it AFAICT
-	});
-
-/**
- * @template T
- * @param {RequestStore | null} store
- * @param {() => T} fn
- */
-function with_request_store(store, fn) {
-	try {
-		sync_store = store;
-		return als ? als.run(store, fn) : fn();
-	} finally {
-		sync_store = null;
-	}
-}
-
 /**
  * @template {{ tracing: { enabled: boolean, root: import('@opentelemetry/api').Span, current: import('@opentelemetry/api').Span } }} T
  * @param {T} event_like
@@ -237,6 +210,7 @@ function merge_tracing(event_like, current) {
 let base = "";
 let assets = base;
 const app_dir = "_app";
+const relative = true;
 const initial = { base, assets };
 function override(paths) {
   base = paths.base;
@@ -245,513 +219,6 @@ function override(paths) {
 function reset() {
   base = initial.base;
   assets = initial.assets;
-}
-
-/** @type {Record<string, string>} */
-const escaped = {
-	'<': '\\u003C',
-	'\\': '\\\\',
-	'\b': '\\b',
-	'\f': '\\f',
-	'\n': '\\n',
-	'\r': '\\r',
-	'\t': '\\t',
-	'\u2028': '\\u2028',
-	'\u2029': '\\u2029'
-};
-
-class DevalueError extends Error {
-	/**
-	 * @param {string} message
-	 * @param {string[]} keys
-	 */
-	constructor(message, keys) {
-		super(message);
-		this.name = 'DevalueError';
-		this.path = keys.join('');
-	}
-}
-
-/** @param {any} thing */
-function is_primitive(thing) {
-	return Object(thing) !== thing;
-}
-
-const object_proto_names = /* @__PURE__ */ Object.getOwnPropertyNames(
-	Object.prototype
-)
-	.sort()
-	.join('\0');
-
-/** @param {any} thing */
-function is_plain_object(thing) {
-	const proto = Object.getPrototypeOf(thing);
-
-	return (
-		proto === Object.prototype ||
-		proto === null ||
-		Object.getPrototypeOf(proto) === null ||
-		Object.getOwnPropertyNames(proto).sort().join('\0') === object_proto_names
-	);
-}
-
-/** @param {any} thing */
-function get_type(thing) {
-	return Object.prototype.toString.call(thing).slice(8, -1);
-}
-
-/** @param {string} char */
-function get_escaped_char(char) {
-	switch (char) {
-		case '"':
-			return '\\"';
-		case '<':
-			return '\\u003C';
-		case '\\':
-			return '\\\\';
-		case '\n':
-			return '\\n';
-		case '\r':
-			return '\\r';
-		case '\t':
-			return '\\t';
-		case '\b':
-			return '\\b';
-		case '\f':
-			return '\\f';
-		case '\u2028':
-			return '\\u2028';
-		case '\u2029':
-			return '\\u2029';
-		default:
-			return char < ' '
-				? `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`
-				: '';
-	}
-}
-
-/** @param {string} str */
-function stringify_string(str) {
-	let result = '';
-	let last_pos = 0;
-	const len = str.length;
-
-	for (let i = 0; i < len; i += 1) {
-		const char = str[i];
-		const replacement = get_escaped_char(char);
-		if (replacement) {
-			result += str.slice(last_pos, i) + replacement;
-			last_pos = i + 1;
-		}
-	}
-
-	return `"${last_pos === 0 ? str : result + str.slice(last_pos)}"`;
-}
-
-/** @param {Record<string | symbol, any>} object */
-function enumerable_symbols(object) {
-	return Object.getOwnPropertySymbols(object).filter(
-		(symbol) => Object.getOwnPropertyDescriptor(object, symbol).enumerable
-	);
-}
-
-const is_identifier = /^[a-zA-Z_$][a-zA-Z_$0-9]*$/;
-
-/** @param {string} key */
-function stringify_key(key) {
-	return is_identifier.test(key) ? '.' + key : '[' + JSON.stringify(key) + ']';
-}
-
-const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$';
-const unsafe_chars = /[<\b\f\n\r\t\0\u2028\u2029]/g;
-const reserved =
-	/^(?:do|if|in|for|int|let|new|try|var|byte|case|char|else|enum|goto|long|this|void|with|await|break|catch|class|const|final|float|short|super|throw|while|yield|delete|double|export|import|native|return|switch|throws|typeof|boolean|default|extends|finally|package|private|abstract|continue|debugger|function|volatile|interface|protected|transient|implements|instanceof|synchronized)$/;
-
-/**
- * Turn a value into the JavaScript that creates an equivalent value
- * @param {any} value
- * @param {(value: any) => string | void} [replacer]
- */
-function uneval(value, replacer) {
-	const counts = new Map();
-
-	/** @type {string[]} */
-	const keys = [];
-
-	const custom = new Map();
-
-	/** @param {any} thing */
-	function walk(thing) {
-		if (typeof thing === 'function') {
-			throw new DevalueError(`Cannot stringify a function`, keys);
-		}
-
-		if (!is_primitive(thing)) {
-			if (counts.has(thing)) {
-				counts.set(thing, counts.get(thing) + 1);
-				return;
-			}
-
-			counts.set(thing, 1);
-
-			if (replacer) {
-				const str = replacer(thing);
-
-				if (typeof str === 'string') {
-					custom.set(thing, str);
-					return;
-				}
-			}
-
-			const type = get_type(thing);
-
-			switch (type) {
-				case 'Number':
-				case 'BigInt':
-				case 'String':
-				case 'Boolean':
-				case 'Date':
-				case 'RegExp':
-				case 'URL':
-				case 'URLSearchParams':
-					return;
-
-				case 'Array':
-					/** @type {any[]} */ (thing).forEach((value, i) => {
-						keys.push(`[${i}]`);
-						walk(value);
-						keys.pop();
-					});
-					break;
-
-				case 'Set':
-					Array.from(thing).forEach(walk);
-					break;
-
-				case 'Map':
-					for (const [key, value] of thing) {
-						keys.push(
-							`.get(${is_primitive(key) ? stringify_primitive$1(key) : '...'})`
-						);
-						walk(value);
-						keys.pop();
-					}
-					break;
-
-				case 'Int8Array':
-				case 'Uint8Array':
-				case 'Uint8ClampedArray':
-				case 'Int16Array':
-				case 'Uint16Array':
-				case 'Int32Array':
-				case 'Uint32Array':
-				case 'Float32Array':
-				case 'Float64Array':
-				case 'BigInt64Array':
-				case 'BigUint64Array':
-					walk(thing.buffer);
-					return;
-
-				case 'ArrayBuffer':
-					return;
-
-				case 'Temporal.Duration':
-				case 'Temporal.Instant':
-				case 'Temporal.PlainDate':
-				case 'Temporal.PlainTime':
-				case 'Temporal.PlainDateTime':
-				case 'Temporal.PlainMonthDay':
-				case 'Temporal.PlainYearMonth':
-				case 'Temporal.ZonedDateTime':
-					return;
-
-				default:
-					if (!is_plain_object(thing)) {
-						throw new DevalueError(
-							`Cannot stringify arbitrary non-POJOs`,
-							keys
-						);
-					}
-
-					if (enumerable_symbols(thing).length > 0) {
-						throw new DevalueError(
-							`Cannot stringify POJOs with symbolic keys`,
-							keys
-						);
-					}
-
-					for (const key in thing) {
-						keys.push(stringify_key(key));
-						walk(thing[key]);
-						keys.pop();
-					}
-			}
-		}
-	}
-
-	walk(value);
-
-	const names = new Map();
-
-	Array.from(counts)
-		.filter((entry) => entry[1] > 1)
-		.sort((a, b) => b[1] - a[1])
-		.forEach((entry, i) => {
-			names.set(entry[0], get_name(i));
-		});
-
-	/**
-	 * @param {any} thing
-	 * @returns {string}
-	 */
-	function stringify(thing) {
-		if (names.has(thing)) {
-			return names.get(thing);
-		}
-
-		if (is_primitive(thing)) {
-			return stringify_primitive$1(thing);
-		}
-
-		if (custom.has(thing)) {
-			return custom.get(thing);
-		}
-
-		const type = get_type(thing);
-
-		switch (type) {
-			case 'Number':
-			case 'String':
-			case 'Boolean':
-				return `Object(${stringify(thing.valueOf())})`;
-
-			case 'RegExp':
-				return `new RegExp(${stringify_string(thing.source)}, "${
-					thing.flags
-				}")`;
-
-			case 'Date':
-				return `new Date(${thing.getTime()})`;
-
-			case 'URL':
-				return `new URL(${stringify_string(thing.toString())})`;
-
-			case 'URLSearchParams':
-				return `new URLSearchParams(${stringify_string(thing.toString())})`;
-
-			case 'Array':
-				const members = /** @type {any[]} */ (thing).map((v, i) =>
-					i in thing ? stringify(v) : ''
-				);
-				const tail = thing.length === 0 || thing.length - 1 in thing ? '' : ',';
-				return `[${members.join(',')}${tail}]`;
-
-			case 'Set':
-			case 'Map':
-				return `new ${type}([${Array.from(thing).map(stringify).join(',')}])`;
-
-			case 'Int8Array':
-			case 'Uint8Array':
-			case 'Uint8ClampedArray':
-			case 'Int16Array':
-			case 'Uint16Array':
-			case 'Int32Array':
-			case 'Uint32Array':
-			case 'Float32Array':
-			case 'Float64Array':
-			case 'BigInt64Array':
-			case 'BigUint64Array': {
-				let str = `new ${type}`;
-
-				if (counts.get(thing.buffer) === 1) {
-					const array = new thing.constructor(thing.buffer);
-					str += `([${array}])`;
-				} else {
-					str += `([${stringify(thing.buffer)}])`;
-				}
-
-				const a = thing.byteOffset;
-				const b = a + thing.byteLength;
-
-				// handle subarrays
-				if (a > 0 || b !== thing.buffer.byteLength) {
-					const m = +/(\d+)/.exec(type)[1] / 8;
-					str += `.subarray(${a / m},${b / m})`;
-				}
-
-				return str;
-			}
-
-			case 'ArrayBuffer': {
-				const ui8 = new Uint8Array(thing);
-				return `new Uint8Array([${ui8.toString()}]).buffer`;
-			}
-
-			case 'Temporal.Duration':
-			case 'Temporal.Instant':
-			case 'Temporal.PlainDate':
-			case 'Temporal.PlainTime':
-			case 'Temporal.PlainDateTime':
-			case 'Temporal.PlainMonthDay':
-			case 'Temporal.PlainYearMonth':
-			case 'Temporal.ZonedDateTime':
-				return `${type}.from(${stringify_string(thing.toString())})`;
-
-			default:
-				const obj = `{${Object.keys(thing)
-					.map((key) => `${safe_key(key)}:${stringify(thing[key])}`)
-					.join(',')}}`;
-				const proto = Object.getPrototypeOf(thing);
-				if (proto === null) {
-					return Object.keys(thing).length > 0
-						? `Object.assign(Object.create(null),${obj})`
-						: `Object.create(null)`;
-				}
-
-				return obj;
-		}
-	}
-
-	const str = stringify(value);
-
-	if (names.size) {
-		/** @type {string[]} */
-		const params = [];
-
-		/** @type {string[]} */
-		const statements = [];
-
-		/** @type {string[]} */
-		const values = [];
-
-		names.forEach((name, thing) => {
-			params.push(name);
-
-			if (custom.has(thing)) {
-				values.push(/** @type {string} */ (custom.get(thing)));
-				return;
-			}
-
-			if (is_primitive(thing)) {
-				values.push(stringify_primitive$1(thing));
-				return;
-			}
-
-			const type = get_type(thing);
-
-			switch (type) {
-				case 'Number':
-				case 'String':
-				case 'Boolean':
-					values.push(`Object(${stringify(thing.valueOf())})`);
-					break;
-
-				case 'RegExp':
-					values.push(thing.toString());
-					break;
-
-				case 'Date':
-					values.push(`new Date(${thing.getTime()})`);
-					break;
-
-				case 'Array':
-					values.push(`Array(${thing.length})`);
-					/** @type {any[]} */ (thing).forEach((v, i) => {
-						statements.push(`${name}[${i}]=${stringify(v)}`);
-					});
-					break;
-
-				case 'Set':
-					values.push(`new Set`);
-					statements.push(
-						`${name}.${Array.from(thing)
-							.map((v) => `add(${stringify(v)})`)
-							.join('.')}`
-					);
-					break;
-
-				case 'Map':
-					values.push(`new Map`);
-					statements.push(
-						`${name}.${Array.from(thing)
-							.map(([k, v]) => `set(${stringify(k)}, ${stringify(v)})`)
-							.join('.')}`
-					);
-					break;
-
-				case 'ArrayBuffer':
-					values.push(
-						`new Uint8Array([${new Uint8Array(thing).join(',')}]).buffer`
-					);
-					break;
-
-				default:
-					values.push(
-						Object.getPrototypeOf(thing) === null ? 'Object.create(null)' : '{}'
-					);
-					Object.keys(thing).forEach((key) => {
-						statements.push(
-							`${name}${safe_prop(key)}=${stringify(thing[key])}`
-						);
-					});
-			}
-		});
-
-		statements.push(`return ${str}`);
-
-		return `(function(${params.join(',')}){${statements.join(
-			';'
-		)}}(${values.join(',')}))`;
-	} else {
-		return str;
-	}
-}
-
-/** @param {number} num */
-function get_name(num) {
-	let name = '';
-
-	do {
-		name = chars[num % chars.length] + name;
-		num = ~~(num / chars.length) - 1;
-	} while (num >= 0);
-
-	return reserved.test(name) ? `${name}0` : name;
-}
-
-/** @param {string} c */
-function escape_unsafe_char(c) {
-	return escaped[c] || c;
-}
-
-/** @param {string} str */
-function escape_unsafe_chars(str) {
-	return str.replace(unsafe_chars, escape_unsafe_char);
-}
-
-/** @param {string} key */
-function safe_key(key) {
-	return /^[_$a-zA-Z][_$a-zA-Z0-9]*$/.test(key)
-		? key
-		: escape_unsafe_chars(JSON.stringify(key));
-}
-
-/** @param {string} key */
-function safe_prop(key) {
-	return /^[_$a-zA-Z][_$a-zA-Z0-9]*$/.test(key)
-		? `.${key}`
-		: `[${escape_unsafe_chars(JSON.stringify(key))}]`;
-}
-
-/** @param {any} thing */
-function stringify_primitive$1(thing) {
-	if (typeof thing === 'string') return stringify_string(thing);
-	if (thing === void 0) return 'void 0';
-	if (thing === 0 && 1 / thing < 0) return '-0';
-	const str = String(thing);
-	if (typeof thing === 'number') return str.replace(/^(-)?0\./, '$1.');
-	if (typeof thing === 'bigint') return thing + 'n';
-	return str;
 }
 
 /**
@@ -871,6 +338,7 @@ const NAN = -3;
 const POSITIVE_INFINITY = -4;
 const NEGATIVE_INFINITY = -5;
 const NEGATIVE_ZERO = -6;
+const SPARSE = -7;
 
 /**
  * Revive a value serialized with `devalue.stringify`
@@ -898,6 +366,13 @@ function unflatten(parsed, revivers) {
 	const hydrated = Array(values.length);
 
 	/**
+	 * A set of values currently being hydrated with custom revivers,
+	 * used to detect invalid cyclical dependencies
+	 * @type {Set<number> | null}
+	 */
+	let hydrating = null;
+
+	/**
 	 * @param {number} index
 	 * @returns {any}
 	 */
@@ -922,9 +397,30 @@ function unflatten(parsed, revivers) {
 			if (typeof value[0] === 'string') {
 				const type = value[0];
 
-				const reviver = revivers?.[type];
+				const reviver =
+					revivers && Object.hasOwn(revivers, type)
+						? revivers[type]
+						: undefined;
+
 				if (reviver) {
-					return (hydrated[index] = reviver(hydrate(value[1])));
+					let i = value[1];
+					if (typeof i !== 'number') {
+						// if it's not a number, it was serialized by a builtin reviver
+						// so we need to munge it into the format expected by a custom reviver
+						i = values.push(value[1]) - 1;
+					}
+
+					hydrating ??= new Set();
+
+					if (hydrating.has(i)) {
+						throw new Error('Invalid circular reference');
+					}
+
+					hydrating.add(i);
+					hydrated[index] = reviver(hydrate(i));
+					hydrating.delete(i);
+
+					return hydrated[index];
 				}
 
 				switch (type) {
@@ -979,8 +475,16 @@ function unflatten(parsed, revivers) {
 					case 'Float64Array':
 					case 'BigInt64Array':
 					case 'BigUint64Array': {
+						if (values[value[1]][0] !== 'ArrayBuffer') {
+							// without this, if we receive malformed input we could
+							// end up trying to hydrate in a circle or allocate
+							// huge amounts of memory when we call `new TypedArrayConstructor(buffer)`
+							throw new Error('Invalid data');
+						}
+
 						const TypedArrayConstructor = globalThis[type];
-						const typedArray = new TypedArrayConstructor(hydrate(value[1]));
+						const buffer = hydrate(value[1]);
+						const typedArray = new TypedArrayConstructor(buffer);
 
 						hydrated[index] =
 							value[2] !== undefined
@@ -992,6 +496,9 @@ function unflatten(parsed, revivers) {
 
 					case 'ArrayBuffer': {
 						const base64 = value[1];
+						if (typeof base64 !== 'string') {
+							throw new Error('Invalid ArrayBuffer encoding');
+						}
 						const arraybuffer = decode64(base64);
 						hydrated[index] = arraybuffer;
 						break;
@@ -1026,6 +533,17 @@ function unflatten(parsed, revivers) {
 					default:
 						throw new Error(`Unknown type ${type}`);
 				}
+			} else if (value[0] === SPARSE) {
+				// Sparse array encoding: [SPARSE, length, idx, val, idx, val, ...]
+				const len = value[1];
+
+				const array = new Array(len);
+				hydrated[index] = array;
+
+				for (let i = 2; i < value.length; i += 2) {
+					const idx = value[i];
+					array[idx] = hydrate(value[i + 1]);
+				}
 			} else {
 				const array = new Array(value.length);
 				hydrated[index] = array;
@@ -1042,7 +560,7 @@ function unflatten(parsed, revivers) {
 			const object = {};
 			hydrated[index] = object;
 
-			for (const key in value) {
+			for (const key of Object.keys(value)) {
 				if (key === '__proto__') {
 					throw new Error('Cannot parse an object with a `__proto__` property');
 				}
@@ -1085,10 +603,6 @@ function stringify$1(value, reducers) {
 
 	/** @param {any} thing */
 	function flatten(thing) {
-		if (typeof thing === 'function') {
-			throw new DevalueError(`Cannot stringify a function`, keys);
-		}
-
 		if (thing === undefined) return UNDEFINED;
 		if (Number.isNaN(thing)) return NAN;
 		if (thing === Infinity) return POSITIVE_INFINITY;
@@ -1106,6 +620,10 @@ function stringify$1(value, reducers) {
 				stringified[index] = `["${key}",${flatten(value)}]`;
 				return index;
 			}
+		}
+
+		if (typeof thing === 'function') {
+			throw new DevalueError(`Cannot stringify a function`, keys, thing, value);
 		}
 
 		let str = '';
@@ -1146,24 +664,89 @@ function stringify$1(value, reducers) {
 						: `["RegExp",${stringify_string(source)}]`;
 					break;
 
-				case 'Array':
+				case 'Array': {
+					// For dense arrays (no holes), we iterate normally.
+					// When we encounter the first hole, we call Object.keys
+					// to determine the sparseness, then decide between:
+					//   - HOLE encoding: [-2, val, -2, ...] (default)
+					//   - Sparse encoding: [-7, length, idx, val, ...] (for very sparse arrays)
+					// Only the sparse path avoids iterating every slot, which
+					// is what protects against the DoS of e.g. `arr[1000000] = 1`.
+					let mostly_dense = false;
+
 					str = '[';
 
 					for (let i = 0; i < thing.length; i += 1) {
 						if (i > 0) str += ',';
 
-						if (i in thing) {
+						if (Object.hasOwn(thing, i)) {
 							keys.push(`[${i}]`);
 							str += flatten(thing[i]);
 							keys.pop();
-						} else {
+						} else if (mostly_dense) {
+							// Use dense encoding. The heuristic guarantees the
+							// array is only mildly sparse, so iterating over every
+							// slot is fine.
 							str += HOLE;
+						} else {
+							// Decide between HOLE encoding and sparse encoding.
+							//
+							// HOLE encoding: each hole is serialized as the HOLE
+							// sentinel (-2). For example, [, "a", ,] becomes
+							// [-2, 0, -2]. Each hole costs 3 chars ("-2" + comma).
+							//
+							// Sparse encoding: lists only populated indices.
+							// For example, [, "a", ,] becomes [-7, 3, 1, 0] — the
+							// -7 sentinel, the array length (3), then index-value
+							// pairs. This avoids paying per-hole, but each element
+							// costs extra chars to write its index.
+							//
+							// The values are the same size either way, so the
+							// choice comes down to structural overhead:
+							//
+							//   HOLE overhead:
+							//     3 chars per hole ("-2" + comma)
+							//     = (L - P) * 3
+							//
+							//   Sparse overhead:
+							//     "-7,"          — 3 chars (sparse sentinel + comma)
+							//     + length + "," — (d + 1) chars (array length + comma)
+							//     + per element: index + "," — (d + 1) chars
+							//     = (4 + d) + P * (d + 1)
+							//
+							// where L is the array length, P is the number of
+							// populated elements, and d is the number of digits
+							// in L (an upper bound on the digits in any index).
+							//
+							// Sparse encoding is cheaper when:
+							//   (4 + d) + P * (d + 1) < (L - P) * 3
+							const populated_keys = valid_array_indices(/** @type {any[]} */ (thing));
+							const population = populated_keys.length;
+							const d = String(thing.length).length;
+
+							const hole_cost = (thing.length - population) * 3;
+							const sparse_cost = 4 + d + population * (d + 1);
+
+							if (hole_cost > sparse_cost) {
+								str = '[' + SPARSE + ',' + thing.length;
+								for (let j = 0; j < populated_keys.length; j++) {
+									const key = populated_keys[j];
+									keys.push(`[${key}]`);
+									str += ',' + key + ',' + flatten(thing[key]);
+									keys.pop();
+								}
+								break;
+							} else {
+								mostly_dense = true;
+								str += HOLE;
+							}
 						}
 					}
 
 					str += ']';
 
 					break;
+				}
 
 				case 'Set':
 					str = '["Set"';
@@ -1241,20 +824,33 @@ function stringify$1(value, reducers) {
 					if (!is_plain_object(thing)) {
 						throw new DevalueError(
 							`Cannot stringify arbitrary non-POJOs`,
-							keys
+							keys,
+							thing,
+							value
 						);
 					}
 
 					if (enumerable_symbols(thing).length > 0) {
 						throw new DevalueError(
 							`Cannot stringify POJOs with symbolic keys`,
-							keys
+							keys,
+							thing,
+							value
 						);
 					}
 
 					if (Object.getPrototypeOf(thing) === null) {
 						str = '["null"';
-						for (const key in thing) {
+						for (const key of Object.keys(thing)) {
+							if (key === '__proto__') {
+								throw new DevalueError(
+									`Cannot stringify objects with __proto__ keys`,
+									keys,
+									thing,
+									value
+								);
+							}
+
 							keys.push(stringify_key(key));
 							str += `,${stringify_string(key)},${flatten(thing[key])}`;
 							keys.pop();
@@ -1263,7 +859,16 @@ function stringify$1(value, reducers) {
 					} else {
 						str = '{';
 						let started = false;
-						for (const key in thing) {
+						for (const key of Object.keys(thing)) {
+							if (key === '__proto__') {
+								throw new DevalueError(
+									`Cannot stringify objects with __proto__ keys`,
+									keys,
+									thing,
+									value
+								);
+							}
+
 							if (started) str += ',';
 							started = true;
 							keys.push(stringify_key(key));
@@ -1301,6 +906,537 @@ function stringify_primitive(thing) {
 	return String(thing);
 }
 
+const SVELTE_KIT_ASSETS = "/_svelte_kit_assets";
+const ENDPOINT_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"];
+const MUTATIVE_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
+const PAGE_METHODS = ["GET", "POST", "HEAD"];
+function set_nested_value(object, path_string, value) {
+  if (path_string.startsWith("n:")) {
+    path_string = path_string.slice(2);
+    value = value === "" ? void 0 : parseFloat(value);
+  } else if (path_string.startsWith("b:")) {
+    path_string = path_string.slice(2);
+    value = value === "on";
+  }
+  deep_set(object, split_path(path_string), value);
+}
+function convert_formdata(data) {
+  const result = {};
+  for (let key of data.keys()) {
+    const is_array = key.endsWith("[]");
+    let values = data.getAll(key);
+    if (is_array) key = key.slice(0, -2);
+    if (values.length > 1 && !is_array) {
+      throw new Error(`Form cannot contain duplicated keys — "${key}" has ${values.length} values`);
+    }
+    values = values.filter(
+      (entry) => typeof entry === "string" || entry.name !== "" || entry.size > 0
+    );
+    if (key.startsWith("n:")) {
+      key = key.slice(2);
+      values = values.map((v) => v === "" ? void 0 : parseFloat(
+        /** @type {string} */
+        v
+      ));
+    } else if (key.startsWith("b:")) {
+      key = key.slice(2);
+      values = values.map((v) => v === "on");
+    }
+    set_nested_value(result, key, is_array ? values : values[0]);
+  }
+  return result;
+}
+const BINARY_FORM_CONTENT_TYPE = "application/x-sveltekit-formdata";
+const BINARY_FORM_VERSION = 0;
+const HEADER_BYTES = 1 + 4 + 2;
+async function deserialize_binary_form(request) {
+  if (request.headers.get("content-type") !== BINARY_FORM_CONTENT_TYPE) {
+    const form_data = await request.formData();
+    return { data: convert_formdata(form_data), meta: {}, form_data };
+  }
+  if (!request.body) {
+    throw deserialize_error("no body");
+  }
+  const content_length = parseInt(request.headers.get("content-length") ?? "");
+  if (Number.isNaN(content_length)) {
+    throw deserialize_error("invalid Content-Length header");
+  }
+  const reader = request.body.getReader();
+  const chunks = [];
+  function get_chunk(index) {
+    if (index in chunks) return chunks[index];
+    let i = chunks.length;
+    while (i <= index) {
+      chunks[i] = reader.read().then((chunk) => chunk.value);
+      i++;
+    }
+    return chunks[index];
+  }
+  async function get_buffer(offset, length) {
+    let start_chunk;
+    let chunk_start = 0;
+    let chunk_index;
+    for (chunk_index = 0; ; chunk_index++) {
+      const chunk = await get_chunk(chunk_index);
+      if (!chunk) return null;
+      const chunk_end = chunk_start + chunk.byteLength;
+      if (offset >= chunk_start && offset < chunk_end) {
+        start_chunk = chunk;
+        break;
+      }
+      chunk_start = chunk_end;
+    }
+    if (offset + length <= chunk_start + start_chunk.byteLength) {
+      return start_chunk.subarray(offset - chunk_start, offset + length - chunk_start);
+    }
+    const chunks2 = [start_chunk.subarray(offset - chunk_start)];
+    let cursor = start_chunk.byteLength - offset + chunk_start;
+    while (cursor < length) {
+      chunk_index++;
+      let chunk = await get_chunk(chunk_index);
+      if (!chunk) return null;
+      if (chunk.byteLength > length - cursor) {
+        chunk = chunk.subarray(0, length - cursor);
+      }
+      chunks2.push(chunk);
+      cursor += chunk.byteLength;
+    }
+    const buffer = new Uint8Array(length);
+    cursor = 0;
+    for (const chunk of chunks2) {
+      buffer.set(chunk, cursor);
+      cursor += chunk.byteLength;
+    }
+    return buffer;
+  }
+  const header = await get_buffer(0, HEADER_BYTES);
+  if (!header) throw deserialize_error("too short");
+  if (header[0] !== BINARY_FORM_VERSION) {
+    throw deserialize_error(`got version ${header[0]}, expected version ${BINARY_FORM_VERSION}`);
+  }
+  const header_view = new DataView(header.buffer, header.byteOffset, header.byteLength);
+  const data_length = header_view.getUint32(1, true);
+  if (HEADER_BYTES + data_length > content_length) {
+    throw deserialize_error("data overflow");
+  }
+  const file_offsets_length = header_view.getUint16(5, true);
+  if (HEADER_BYTES + data_length + file_offsets_length > content_length) {
+    throw deserialize_error("file offset table overflow");
+  }
+  const data_buffer = await get_buffer(HEADER_BYTES, data_length);
+  if (!data_buffer) throw deserialize_error("data too short");
+  let file_offsets;
+  let files_start_offset;
+  if (file_offsets_length > 0) {
+    const file_offsets_buffer = await get_buffer(HEADER_BYTES + data_length, file_offsets_length);
+    if (!file_offsets_buffer) throw deserialize_error("file offset table too short");
+    const parsed_offsets = JSON.parse(text_decoder.decode(file_offsets_buffer));
+    if (!Array.isArray(parsed_offsets) || parsed_offsets.some((n) => typeof n !== "number" || !Number.isInteger(n) || n < 0)) {
+      throw deserialize_error("invalid file offset table");
+    }
+    file_offsets = /** @type {Array<number>} */
+    parsed_offsets;
+    files_start_offset = HEADER_BYTES + data_length + file_offsets_length;
+  }
+  const file_spans = [];
+  const [data, meta] = parse(text_decoder.decode(data_buffer), {
+    File: ([name, type, size, last_modified, index]) => {
+      if (typeof name !== "string" || typeof type !== "string" || typeof size !== "number" || typeof last_modified !== "number" || typeof index !== "number") {
+        throw deserialize_error("invalid file metadata");
+      }
+      let offset = file_offsets[index];
+      if (offset === void 0) {
+        throw deserialize_error("duplicate file offset table index");
+      }
+      file_offsets[index] = void 0;
+      offset += files_start_offset;
+      if (offset + size > content_length) {
+        throw deserialize_error("file data overflow");
+      }
+      file_spans.push({ offset, size });
+      return new Proxy(new LazyFile(name, type, size, last_modified, get_chunk, offset), {
+        getPrototypeOf() {
+          return File.prototype;
+        }
+      });
+    }
+  });
+  file_spans.sort((a, b) => a.offset - b.offset || a.size - b.size);
+  for (let i = 1; i < file_spans.length; i++) {
+    const previous = file_spans[i - 1];
+    const current = file_spans[i];
+    const previous_end = previous.offset + previous.size;
+    if (previous_end < current.offset) {
+      throw deserialize_error("gaps in file data");
+    }
+    if (previous_end > current.offset) {
+      throw deserialize_error("overlapping file data");
+    }
+  }
+  void (async () => {
+    let has_more = true;
+    while (has_more) {
+      const chunk = await get_chunk(chunks.length);
+      has_more = !!chunk;
+    }
+  })();
+  return { data, meta, form_data: null };
+}
+function deserialize_error(message) {
+  return new SvelteKitError(400, "Bad Request", `Could not deserialize binary form: ${message}`);
+}
+class LazyFile {
+  /** @type {(index: number) => Promise<Uint8Array<ArrayBuffer> | undefined>} */
+  #get_chunk;
+  /** @type {number} */
+  #offset;
+  /**
+   * @param {string} name
+   * @param {string} type
+   * @param {number} size
+   * @param {number} last_modified
+   * @param {(index: number) => Promise<Uint8Array<ArrayBuffer> | undefined>} get_chunk
+   * @param {number} offset
+   */
+  constructor(name, type, size, last_modified, get_chunk, offset) {
+    this.name = name;
+    this.type = type;
+    this.size = size;
+    this.lastModified = last_modified;
+    this.webkitRelativePath = "";
+    this.#get_chunk = get_chunk;
+    this.#offset = offset;
+    this.arrayBuffer = this.arrayBuffer.bind(this);
+    this.bytes = this.bytes.bind(this);
+    this.slice = this.slice.bind(this);
+    this.stream = this.stream.bind(this);
+    this.text = this.text.bind(this);
+  }
+  /** @type {ArrayBuffer | undefined} */
+  #buffer;
+  async arrayBuffer() {
+    this.#buffer ??= await new Response(this.stream()).arrayBuffer();
+    return this.#buffer;
+  }
+  async bytes() {
+    return new Uint8Array(await this.arrayBuffer());
+  }
+  /**
+   * @param {number=} start
+   * @param {number=} end
+   * @param {string=} contentType
+   */
+  slice(start = 0, end = this.size, contentType = this.type) {
+    if (start < 0) {
+      start = Math.max(this.size + start, 0);
+    } else {
+      start = Math.min(start, this.size);
+    }
+    if (end < 0) {
+      end = Math.max(this.size + end, 0);
+    } else {
+      end = Math.min(end, this.size);
+    }
+    const size = Math.max(end - start, 0);
+    const file = new LazyFile(
+      this.name,
+      contentType,
+      size,
+      this.lastModified,
+      this.#get_chunk,
+      this.#offset + start
+    );
+    return file;
+  }
+  stream() {
+    let cursor = 0;
+    let chunk_index = 0;
+    return new ReadableStream({
+      start: async (controller) => {
+        let chunk_start = 0;
+        let start_chunk;
+        for (chunk_index = 0; ; chunk_index++) {
+          const chunk = await this.#get_chunk(chunk_index);
+          if (!chunk) return null;
+          const chunk_end = chunk_start + chunk.byteLength;
+          if (this.#offset >= chunk_start && this.#offset < chunk_end) {
+            start_chunk = chunk;
+            break;
+          }
+          chunk_start = chunk_end;
+        }
+        if (this.#offset + this.size <= chunk_start + start_chunk.byteLength) {
+          controller.enqueue(
+            start_chunk.subarray(this.#offset - chunk_start, this.#offset + this.size - chunk_start)
+          );
+          controller.close();
+        } else {
+          controller.enqueue(start_chunk.subarray(this.#offset - chunk_start));
+          cursor = start_chunk.byteLength - this.#offset + chunk_start;
+        }
+      },
+      pull: async (controller) => {
+        chunk_index++;
+        let chunk = await this.#get_chunk(chunk_index);
+        if (!chunk) {
+          controller.error("incomplete file data");
+          controller.close();
+          return;
+        }
+        if (chunk.byteLength > this.size - cursor) {
+          chunk = chunk.subarray(0, this.size - cursor);
+        }
+        controller.enqueue(chunk);
+        cursor += chunk.byteLength;
+        if (cursor >= this.size) {
+          controller.close();
+        }
+      }
+    });
+  }
+  async text() {
+    return text_decoder.decode(await this.arrayBuffer());
+  }
+}
+const path_regex = /^[a-zA-Z_$]\w*(\.[a-zA-Z_$]\w*|\[\d+\])*$/;
+function split_path(path) {
+  if (!path_regex.test(path)) {
+    throw new Error(`Invalid path ${path}`);
+  }
+  return path.split(/\.|\[|\]/).filter(Boolean);
+}
+function check_prototype_pollution(key) {
+  if (key === "__proto__" || key === "constructor" || key === "prototype") {
+    throw new Error(
+      `Invalid key "${key}"`
+    );
+  }
+}
+function deep_set(object, keys, value) {
+  let current = object;
+  for (let i = 0; i < keys.length - 1; i += 1) {
+    const key = keys[i];
+    check_prototype_pollution(key);
+    const is_array = /^\d+$/.test(keys[i + 1]);
+    const exists = Object.hasOwn(current, key);
+    const inner = current[key];
+    if (exists && is_array !== Array.isArray(inner)) {
+      throw new Error(`Invalid array key ${keys[i + 1]}`);
+    }
+    if (!exists) {
+      current[key] = is_array ? [] : {};
+    }
+    current = current[key];
+  }
+  const final_key = keys[keys.length - 1];
+  check_prototype_pollution(final_key);
+  current[final_key] = value;
+}
+function negotiate(accept, types) {
+  const parts = [];
+  accept.split(",").forEach((str, i) => {
+    const match = /([^/ \t]+)\/([^; \t]+)[ \t]*(?:;[ \t]*q=([0-9.]+))?/.exec(str);
+    if (match) {
+      const [, type, subtype, q = "1"] = match;
+      parts.push({ type, subtype, q: +q, i });
+    }
+  });
+  parts.sort((a, b) => {
+    if (a.q !== b.q) {
+      return b.q - a.q;
+    }
+    if (a.subtype === "*" !== (b.subtype === "*")) {
+      return a.subtype === "*" ? 1 : -1;
+    }
+    if (a.type === "*" !== (b.type === "*")) {
+      return a.type === "*" ? 1 : -1;
+    }
+    return a.i - b.i;
+  });
+  let accepted;
+  let min_priority = Infinity;
+  for (const mimetype of types) {
+    const [type, subtype] = mimetype.split("/");
+    const priority = parts.findIndex(
+      (part) => (part.type === type || part.type === "*") && (part.subtype === subtype || part.subtype === "*")
+    );
+    if (priority !== -1 && priority < min_priority) {
+      accepted = mimetype;
+      min_priority = priority;
+    }
+  }
+  return accepted;
+}
+function is_content_type(request, ...types) {
+  const type = request.headers.get("content-type")?.split(";", 1)[0].trim() ?? "";
+  return types.includes(type.toLowerCase());
+}
+function is_form_content_type(request) {
+  return is_content_type(
+    request,
+    "application/x-www-form-urlencoded",
+    "multipart/form-data",
+    "text/plain",
+    BINARY_FORM_CONTENT_TYPE
+  );
+}
+function coalesce_to_error(err) {
+  return err instanceof Error || err && /** @type {any} */
+  err.name && /** @type {any} */
+  err.message ? (
+    /** @type {Error} */
+    err
+  ) : new Error(JSON.stringify(err));
+}
+function normalize_error(error) {
+  return (
+    /** @type {import('../exports/internal/index.js').Redirect | HttpError | SvelteKitError | Error} */
+    error
+  );
+}
+function get_status(error) {
+  return error instanceof HttpError || error instanceof SvelteKitError ? error.status : 500;
+}
+function get_message(error) {
+  return error instanceof SvelteKitError ? error.text : "Internal Error";
+}
+const escape_html_attr_dict = {
+  "&": "&amp;",
+  '"': "&quot;"
+  // Svelte also escapes < because the escape function could be called inside a `noscript` there
+  // https://github.com/sveltejs/svelte/security/advisories/GHSA-8266-84wp-wv5c
+  // However, that doesn't apply in SvelteKit
+};
+const escape_html_dict = {
+  "&": "&amp;",
+  "<": "&lt;"
+};
+const surrogates = (
+  // high surrogate without paired low surrogate
+  "[\\ud800-\\udbff](?![\\udc00-\\udfff])|[\\ud800-\\udbff][\\udc00-\\udfff]|[\\udc00-\\udfff]"
+);
+const escape_html_attr_regex = new RegExp(
+  `[${Object.keys(escape_html_attr_dict).join("")}]|` + surrogates,
+  "g"
+);
+const escape_html_regex = new RegExp(
+  `[${Object.keys(escape_html_dict).join("")}]|` + surrogates,
+  "g"
+);
+function escape_html(str, is_attr) {
+  const dict = is_attr ? escape_html_attr_dict : escape_html_dict;
+  const escaped_str = str.replace(is_attr ? escape_html_attr_regex : escape_html_regex, (match) => {
+    if (match.length === 2) {
+      return match;
+    }
+    return dict[match] ?? `&#${match.charCodeAt(0)};`;
+  });
+  return escaped_str;
+}
+function method_not_allowed(mod, method) {
+  return text(`${method} method not allowed`, {
+    status: 405,
+    headers: {
+      // https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/405
+      // "The server must generate an Allow header field in a 405 status code response"
+      allow: allowed_methods(mod).join(", ")
+    }
+  });
+}
+function allowed_methods(mod) {
+  const allowed = ENDPOINT_METHODS.filter((method) => method in mod);
+  if ("GET" in mod && !("HEAD" in mod)) {
+    allowed.push("HEAD");
+  }
+  return allowed;
+}
+function get_global_name(options) {
+  return `__sveltekit_${options.version_hash}`;
+}
+function static_error_page(options, status, message) {
+  let page = options.templates.error({ status, message: escape_html(message) });
+  return text(page, {
+    headers: { "content-type": "text/html; charset=utf-8" },
+    status
+  });
+}
+async function handle_fatal_error(event, state, options, error) {
+  error = error instanceof HttpError ? error : coalesce_to_error(error);
+  const status = get_status(error);
+  const body = await handle_error_and_jsonify(event, state, options, error);
+  const type = negotiate(event.request.headers.get("accept") || "text/html", [
+    "application/json",
+    "text/html"
+  ]);
+  if (event.isDataRequest || type === "application/json") {
+    return json(body, {
+      status
+    });
+  }
+  return static_error_page(options, status, body.message);
+}
+async function handle_error_and_jsonify(event, state, options, error) {
+  if (error instanceof HttpError) {
+    return { message: "Unknown Error", ...error.body };
+  }
+  const status = get_status(error);
+  const message = get_message(error);
+  return await with_request_store(
+    { event, state },
+    () => options.hooks.handleError({ error, event, status, message })
+  ) ?? { message };
+}
+function redirect_response(status, location) {
+  const response = new Response(void 0, {
+    status,
+    headers: { location }
+  });
+  return response;
+}
+function clarify_devalue_error(event, error) {
+  if (error.path) {
+    return `Data returned from \`load\` while rendering ${event.route.id} is not serializable: ${error.message} (${error.path}). If you need to serialize/deserialize custom types, use transport hooks: https://svelte.dev/docs/kit/hooks#Universal-hooks-transport.`;
+  }
+  if (error.path === "") {
+    return `Data returned from \`load\` while rendering ${event.route.id} is not a plain object`;
+  }
+  return error.message;
+}
+function serialize_uses(node) {
+  const uses = {};
+  if (node.uses && node.uses.dependencies.size > 0) {
+    uses.dependencies = Array.from(node.uses.dependencies);
+  }
+  if (node.uses && node.uses.search_params.size > 0) {
+    uses.search_params = Array.from(node.uses.search_params);
+  }
+  if (node.uses && node.uses.params.size > 0) {
+    uses.params = Array.from(node.uses.params);
+  }
+  if (node.uses?.parent) uses.parent = 1;
+  if (node.uses?.route) uses.route = 1;
+  if (node.uses?.url) uses.url = 1;
+  return uses;
+}
+function has_prerendered_path(manifest, pathname) {
+  return manifest._.prerendered_routes.has(pathname) || pathname.at(-1) === "/" && manifest._.prerendered_routes.has(pathname.slice(0, -1));
+}
+function format_server_error(status, error, event) {
+  const formatted_text = `
+\x1B[1;31m[${status}] ${event.request.method} ${event.url.pathname}\x1B[0m`;
+  if (status === 404) {
+    return formatted_text;
+  }
+  return `${formatted_text}
+${error.stack}`;
+}
+function get_node_type(node_id) {
+  const parts = node_id?.split("/");
+  const filename = parts?.at(-1);
+  if (!filename) return "unknown";
+  const dot_parts = filename.split(".");
+  return dot_parts.slice(0, -1).join(".");
+}
 const INVALIDATED_PARAM = "x-sveltekit-invalidated";
 const TRAILING_SLASH_PARAM = "x-sveltekit-trailing-slash";
 function stringify(data, transport) {
@@ -1315,6 +1451,9 @@ function parse_remote_arg(string, transport) {
   );
   const decoders = Object.fromEntries(Object.entries(transport).map(([k, v]) => [k, v.decode]));
   return parse(json_string, decoders);
+}
+function create_remote_key(id, payload) {
+  return id + "/" + payload;
 }
 
 var cookie = {};
@@ -1602,682 +1741,270 @@ function requireCookie () {
 
 var cookieExports = requireCookie();
 
-var setCookie = {exports: {}};
+var defaultParseOptions = {
+  decodeValues: true,
+  map: false,
+  silent: false,
+  split: "auto", // auto = split strings but not arrays
+};
 
-var hasRequiredSetCookie;
-
-function requireSetCookie () {
-	if (hasRequiredSetCookie) return setCookie.exports;
-	hasRequiredSetCookie = 1;
-
-	var defaultParseOptions = {
-	  decodeValues: true,
-	  map: false,
-	  silent: false,
-	};
-
-	function isNonEmptyString(str) {
-	  return typeof str === "string" && !!str.trim();
-	}
-
-	function parseString(setCookieValue, options) {
-	  var parts = setCookieValue.split(";").filter(isNonEmptyString);
-
-	  var nameValuePairStr = parts.shift();
-	  var parsed = parseNameValuePair(nameValuePairStr);
-	  var name = parsed.name;
-	  var value = parsed.value;
-
-	  options = options
-	    ? Object.assign({}, defaultParseOptions, options)
-	    : defaultParseOptions;
-
-	  try {
-	    value = options.decodeValues ? decodeURIComponent(value) : value; // decode cookie value
-	  } catch (e) {
-	    console.error(
-	      "set-cookie-parser encountered an error while decoding a cookie with value '" +
-	        value +
-	        "'. Set options.decodeValues to false to disable this feature.",
-	      e
-	    );
-	  }
-
-	  var cookie = {
-	    name: name,
-	    value: value,
-	  };
-
-	  parts.forEach(function (part) {
-	    var sides = part.split("=");
-	    var key = sides.shift().trimLeft().toLowerCase();
-	    var value = sides.join("=");
-	    if (key === "expires") {
-	      cookie.expires = new Date(value);
-	    } else if (key === "max-age") {
-	      cookie.maxAge = parseInt(value, 10);
-	    } else if (key === "secure") {
-	      cookie.secure = true;
-	    } else if (key === "httponly") {
-	      cookie.httpOnly = true;
-	    } else if (key === "samesite") {
-	      cookie.sameSite = value;
-	    } else if (key === "partitioned") {
-	      cookie.partitioned = true;
-	    } else {
-	      cookie[key] = value;
-	    }
-	  });
-
-	  return cookie;
-	}
-
-	function parseNameValuePair(nameValuePairStr) {
-	  // Parses name-value-pair according to rfc6265bis draft
-
-	  var name = "";
-	  var value = "";
-	  var nameValueArr = nameValuePairStr.split("=");
-	  if (nameValueArr.length > 1) {
-	    name = nameValueArr.shift();
-	    value = nameValueArr.join("="); // everything after the first =, joined by a "=" if there was more than one part
-	  } else {
-	    value = nameValuePairStr;
-	  }
-
-	  return { name: name, value: value };
-	}
-
-	function parse(input, options) {
-	  options = options
-	    ? Object.assign({}, defaultParseOptions, options)
-	    : defaultParseOptions;
-
-	  if (!input) {
-	    if (!options.map) {
-	      return [];
-	    } else {
-	      return {};
-	    }
-	  }
-
-	  if (input.headers) {
-	    if (typeof input.headers.getSetCookie === "function") {
-	      // for fetch responses - they combine headers of the same type in the headers array,
-	      // but getSetCookie returns an uncombined array
-	      input = input.headers.getSetCookie();
-	    } else if (input.headers["set-cookie"]) {
-	      // fast-path for node.js (which automatically normalizes header names to lower-case
-	      input = input.headers["set-cookie"];
-	    } else {
-	      // slow-path for other environments - see #25
-	      var sch =
-	        input.headers[
-	          Object.keys(input.headers).find(function (key) {
-	            return key.toLowerCase() === "set-cookie";
-	          })
-	        ];
-	      // warn if called on a request-like object with a cookie header rather than a set-cookie header - see #34, 36
-	      if (!sch && input.headers.cookie && !options.silent) {
-	        console.warn(
-	          "Warning: set-cookie-parser appears to have been called on a request object. It is designed to parse Set-Cookie headers from responses, not Cookie headers from requests. Set the option {silent: true} to suppress this warning."
-	        );
-	      }
-	      input = sch;
-	    }
-	  }
-	  if (!Array.isArray(input)) {
-	    input = [input];
-	  }
-
-	  if (!options.map) {
-	    return input.filter(isNonEmptyString).map(function (str) {
-	      return parseString(str, options);
-	    });
-	  } else {
-	    var cookies = {};
-	    return input.filter(isNonEmptyString).reduce(function (cookies, str) {
-	      var cookie = parseString(str, options);
-	      cookies[cookie.name] = cookie;
-	      return cookies;
-	    }, cookies);
-	  }
-	}
-
-	/*
-	  Set-Cookie header field-values are sometimes comma joined in one string. This splits them without choking on commas
-	  that are within a single set-cookie field-value, such as in the Expires portion.
-
-	  This is uncommon, but explicitly allowed - see https://tools.ietf.org/html/rfc2616#section-4.2
-	  Node.js does this for every header *except* set-cookie - see https://github.com/nodejs/node/blob/d5e363b77ebaf1caf67cd7528224b651c86815c1/lib/_http_incoming.js#L128
-	  React Native's fetch does this for *every* header, including set-cookie.
-
-	  Based on: https://github.com/google/j2objc/commit/16820fdbc8f76ca0c33472810ce0cb03d20efe25
-	  Credits to: https://github.com/tomball for original and https://github.com/chrusart for JavaScript implementation
-	*/
-	function splitCookiesString(cookiesString) {
-	  if (Array.isArray(cookiesString)) {
-	    return cookiesString;
-	  }
-	  if (typeof cookiesString !== "string") {
-	    return [];
-	  }
-
-	  var cookiesStrings = [];
-	  var pos = 0;
-	  var start;
-	  var ch;
-	  var lastComma;
-	  var nextStart;
-	  var cookiesSeparatorFound;
-
-	  function skipWhitespace() {
-	    while (pos < cookiesString.length && /\s/.test(cookiesString.charAt(pos))) {
-	      pos += 1;
-	    }
-	    return pos < cookiesString.length;
-	  }
-
-	  function notSpecialChar() {
-	    ch = cookiesString.charAt(pos);
-
-	    return ch !== "=" && ch !== ";" && ch !== ",";
-	  }
-
-	  while (pos < cookiesString.length) {
-	    start = pos;
-	    cookiesSeparatorFound = false;
-
-	    while (skipWhitespace()) {
-	      ch = cookiesString.charAt(pos);
-	      if (ch === ",") {
-	        // ',' is a cookie separator if we have later first '=', not ';' or ','
-	        lastComma = pos;
-	        pos += 1;
-
-	        skipWhitespace();
-	        nextStart = pos;
-
-	        while (pos < cookiesString.length && notSpecialChar()) {
-	          pos += 1;
-	        }
-
-	        // currently special character
-	        if (pos < cookiesString.length && cookiesString.charAt(pos) === "=") {
-	          // we found cookies separator
-	          cookiesSeparatorFound = true;
-	          // pos is inside the next cookie, so back up and return it.
-	          pos = nextStart;
-	          cookiesStrings.push(cookiesString.substring(start, lastComma));
-	          start = pos;
-	        } else {
-	          // in param ',' or param separator ';',
-	          // we continue from that comma
-	          pos = lastComma + 1;
-	        }
-	      } else {
-	        pos += 1;
-	      }
-	    }
-
-	    if (!cookiesSeparatorFound || pos >= cookiesString.length) {
-	      cookiesStrings.push(cookiesString.substring(start, cookiesString.length));
-	    }
-	  }
-
-	  return cookiesStrings;
-	}
-
-	setCookie.exports = parse;
-	setCookie.exports.parse = parse;
-	setCookie.exports.parseString = parseString;
-	setCookie.exports.splitCookiesString = splitCookiesString;
-	return setCookie.exports;
+function isForbiddenKey(key) {
+  return typeof key !== "string" || key in {};
 }
 
-var setCookieExports = /*@__PURE__*/ requireSetCookie();
+function createNullObj() {
+  return Object.create(null);
+}
 
-function hydration_mismatch(location) {
-  {
-    console.warn(`https://svelte.dev/e/hydration_mismatch`);
+function isNonEmptyString(str) {
+  return typeof str === "string" && !!str.trim();
+}
+
+function parseString(setCookieValue, options) {
+  var parts = setCookieValue.split(";").filter(isNonEmptyString);
+
+  var nameValuePairStr = parts.shift();
+  var parsed = parseNameValuePair(nameValuePairStr);
+  var name = parsed.name;
+  var value = parsed.value;
+
+  options = options
+    ? Object.assign({}, defaultParseOptions, options)
+    : defaultParseOptions;
+
+  if (isForbiddenKey(name)) {
+    return null;
   }
-}
-let hydrating = false;
-function set_hydrating(value) {
-  hydrating = value;
-}
-let hydrate_node;
-function set_hydrate_node(node) {
-  if (node === null) {
-    hydration_mismatch();
-    throw HYDRATION_ERROR;
+
+  try {
+    value = options.decodeValues ? decodeURIComponent(value) : value; // decode cookie value
+  } catch (e) {
+    console.error(
+      "set-cookie-parser: failed to decode cookie value. Set options.decodeValues=false to disable decoding.",
+      e
+    );
   }
-  return hydrate_node = node;
-}
-function hydrate_next() {
-  return set_hydrate_node(
-    /** @type {TemplateNode} */
-    get_next_sibling(hydrate_node)
-  );
-}
-const PASSIVE_EVENTS = ["touchstart", "touchmove"];
-function is_passive_event(name) {
-  return PASSIVE_EVENTS.includes(name);
-}
-const all_registered_events = /* @__PURE__ */ new Set();
-const root_event_handles = /* @__PURE__ */ new Set();
-let last_propagated_event = null;
-function handle_event_propagation(event) {
-  var handler_element = this;
-  var owner_document = (
-    /** @type {Node} */
-    handler_element.ownerDocument
-  );
-  var event_name = event.type;
-  var path = event.composedPath?.() || [];
-  var current_target = (
-    /** @type {null | Element} */
-    path[0] || event.target
-  );
-  last_propagated_event = event;
-  var path_idx = 0;
-  var handled_at = last_propagated_event === event && event.__root;
-  if (handled_at) {
-    var at_idx = path.indexOf(handled_at);
-    if (at_idx !== -1 && (handler_element === document || handler_element === /** @type {any} */
-    window)) {
-      event.__root = handler_element;
+
+  var cookie = createNullObj();
+  cookie.name = name;
+  cookie.value = value;
+
+  parts.forEach(function (part) {
+    var sides = part.split("=");
+    var key = sides.shift().trimLeft().toLowerCase();
+    if (isForbiddenKey(key)) {
       return;
     }
-    var handler_idx = path.indexOf(handler_element);
-    if (handler_idx === -1) {
-      return;
-    }
-    if (at_idx <= handler_idx) {
-      path_idx = at_idx;
-    }
-  }
-  current_target = /** @type {Element} */
-  path[path_idx] || event.target;
-  if (current_target === handler_element) return;
-  define_property(event, "currentTarget", {
-    configurable: true,
-    get() {
-      return current_target || owner_document;
+    var value = sides.join("=");
+    if (key === "expires") {
+      cookie.expires = new Date(value);
+    } else if (key === "max-age") {
+      var n = parseInt(value, 10);
+      if (!Number.isNaN(n)) cookie.maxAge = n;
+    } else if (key === "secure") {
+      cookie.secure = true;
+    } else if (key === "httponly") {
+      cookie.httpOnly = true;
+    } else if (key === "samesite") {
+      cookie.sameSite = value;
+    } else if (key === "partitioned") {
+      cookie.partitioned = true;
+    } else if (key) {
+      cookie[key] = value;
     }
   });
-  var previous_reaction = active_reaction;
-  var previous_effect = active_effect;
-  set_active_reaction(null);
-  set_active_effect(null);
-  try {
-    var throw_error;
-    var other_errors = [];
-    while (current_target !== null) {
-      var parent_element = current_target.assignedSlot || current_target.parentNode || /** @type {any} */
-      current_target.host || null;
-      try {
-        var delegated = current_target["__" + event_name];
-        if (delegated != null && (!/** @type {any} */
-        current_target.disabled || // DOM could've been updated already by the time this is reached, so we check this as well
-        // -> the target could not have been disabled because it emits the event in the first place
-        event.target === current_target)) {
-          if (is_array(delegated)) {
-            var [fn, ...data] = delegated;
-            fn.apply(current_target, [event, ...data]);
-          } else {
-            delegated.call(current_target, event);
-          }
+
+  return cookie;
+}
+
+function parseNameValuePair(nameValuePairStr) {
+  // Parses name-value-pair according to rfc6265bis draft
+
+  var name = "";
+  var value = "";
+  var nameValueArr = nameValuePairStr.split("=");
+  if (nameValueArr.length > 1) {
+    name = nameValueArr.shift();
+    value = nameValueArr.join("="); // everything after the first =, joined by a "=" if there was more than one part
+  } else {
+    value = nameValuePairStr;
+  }
+
+  return { name: name, value: value };
+}
+
+function parseSetCookie(input, options) {
+  options = options
+    ? Object.assign({}, defaultParseOptions, options)
+    : defaultParseOptions;
+
+  if (!input) {
+    if (!options.map) {
+      return [];
+    } else {
+      return createNullObj();
+    }
+  }
+
+  if (input.headers) {
+    if (typeof input.headers.getSetCookie === "function") {
+      // for fetch responses - they combine headers of the same type in the headers array,
+      // but getSetCookie returns an uncombined array
+      input = input.headers.getSetCookie();
+    } else if (input.headers["set-cookie"]) {
+      // fast-path for node.js (which automatically normalizes header names to lower-case)
+      input = input.headers["set-cookie"];
+    } else {
+      // slow-path for other environments - see #25
+      var sch =
+        input.headers[
+          Object.keys(input.headers).find(function (key) {
+            return key.toLowerCase() === "set-cookie";
+          })
+        ];
+      // warn if called on a request-like object with a cookie header rather than a set-cookie header - see #34, 36
+      if (!sch && input.headers.cookie && !options.silent) {
+        console.warn(
+          "Warning: set-cookie-parser appears to have been called on a request object. It is designed to parse Set-Cookie headers from responses, not Cookie headers from requests. Set the option {silent: true} to suppress this warning."
+        );
+      }
+      input = sch;
+    }
+  }
+
+  var split = options.split;
+  var isArray = Array.isArray(input);
+
+  if (split === "auto") {
+    split = !isArray;
+  }
+
+  if (!isArray) {
+    input = [input];
+  }
+
+  input = input.filter(isNonEmptyString);
+
+  if (split) {
+    input = input.map(splitCookiesString).flat();
+  }
+
+  if (!options.map) {
+    return input
+      .map(function (str) {
+        return parseString(str, options);
+      })
+      .filter(Boolean);
+  } else {
+    var cookies = createNullObj();
+    return input.reduce(function (cookies, str) {
+      var cookie = parseString(str, options);
+      if (cookie && !isForbiddenKey(cookie.name)) {
+        cookies[cookie.name] = cookie;
+      }
+      return cookies;
+    }, cookies);
+  }
+}
+
+/*
+  Set-Cookie header field-values are sometimes comma joined in one string. This splits them without choking on commas
+  that are within a single set-cookie field-value, such as in the Expires portion.
+
+  This is uncommon, but explicitly allowed - see https://tools.ietf.org/html/rfc2616#section-4.2
+  Node.js does this for every header *except* set-cookie - see https://github.com/nodejs/node/blob/d5e363b77ebaf1caf67cd7528224b651c86815c1/lib/_http_incoming.js#L128
+  React Native's fetch does this for *every* header, including set-cookie.
+
+  Based on: https://github.com/google/j2objc/commit/16820fdbc8f76ca0c33472810ce0cb03d20efe25
+  Credits to: https://github.com/tomball for original and https://github.com/chrusart for JavaScript implementation
+*/
+function splitCookiesString(cookiesString) {
+  if (Array.isArray(cookiesString)) {
+    return cookiesString;
+  }
+  if (typeof cookiesString !== "string") {
+    return [];
+  }
+
+  var cookiesStrings = [];
+  var pos = 0;
+  var start;
+  var ch;
+  var lastComma;
+  var nextStart;
+  var cookiesSeparatorFound;
+
+  function skipWhitespace() {
+    while (pos < cookiesString.length && /\s/.test(cookiesString.charAt(pos))) {
+      pos += 1;
+    }
+    return pos < cookiesString.length;
+  }
+
+  function notSpecialChar() {
+    ch = cookiesString.charAt(pos);
+
+    return ch !== "=" && ch !== ";" && ch !== ",";
+  }
+
+  while (pos < cookiesString.length) {
+    start = pos;
+    cookiesSeparatorFound = false;
+
+    while (skipWhitespace()) {
+      ch = cookiesString.charAt(pos);
+      if (ch === ",") {
+        // ',' is a cookie separator if we have later first '=', not ';' or ','
+        lastComma = pos;
+        pos += 1;
+
+        skipWhitespace();
+        nextStart = pos;
+
+        while (pos < cookiesString.length && notSpecialChar()) {
+          pos += 1;
         }
-      } catch (error) {
-        if (throw_error) {
-          other_errors.push(error);
+
+        // currently special character
+        if (pos < cookiesString.length && cookiesString.charAt(pos) === "=") {
+          // we found cookies separator
+          cookiesSeparatorFound = true;
+          // pos is inside the next cookie, so back up and return it.
+          pos = nextStart;
+          cookiesStrings.push(cookiesString.substring(start, lastComma));
+          start = pos;
         } else {
-          throw_error = error;
+          // in param ',' or param separator ';',
+          // we continue from that comma
+          pos = lastComma + 1;
         }
-      }
-      if (event.cancelBubble || parent_element === handler_element || parent_element === null) {
-        break;
-      }
-      current_target = parent_element;
-    }
-    if (throw_error) {
-      for (let error of other_errors) {
-        queueMicrotask(() => {
-          throw error;
-        });
-      }
-      throw throw_error;
-    }
-  } finally {
-    event.__root = handler_element;
-    delete event.currentTarget;
-    set_active_reaction(previous_reaction);
-    set_active_effect(previous_effect);
-  }
-}
-function assign_nodes(start, end) {
-  var effect = (
-    /** @type {Effect} */
-    active_effect
-  );
-  if (effect.nodes_start === null) {
-    effect.nodes_start = start;
-    effect.nodes_end = end;
-  }
-}
-function mount(component, options2) {
-  return _mount(component, options2);
-}
-function hydrate(component, options2) {
-  init_operations();
-  options2.intro = options2.intro ?? false;
-  const target = options2.target;
-  const was_hydrating = hydrating;
-  const previous_hydrate_node = hydrate_node;
-  try {
-    var anchor = (
-      /** @type {TemplateNode} */
-      get_first_child(target)
-    );
-    while (anchor && (anchor.nodeType !== COMMENT_NODE || /** @type {Comment} */
-    anchor.data !== HYDRATION_START)) {
-      anchor = /** @type {TemplateNode} */
-      get_next_sibling(anchor);
-    }
-    if (!anchor) {
-      throw HYDRATION_ERROR;
-    }
-    set_hydrating(true);
-    set_hydrate_node(
-      /** @type {Comment} */
-      anchor
-    );
-    hydrate_next();
-    const instance = _mount(component, { ...options2, anchor });
-    if (hydrate_node === null || hydrate_node.nodeType !== COMMENT_NODE || /** @type {Comment} */
-    hydrate_node.data !== HYDRATION_END) {
-      hydration_mismatch();
-      throw HYDRATION_ERROR;
-    }
-    set_hydrating(false);
-    return (
-      /**  @type {Exports} */
-      instance
-    );
-  } catch (error) {
-    if (error instanceof Error && error.message.split("\n").some((line) => line.startsWith("https://svelte.dev/e/"))) {
-      throw error;
-    }
-    if (error !== HYDRATION_ERROR) {
-      console.warn("Failed to hydrate: ", error);
-    }
-    if (options2.recover === false) {
-      hydration_failed();
-    }
-    init_operations();
-    clear_text_content(target);
-    set_hydrating(false);
-    return mount(component, options2);
-  } finally {
-    set_hydrating(was_hydrating);
-    set_hydrate_node(previous_hydrate_node);
-  }
-}
-const document_listeners = /* @__PURE__ */ new Map();
-function _mount(Component, { target, anchor, props = {}, events, context, intro = true }) {
-  init_operations();
-  var registered_events = /* @__PURE__ */ new Set();
-  var event_handle = (events2) => {
-    for (var i = 0; i < events2.length; i++) {
-      var event_name = events2[i];
-      if (registered_events.has(event_name)) continue;
-      registered_events.add(event_name);
-      var passive = is_passive_event(event_name);
-      target.addEventListener(event_name, handle_event_propagation, { passive });
-      var n = document_listeners.get(event_name);
-      if (n === void 0) {
-        document.addEventListener(event_name, handle_event_propagation, { passive });
-        document_listeners.set(event_name, 1);
       } else {
-        document_listeners.set(event_name, n + 1);
+        pos += 1;
       }
     }
-  };
-  event_handle(array_from(all_registered_events));
-  root_event_handles.add(event_handle);
-  var component = void 0;
-  var unmount2 = component_root(() => {
-    var anchor_node = anchor ?? target.appendChild(create_text());
-    branch(() => {
-      if (context) {
-        push$1({});
-        var ctx = (
-          /** @type {ComponentContext} */
-          component_context
-        );
-        ctx.c = context;
-      }
-      if (events) {
-        props.$$events = events;
-      }
-      if (hydrating) {
-        assign_nodes(
-          /** @type {TemplateNode} */
-          anchor_node,
-          null
-        );
-      }
-      component = Component(anchor_node, props) || {};
-      if (hydrating) {
-        active_effect.nodes_end = hydrate_node;
-      }
-      if (context) {
-        pop$1();
-      }
-    });
-    return () => {
-      for (var event_name of registered_events) {
-        target.removeEventListener(event_name, handle_event_propagation);
-        var n = (
-          /** @type {number} */
-          document_listeners.get(event_name)
-        );
-        if (--n === 0) {
-          document.removeEventListener(event_name, handle_event_propagation);
-          document_listeners.delete(event_name);
-        } else {
-          document_listeners.set(event_name, n);
-        }
-      }
-      root_event_handles.delete(event_handle);
-      if (anchor_node !== anchor) {
-        anchor_node.parentNode?.removeChild(anchor_node);
-      }
-    };
-  });
-  mounted_components.set(component, unmount2);
-  return component;
-}
-let mounted_components = /* @__PURE__ */ new WeakMap();
-function unmount(component, options2) {
-  const fn = mounted_components.get(component);
-  if (fn) {
-    mounted_components.delete(component);
-    return fn(options2);
-  }
-  return Promise.resolve();
-}
-function asClassComponent$1(component) {
-  return class extends Svelte4Component {
-    /** @param {any} options */
-    constructor(options2) {
-      super({
-        component,
-        ...options2
-      });
+
+    if (!cookiesSeparatorFound || pos >= cookiesString.length) {
+      cookiesStrings.push(cookiesString.substring(start, cookiesString.length));
     }
-  };
+  }
+
+  return cookiesStrings;
 }
-class Svelte4Component {
-  /** @type {any} */
-  #events;
-  /** @type {Record<string, any>} */
-  #instance;
-  /**
-   * @param {ComponentConstructorOptions & {
-   *  component: any;
-   * }} options
-   */
-  constructor(options2) {
-    var sources = /* @__PURE__ */ new Map();
-    var add_source = (key, value) => {
-      var s = mutable_source(value, false, false);
-      sources.set(key, s);
-      return s;
-    };
-    const props = new Proxy(
-      { ...options2.props || {}, $$events: {} },
-      {
-        get(target, prop) {
-          return get(sources.get(prop) ?? add_source(prop, Reflect.get(target, prop)));
-        },
-        has(target, prop) {
-          if (prop === LEGACY_PROPS) return true;
-          get(sources.get(prop) ?? add_source(prop, Reflect.get(target, prop)));
-          return Reflect.has(target, prop);
-        },
-        set(target, prop, value) {
-          set(sources.get(prop) ?? add_source(prop, value), value);
-          return Reflect.set(target, prop, value);
-        }
-      }
-    );
-    this.#instance = (options2.hydrate ? hydrate : mount)(options2.component, {
-      target: options2.target,
-      anchor: options2.anchor,
-      props,
-      context: options2.context,
-      intro: options2.intro ?? false,
-      recover: options2.recover
-    });
-    if (!options2?.props?.$$host || options2.sync === false) {
-      flushSync();
-    }
-    this.#events = props.$$events;
-    for (const key of Object.keys(this.#instance)) {
-      if (key === "$set" || key === "$destroy" || key === "$on") continue;
-      define_property(this, key, {
-        get() {
-          return this.#instance[key];
-        },
-        /** @param {any} value */
-        set(value) {
-          this.#instance[key] = value;
-        },
-        enumerable: true
-      });
-    }
-    this.#instance.$set = /** @param {Record<string, any>} next */
-    (next) => {
-      Object.assign(props, next);
-    };
-    this.#instance.$destroy = () => {
-      unmount(this.#instance);
-    };
-  }
-  /** @param {Record<string, any>} props */
-  $set(props) {
-    this.#instance.$set(props);
-  }
-  /**
-   * @param {string} event
-   * @param {(...args: any[]) => any} callback
-   * @returns {any}
-   */
-  $on(event, callback) {
-    this.#events[event] = this.#events[event] || [];
-    const cb = (...args) => callback.call(this, ...args);
-    this.#events[event].push(cb);
-    return () => {
-      this.#events[event] = this.#events[event].filter(
-        /** @param {any} fn */
-        (fn) => fn !== cb
-      );
-    };
-  }
-  $destroy() {
-    this.#instance.$destroy();
-  }
-}
+
+// named export for CJS
+parseSetCookie.parseSetCookie = parseSetCookie;
+// for backwards compatibility
+parseSetCookie.parse = parseSetCookie;
+parseSetCookie.parseString = parseString;
+parseSetCookie.splitCookiesString = splitCookiesString;
+
 let read_implementation = null;
 function set_read_implementation(fn) {
   read_implementation = fn;
 }
-function asClassComponent(component) {
-  const component_constructor = asClassComponent$1(component);
-  const _render = (props, { context } = {}) => {
-    const result = render(component, { props, context });
-    return {
-      css: { code: "", map: null },
-      head: result.head,
-      html: result.body
-    };
-  };
-  component_constructor.render = _render;
-  return component_constructor;
-}
-function Root($$payload, $$props) {
-  push();
-  let {
-    stores,
-    page,
-    constructors,
-    components = [],
-    form,
-    data_0 = null,
-    data_1 = null
-  } = $$props;
-  {
-    setContext("__svelte__", stores);
-  }
-  {
-    stores.page.set(page);
-  }
-  const Pyramid_1 = constructors[1];
-  if (constructors[1]) {
-    $$payload.out.push("<!--[-->");
-    const Pyramid_0 = constructors[0];
-    $$payload.out.push(`<!---->`);
-    Pyramid_0($$payload, {
-      data: data_0,
-      form,
-      params: page.params,
-      children: ($$payload2) => {
-        $$payload2.out.push(`<!---->`);
-        Pyramid_1($$payload2, { data: data_1, form, params: page.params });
-        $$payload2.out.push(`<!---->`);
-      },
-      $$slots: { default: true }
-    });
-    $$payload.out.push(`<!---->`);
-  } else {
-    $$payload.out.push("<!--[!-->");
-    const Pyramid_0 = constructors[0];
-    $$payload.out.push(`<!---->`);
-    Pyramid_0($$payload, { data: data_0, form, params: page.params });
-    $$payload.out.push(`<!---->`);
-  }
-  $$payload.out.push(`<!--]--> `);
-  {
-    $$payload.out.push("<!--[!-->");
-  }
-  $$payload.out.push(`<!--]-->`);
-  pop();
-}
-const root = asClassComponent(Root);
 const options = {
   app_template_contains_nonce: false,
+  async: false,
   csp: { "mode": "auto", "directives": { "upgrade-insecure-requests": false, "block-all-mixed-content": false }, "reportOnly": { "upgrade-insecure-requests": false, "block-all-mixed-content": false } },
   csrf_check_origin: true,
   csrf_trusted_origins: [],
@@ -2364,7 +2091,7 @@ const options = {
 		<div class="error">
 			<span class="status">` + status + '</span>\n			<div class="message">\n				<h1>' + message + "</h1>\n			</div>\n		</div>\n	</body>\n</html>\n"
   },
-  version_hash: "1bn2t6d"
+  version_hash: "lpstir"
 };
 async function get_hooks() {
   let handle;
@@ -2386,211 +2113,17 @@ async function get_hooks() {
   };
 }
 
-const SVELTE_KIT_ASSETS = "/_svelte_kit_assets";
-const ENDPOINT_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"];
-const PAGE_METHODS = ["GET", "POST", "HEAD"];
-function negotiate(accept, types) {
-  const parts = [];
-  accept.split(",").forEach((str, i) => {
-    const match = /([^/ \t]+)\/([^; \t]+)[ \t]*(?:;[ \t]*q=([0-9.]+))?/.exec(str);
-    if (match) {
-      const [, type, subtype, q = "1"] = match;
-      parts.push({ type, subtype, q: +q, i });
-    }
+function with_resolvers() {
+  let resolve2;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve2 = res;
+    reject = rej;
   });
-  parts.sort((a, b) => {
-    if (a.q !== b.q) {
-      return b.q - a.q;
-    }
-    if (a.subtype === "*" !== (b.subtype === "*")) {
-      return a.subtype === "*" ? 1 : -1;
-    }
-    if (a.type === "*" !== (b.type === "*")) {
-      return a.type === "*" ? 1 : -1;
-    }
-    return a.i - b.i;
-  });
-  let accepted;
-  let min_priority = Infinity;
-  for (const mimetype of types) {
-    const [type, subtype] = mimetype.split("/");
-    const priority = parts.findIndex(
-      (part) => (part.type === type || part.type === "*") && (part.subtype === subtype || part.subtype === "*")
-    );
-    if (priority !== -1 && priority < min_priority) {
-      accepted = mimetype;
-      min_priority = priority;
-    }
-  }
-  return accepted;
+  return { promise, resolve: resolve2, reject };
 }
-function is_content_type(request, ...types) {
-  const type = request.headers.get("content-type")?.split(";", 1)[0].trim() ?? "";
-  return types.includes(type.toLowerCase());
-}
-function is_form_content_type(request) {
-  return is_content_type(
-    request,
-    "application/x-www-form-urlencoded",
-    "multipart/form-data",
-    "text/plain"
-  );
-}
-function coalesce_to_error(err) {
-  return err instanceof Error || err && /** @type {any} */
-  err.name && /** @type {any} */
-  err.message ? (
-    /** @type {Error} */
-    err
-  ) : new Error(JSON.stringify(err));
-}
-function normalize_error(error2) {
-  return (
-    /** @type {import('../exports/internal/index.js').Redirect | HttpError | SvelteKitError | Error} */
-    error2
-  );
-}
-function get_status(error2) {
-  return error2 instanceof HttpError || error2 instanceof SvelteKitError ? error2.status : 500;
-}
-function get_message(error2) {
-  return error2 instanceof SvelteKitError ? error2.text : "Internal Error";
-}
-const escape_html_attr_dict = {
-  "&": "&amp;",
-  '"': "&quot;"
-  // Svelte also escapes < because the escape function could be called inside a `noscript` there
-  // https://github.com/sveltejs/svelte/security/advisories/GHSA-8266-84wp-wv5c
-  // However, that doesn't apply in SvelteKit
-};
-const escape_html_dict = {
-  "&": "&amp;",
-  "<": "&lt;"
-};
-const surrogates = (
-  // high surrogate without paired low surrogate
-  "[\\ud800-\\udbff](?![\\udc00-\\udfff])|[\\ud800-\\udbff][\\udc00-\\udfff]|[\\udc00-\\udfff]"
-);
-const escape_html_attr_regex = new RegExp(
-  `[${Object.keys(escape_html_attr_dict).join("")}]|` + surrogates,
-  "g"
-);
-const escape_html_regex = new RegExp(
-  `[${Object.keys(escape_html_dict).join("")}]|` + surrogates,
-  "g"
-);
-function escape_html(str, is_attr) {
-  const dict = is_attr ? escape_html_attr_dict : escape_html_dict;
-  const escaped_str = str.replace(is_attr ? escape_html_attr_regex : escape_html_regex, (match) => {
-    if (match.length === 2) {
-      return match;
-    }
-    return dict[match] ?? `&#${match.charCodeAt(0)};`;
-  });
-  return escaped_str;
-}
-function method_not_allowed(mod, method) {
-  return text(`${method} method not allowed`, {
-    status: 405,
-    headers: {
-      // https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/405
-      // "The server must generate an Allow header field in a 405 status code response"
-      allow: allowed_methods(mod).join(", ")
-    }
-  });
-}
-function allowed_methods(mod) {
-  const allowed = ENDPOINT_METHODS.filter((method) => method in mod);
-  if ("GET" in mod || "HEAD" in mod) allowed.push("HEAD");
-  return allowed;
-}
-function get_global_name(options2) {
-  return `__sveltekit_${options2.version_hash}`;
-}
-function static_error_page(options2, status, message) {
-  let page = options2.templates.error({ status, message: escape_html(message) });
-  return text(page, {
-    headers: { "content-type": "text/html; charset=utf-8" },
-    status
-  });
-}
-async function handle_fatal_error(event, state, options2, error2) {
-  error2 = error2 instanceof HttpError ? error2 : coalesce_to_error(error2);
-  const status = get_status(error2);
-  const body2 = await handle_error_and_jsonify(event, state, options2, error2);
-  const type = negotiate(event.request.headers.get("accept") || "text/html", [
-    "application/json",
-    "text/html"
-  ]);
-  if (event.isDataRequest || type === "application/json") {
-    return json(body2, {
-      status
-    });
-  }
-  return static_error_page(options2, status, body2.message);
-}
-async function handle_error_and_jsonify(event, state, options2, error2) {
-  if (error2 instanceof HttpError) {
-    return { message: "Unknown Error", ...error2.body };
-  }
-  const status = get_status(error2);
-  const message = get_message(error2);
-  return await with_request_store(
-    { event, state },
-    () => options2.hooks.handleError({ error: error2, event, status, message })
-  ) ?? { message };
-}
-function redirect_response(status, location) {
-  const response = new Response(void 0, {
-    status,
-    headers: { location }
-  });
-  return response;
-}
-function clarify_devalue_error(event, error2) {
-  if (error2.path) {
-    return `Data returned from \`load\` while rendering ${event.route.id} is not serializable: ${error2.message} (${error2.path}). If you need to serialize/deserialize custom types, use transport hooks: https://svelte.dev/docs/kit/hooks#Universal-hooks-transport.`;
-  }
-  if (error2.path === "") {
-    return `Data returned from \`load\` while rendering ${event.route.id} is not a plain object`;
-  }
-  return error2.message;
-}
-function serialize_uses(node) {
-  const uses = {};
-  if (node.uses && node.uses.dependencies.size > 0) {
-    uses.dependencies = Array.from(node.uses.dependencies);
-  }
-  if (node.uses && node.uses.search_params.size > 0) {
-    uses.search_params = Array.from(node.uses.search_params);
-  }
-  if (node.uses && node.uses.params.size > 0) {
-    uses.params = Array.from(node.uses.params);
-  }
-  if (node.uses?.parent) uses.parent = 1;
-  if (node.uses?.route) uses.route = 1;
-  if (node.uses?.url) uses.url = 1;
-  return uses;
-}
-function has_prerendered_path(manifest, pathname) {
-  return manifest._.prerendered_routes.has(pathname) || pathname.at(-1) === "/" && manifest._.prerendered_routes.has(pathname.slice(0, -1));
-}
-function format_server_error(status, error2, event) {
-  const formatted_text = `
-\x1B[1;31m[${status}] ${event.request.method} ${event.url.pathname}\x1B[0m`;
-  if (status === 404) {
-    return formatted_text;
-  }
-  return `${formatted_text}
-${error2.stack}`;
-}
-function get_node_type(node_id) {
-  const parts = node_id?.split("/");
-  const filename = parts?.at(-1);
-  if (!filename) return "unknown";
-  const dot_parts = filename.split(".");
-  return dot_parts.slice(0, -1).join(".");
-}
+const NULL_BODY_STATUS = [101, 103, 204, 205, 304];
+const IN_WEBCONTAINER = !!globalThis.process?.versions?.webcontainer;
 async function render_endpoint(event, event_state, mod, state) {
   const method = (
     /** @type {import('types').HttpMethod} */
@@ -2614,8 +2147,8 @@ async function render_endpoint(event, event_state, mod, state) {
       return new Response(void 0, { status: 204 });
     }
   }
-  event_state.is_endpoint_request = true;
   try {
+    event_state.allows_commands = true;
     const response = await with_request_store(
       { event, state: event_state },
       () => handler(
@@ -2929,14 +2462,15 @@ async function call_action(event, event_state, actions) {
     attributes: {
       "http.route": event.route.id || "unknown"
     },
-    fn: async (current) => {
-      const traced_event = merge_tracing(event, current);
+    fn: async (current2) => {
+      const traced_event = merge_tracing(event, current2);
+      event_state.allows_commands = true;
       const result = await with_request_store(
         { event: traced_event, state: event_state },
         () => action(traced_event)
       );
       if (result instanceof ActionFailure) {
-        current.setAttributes({
+        current2.setAttributes({
           "sveltekit.form_action.result.type": "failure",
           "sveltekit.form_action.result.status": result.status
         });
@@ -2972,57 +2506,41 @@ function try_serialize(data, fn, route_id) {
     );
     if (data instanceof Response) {
       throw new Error(
-        `Data returned from action inside ${route_id} is not serializable. Form actions need to return plain objects or fail(). E.g. return { success: true } or return fail(400, { message: "invalid" });`
+        `Data returned from action inside ${route_id} is not serializable. Form actions need to return plain objects or fail(). E.g. return { success: true } or return fail(400, { message: "invalid" });`,
+        { cause: e }
       );
     }
     if ("path" in error2) {
       let message = `Data returned from action inside ${route_id} is not serializable: ${error2.message}`;
       if (error2.path !== "") message += ` (data.${error2.path})`;
-      throw new Error(message);
+      throw new Error(message, { cause: e });
     }
     throw error2;
   }
 }
-function defer() {
-  let fulfil;
-  let reject;
-  const promise = new Promise((f, r) => {
-    fulfil = f;
-    reject = r;
-  });
-  return { promise, fulfil, reject };
-}
 function create_async_iterator() {
-  let count = 0;
-  const deferred = [defer()];
+  let resolved = -1;
+  let returned = -1;
+  const deferred = [];
   return {
     iterate: (transform = (x) => x) => {
       return {
         [Symbol.asyncIterator]() {
           return {
             next: async () => {
-              const next = await deferred[0].promise;
-              if (!next.done) {
-                deferred.shift();
-                return { value: transform(next.value), done: false };
-              }
-              return next;
+              const next = deferred[++returned];
+              if (!next) return { value: null, done: true };
+              const value = await next.promise;
+              return { value: transform(value), done: false };
             }
           };
         }
       };
     },
     add: (promise) => {
-      count += 1;
+      deferred.push(with_resolvers());
       void promise.then((value) => {
-        deferred[deferred.length - 1].fulfil({
-          value,
-          done: false
-        });
-        deferred.push(defer());
-        if (--count === 0) {
-          deferred[deferred.length - 1].fulfil({ done: true });
-        }
+        deferred[++resolved].resolve(value);
       });
     }
   };
@@ -3059,7 +2577,6 @@ function server_data_serializer(event, event_state, options2) {
                 options2,
                 new Error(`Failed to serialize promise while rendering ${event.route.id}`)
               );
-              data = void 0;
               str = uneval([, error2], replacer);
             }
             return {
@@ -3103,7 +2620,7 @@ function server_data_serializer(event, event_state, options2) {
           event,
           /** @type {any} */
           e
-        ));
+        ), { cause: e });
       }
     },
     get_data(csp) {
@@ -3196,7 +2713,7 @@ function server_data_serializer_json(event, event_state, options2) {
           event,
           /** @type {any} */
           e
-        ));
+        ), { cause: e });
       }
     },
     get_data() {
@@ -3208,7 +2725,6 @@ function server_data_serializer_json(event, event_state, options2) {
     }
   };
 }
-const NULL_BODY_STATUS = [101, 103, 204, 205, 304];
 async function load_server_data({ event, event_state, state, node, parent }) {
   if (!node?.server) return null;
   let is_tracking = true;
@@ -3248,8 +2764,8 @@ async function load_server_data({ event, event_state, state, node, parent }) {
       "sveltekit.load.node_type": get_node_type(node.server_id),
       "http.route": event.route.id || "unknown"
     },
-    fn: async (current) => {
-      const traced_event = merge_tracing(event, current);
+    fn: async (current2) => {
+      const traced_event = merge_tracing(event, current2);
       const result2 = await with_request_store(
         { event: traced_event, state: event_state },
         () => load.call(null, {
@@ -3337,8 +2853,8 @@ async function load_data({
       "sveltekit.load.node_type": get_node_type(node.universal_id),
       "http.route": event.route.id || "unknown"
     },
-    fn: async (current) => {
-      const traced_event = merge_tracing(event, current);
+    fn: async (current2) => {
+      const traced_event = merge_tracing(event, current2);
       return await with_request_store(
         { event: traced_event, state: event_state },
         () => load.call(null, {
@@ -3391,7 +2907,7 @@ function create_universal_fetch(event, state, fetched, csr, resolve_opts) {
     }
     let teed_body;
     const proxy = new Proxy(response, {
-      get(response2, key2, _receiver) {
+      get(response2, key2, receiver) {
         async function push_fetched(body2, is_b64) {
           const status_number = Number(response2.status);
           if (isNaN(status_number)) {
@@ -3471,7 +2987,22 @@ function create_universal_fetch(event, state, fetched, csr, resolve_opts) {
             return body2 ? JSON.parse(body2) : void 0;
           };
         }
-        return Reflect.get(response2, key2, response2);
+        const value = Reflect.get(response2, key2, response2);
+        if (value instanceof Function) {
+          return Object.defineProperties(
+            /**
+             * @this {any}
+             */
+            function() {
+              return Reflect.apply(value, this === receiver ? response2 : this, arguments);
+            },
+            {
+              name: { value: value.name },
+              length: { value: value.length }
+            }
+          );
+        }
+        return value;
       }
     });
     if (csr) {
@@ -3714,16 +3245,22 @@ class BaseProvider {
   #style_src_elem_needs_csp;
   /** @type {import('types').CspDirectives} */
   #directives;
-  /** @type {import('types').Csp.Source[]} */
+  /** @type {Set<import('types').Csp.Source>} */
   #script_src;
-  /** @type {import('types').Csp.Source[]} */
+  /** @type {Set<import('types').Csp.Source>} */
   #script_src_elem;
-  /** @type {import('types').Csp.Source[]} */
+  /** @type {Set<import('types').Csp.Source>} */
   #style_src;
-  /** @type {import('types').Csp.Source[]} */
+  /** @type {Set<import('types').Csp.Source>} */
   #style_src_attr;
-  /** @type {import('types').Csp.Source[]} */
+  /** @type {Set<import('types').Csp.Source>} */
   #style_src_elem;
+  /** @type {boolean} */
+  script_needs_nonce;
+  /** @type {boolean} */
+  style_needs_nonce;
+  /** @type {boolean} */
+  script_needs_hash;
   /** @type {string} */
   #nonce;
   /**
@@ -3735,26 +3272,28 @@ class BaseProvider {
     this.#use_hashes = use_hashes;
     this.#directives = directives;
     const d = this.#directives;
-    this.#script_src = [];
-    this.#script_src_elem = [];
-    this.#style_src = [];
-    this.#style_src_attr = [];
-    this.#style_src_elem = [];
+    this.#script_src = /* @__PURE__ */ new Set();
+    this.#script_src_elem = /* @__PURE__ */ new Set();
+    this.#style_src = /* @__PURE__ */ new Set();
+    this.#style_src_attr = /* @__PURE__ */ new Set();
+    this.#style_src_elem = /* @__PURE__ */ new Set();
     const effective_script_src = d["script-src"] || d["default-src"];
     const script_src_elem = d["script-src-elem"];
     const effective_style_src = d["style-src"] || d["default-src"];
     const style_src_attr = d["style-src-attr"];
     const style_src_elem = d["style-src-elem"];
-    const needs_csp = (directive) => !!directive && !directive.some((value) => value === "unsafe-inline");
-    this.#script_src_needs_csp = needs_csp(effective_script_src);
-    this.#script_src_elem_needs_csp = needs_csp(script_src_elem);
-    this.#style_src_needs_csp = needs_csp(effective_style_src);
-    this.#style_src_attr_needs_csp = needs_csp(style_src_attr);
-    this.#style_src_elem_needs_csp = needs_csp(style_src_elem);
+    const style_needs_csp = (directive) => !!directive && !directive.some((value) => value === "unsafe-inline");
+    const script_needs_csp = (directive) => !!directive && (!directive.some((value) => value === "unsafe-inline") || directive.some((value) => value === "strict-dynamic"));
+    this.#script_src_needs_csp = script_needs_csp(effective_script_src);
+    this.#script_src_elem_needs_csp = script_needs_csp(script_src_elem);
+    this.#style_src_needs_csp = style_needs_csp(effective_style_src);
+    this.#style_src_attr_needs_csp = style_needs_csp(style_src_attr);
+    this.#style_src_elem_needs_csp = style_needs_csp(style_src_elem);
     this.#script_needs_csp = this.#script_src_needs_csp || this.#script_src_elem_needs_csp;
     this.#style_needs_csp = this.#style_src_needs_csp || this.#style_src_attr_needs_csp || this.#style_src_elem_needs_csp;
     this.script_needs_nonce = this.#script_needs_csp && !this.#use_hashes;
     this.style_needs_nonce = this.#style_needs_csp && !this.#use_hashes;
+    this.script_needs_hash = this.#script_needs_csp && this.#use_hashes;
     this.#nonce = nonce;
   }
   /** @param {string} content */
@@ -3762,10 +3301,21 @@ class BaseProvider {
     if (!this.#script_needs_csp) return;
     const source = this.#use_hashes ? `sha256-${sha256(content)}` : `nonce-${this.#nonce}`;
     if (this.#script_src_needs_csp) {
-      this.#script_src.push(source);
+      this.#script_src.add(source);
     }
     if (this.#script_src_elem_needs_csp) {
-      this.#script_src_elem.push(source);
+      this.#script_src_elem.add(source);
+    }
+  }
+  /** @param {`sha256-${string}`[]} hashes */
+  add_script_hashes(hashes) {
+    for (const hash2 of hashes) {
+      if (this.#script_src_needs_csp) {
+        this.#script_src.add(hash2);
+      }
+      if (this.#script_src_elem_needs_csp) {
+        this.#script_src_elem.add(hash2);
+      }
     }
   }
   /** @param {string} content */
@@ -3773,19 +3323,19 @@ class BaseProvider {
     if (!this.#style_needs_csp) return;
     const source = this.#use_hashes ? `sha256-${sha256(content)}` : `nonce-${this.#nonce}`;
     if (this.#style_src_needs_csp) {
-      this.#style_src.push(source);
+      this.#style_src.add(source);
     }
     if (this.#style_src_attr_needs_csp) {
-      this.#style_src_attr.push(source);
+      this.#style_src_attr.add(source);
     }
     if (this.#style_src_elem_needs_csp) {
       const sha256_empty_comment_hash = "sha256-9OlNO0DNEeaVzHL4RZwCLsBHA8WBQ8toBp/4F5XV2nc=";
       const d = this.#directives;
-      if (d["style-src-elem"] && !d["style-src-elem"].includes(sha256_empty_comment_hash) && !this.#style_src_elem.includes(sha256_empty_comment_hash)) {
-        this.#style_src_elem.push(sha256_empty_comment_hash);
+      if (d["style-src-elem"] && !d["style-src-elem"].includes(sha256_empty_comment_hash) && !this.#style_src_elem.has(sha256_empty_comment_hash)) {
+        this.#style_src_elem.add(sha256_empty_comment_hash);
       }
       if (source !== sha256_empty_comment_hash) {
-        this.#style_src_elem.push(source);
+        this.#style_src_elem.add(source);
       }
     }
   }
@@ -3795,31 +3345,31 @@ class BaseProvider {
   get_header(is_meta = false) {
     const header = [];
     const directives = { ...this.#directives };
-    if (this.#style_src.length > 0) {
+    if (this.#style_src.size > 0) {
       directives["style-src"] = [
         ...directives["style-src"] || directives["default-src"] || [],
         ...this.#style_src
       ];
     }
-    if (this.#style_src_attr.length > 0) {
+    if (this.#style_src_attr.size > 0) {
       directives["style-src-attr"] = [
         ...directives["style-src-attr"] || [],
         ...this.#style_src_attr
       ];
     }
-    if (this.#style_src_elem.length > 0) {
+    if (this.#style_src_elem.size > 0) {
       directives["style-src-elem"] = [
         ...directives["style-src-elem"] || [],
         ...this.#style_src_elem
       ];
     }
-    if (this.#script_src.length > 0) {
+    if (this.#script_src.size > 0) {
       directives["script-src"] = [
         ...directives["script-src"] || directives["default-src"] || [],
         ...this.#script_src
       ];
     }
-    if (this.#script_src_elem.length > 0) {
+    if (this.#script_src_elem.size > 0) {
       directives["script-src-elem"] = [
         ...directives["script-src-elem"] || [],
         ...this.#script_src_elem
@@ -3893,6 +3443,9 @@ class Csp {
     this.csp_provider = new CspProvider(use_hashes, directives, this.nonce);
     this.report_only_provider = new CspReportOnlyProvider(use_hashes, reportOnly, this.nonce);
   }
+  get script_needs_hash() {
+    return this.csp_provider.script_needs_hash || this.report_only_provider.script_needs_hash;
+  }
   get script_needs_nonce() {
     return this.csp_provider.script_needs_nonce || this.report_only_provider.script_needs_nonce;
   }
@@ -3903,6 +3456,11 @@ class Csp {
   add_script(content) {
     this.csp_provider.add_script(content);
     this.report_only_provider.add_script(content);
+  }
+  /** @param {`sha256-${string}`[]} hashes */
+  add_script_hashes(hashes) {
+    this.csp_provider.add_script_hashes(hashes);
+    this.report_only_provider.add_script_hashes(hashes);
   }
   /** @param {string} content */
   add_style(content) {
@@ -3923,8 +3481,11 @@ function exec(match, params, matchers) {
       buffered = 0;
     }
     if (value === void 0) {
-      if (param.rest) result[param.name] = "";
-      continue;
+      if (param.rest) {
+        value = "";
+      } else {
+        continue;
+      }
     }
     if (!param.matcher || matchers[param.matcher](value)) {
       result[param.name] = value;
@@ -3946,6 +3507,20 @@ function exec(match, params, matchers) {
   }
   if (buffered) return;
   return result;
+}
+function find_route(path, routes, matchers) {
+  for (const route of routes) {
+    const match = route.pattern.exec(path);
+    if (!match) continue;
+    const matched = exec(match, route.params, matchers);
+    if (matched) {
+      return {
+        route,
+        params: decode_params(matched)
+      };
+    }
+  }
+  return null;
 }
 function generate_route_object(route, url, manifest) {
   const { errors, layouts, leaf } = route;
@@ -3978,20 +3553,9 @@ async function resolve_route(resolved_path, url, manifest) {
   if (!manifest._.client.routes) {
     return text("Server-side route resolution disabled", { status: 400 });
   }
-  let route = null;
-  let params = {};
   const matchers = await manifest._.matchers();
-  for (const candidate of manifest._.client.routes) {
-    const match = candidate.pattern.exec(resolved_path);
-    if (!match) continue;
-    const matched = exec(match, candidate.params, matchers);
-    if (matched) {
-      route = candidate;
-      params = decode_params(matched);
-      break;
-    }
-  }
-  return create_server_routing_response(route, params, url, manifest).response;
+  const result = find_route(resolved_path, manifest._.client.routes, matchers);
+  return create_server_routing_response(result?.route ?? null, result?.params ?? {}, url, manifest).response;
 }
 function create_server_routing_response(route, params, url, manifest) {
   const headers2 = new Headers({
@@ -4055,13 +3619,15 @@ async function render_response({
   const stylesheets = new Set(client.stylesheets);
   const fonts = new Set(client.fonts);
   const link_headers = /* @__PURE__ */ new Set();
-  const link_tags = /* @__PURE__ */ new Set();
   const inline_styles = /* @__PURE__ */ new Map();
   let rendered;
   const form_value = action_result?.type === "success" || action_result?.type === "failure" ? action_result.data ?? null : null;
   let base$1 = base;
   let assets$1 = assets;
   let base_expression = s(base);
+  const csp = new Csp(options2.csp, {
+    prerender: !!state.prerendering
+  });
   {
     if (!state.prerendering?.fallback) {
       const segments = event.url.pathname.slice(base.length).split("/").slice(2);
@@ -4109,7 +3675,6 @@ async function render_response({
       form: form_value,
       state: {}
     };
-    override({ base: base$1, assets: assets$1 });
     const render_opts = {
       context: /* @__PURE__ */ new Map([
         [
@@ -4118,34 +3683,53 @@ async function render_response({
             page: props.page
           }
         ]
-      ])
+      ]),
+      csp: csp.script_needs_nonce ? { nonce: csp.nonce } : { hash: csp.script_needs_hash }
     };
-    {
-      try {
-        rendered = with_request_store(
-          { event, state: event_state },
-          () => options2.root.render(props, render_opts)
+    try {
+      if (BROWSER) ;
+      event_state.allows_commands = false;
+      rendered = await with_request_store({ event, state: event_state }, async () => {
+        if (relative) override({ base: base$1, assets: assets$1 });
+        const maybe_promise = options2.root.render(props, render_opts);
+        const rendered2 = options2.async && "then" in maybe_promise ? (
+          /** @type {ReturnType<typeof options.root.render> & Promise<any>} */
+          maybe_promise.then((r) => r)
+        ) : maybe_promise;
+        if (options2.async) {
+          reset();
+        }
+        const { head: head2, html: html2, css, hashes } = (
+          /** @type {ReturnType<typeof options.root.render>} */
+          options2.async ? await rendered2 : rendered2
         );
-      } finally {
-        reset();
-      }
+        if (hashes) {
+          csp.add_script_hashes(hashes.script);
+        }
+        return { head: head2, html: html2, css, hashes };
+      });
+    } finally {
+      reset();
     }
     for (const { node } of branch) {
       for (const url of node.imports) modulepreloads.add(url);
       for (const url of node.stylesheets) stylesheets.add(url);
       for (const url of node.fonts) fonts.add(url);
       if (node.inline_styles && !client.inline) {
-        Object.entries(await node.inline_styles()).forEach(([k, v]) => inline_styles.set(k, v));
+        Object.entries(await node.inline_styles()).forEach(([filename, css]) => {
+          if (typeof css === "string") {
+            inline_styles.set(filename, css);
+            return;
+          }
+          inline_styles.set(filename, css(`${assets$1}/${app_dir}/immutable/assets`, assets$1));
+        });
       }
     }
   } else {
-    rendered = { head: "", html: "", css: { code: "", map: null } };
+    rendered = { head: "", html: "", css: { code: "", map: null }, hashes: { script: [] } };
   }
-  let head = "";
+  const head = new Head(rendered.head, !!state.prerendering);
   let body2 = rendered.html;
-  const csp = new Csp(options2.csp, {
-    prerender: !!state.prerendering
-  });
   const prefixed = (path) => {
     if (path.startsWith("/")) {
       return base + path;
@@ -4155,10 +3739,9 @@ async function render_response({
   const style = client.inline ? client.inline?.style : Array.from(inline_styles.values()).join("\n");
   if (style) {
     const attributes = [];
-    if (csp.style_needs_nonce) attributes.push(` nonce="${csp.nonce}"`);
+    if (csp.style_needs_nonce) attributes.push(`nonce="${csp.nonce}"`);
     csp.add_style(style);
-    head += `
-	<style${attributes.join("")}>${style}</style>`;
+    head.add_style(style, attributes);
   }
   for (const dep of stylesheets) {
     const path = prefixed(dep);
@@ -4170,14 +3753,13 @@ async function render_response({
         link_headers.add(`<${encodeURI(path)}>; rel="preload"; as="style"; nopush`);
       }
     }
-    head += `
-		<link href="${path}" ${attributes.join(" ")}>`;
+    head.add_stylesheet(path, attributes);
   }
   for (const dep of fonts) {
     const path = prefixed(dep);
     if (resolve_opts.preload({ type: "font", path })) {
       const ext = dep.slice(dep.lastIndexOf(".") + 1);
-      link_tags.add(`<link rel="preload" as="font" type="font/${ext}" href="${path}" crossorigin>`);
+      head.add_link_tag(path, ['rel="preload"', 'as="font"', `type="font/${ext}"`, "crossorigin"]);
       link_headers.add(
         `<${encodeURI(path)}>; rel="preload"; as="font"; type="font/${ext}"; crossorigin; nopush`
       );
@@ -4203,16 +3785,11 @@ async function render_response({
       for (const path of included_modulepreloads) {
         link_headers.add(`<${encodeURI(path)}>; rel="modulepreload"; nopush`);
         if (options2.preload_strategy !== "modulepreload") {
-          head += `
-		<link rel="preload" as="script" crossorigin="anonymous" href="${path}">`;
+          head.add_script_preload(path);
         } else {
-          link_tags.add(`<link rel="modulepreload" href="${path}">`);
+          head.add_link_tag(path, ['rel="modulepreload"']);
         }
       }
-    }
-    if (state.prerendering && link_tags.size > 0) {
-      head += Array.from(link_tags).map((tag) => `
-		${tag}`).join("");
     }
     if (manifest._.client.routes && state.prerendering && !state.prerendering.fallback) {
       const pathname = add_resolution_suffix(event.url.pathname);
@@ -4307,12 +3884,15 @@ ${indent}	${hydrate.join(`,
 ${indent}	`)}
 ${indent}}`);
     }
-    const { remote_data } = event_state;
+    const { remote_data: remote_cache } = event_state;
     let serialized_remote_data = "";
-    if (remote_data) {
+    if (remote_cache) {
       const remote = {};
-      for (const key2 in remote_data) {
-        remote[key2] = await remote_data[key2];
+      for (const [info, cache] of remote_cache) {
+        if (!info.id) continue;
+        for (const key2 in cache) {
+          remote[create_remote_key(info.id, key2)] = await cache[key2];
+        }
       }
       const replacer = (thing) => {
         for (const key2 in options2.hooks.transport) {
@@ -4372,16 +3952,14 @@ ${indent}}`);
     "content-type": "text/html"
   });
   if (state.prerendering) {
-    const http_equiv = [];
     const csp_headers = csp.csp_provider.get_meta();
     if (csp_headers) {
-      http_equiv.push(csp_headers);
+      head.add_http_equiv(csp_headers);
     }
     if (state.prerendering.cache) {
-      http_equiv.push(`<meta http-equiv="cache-control" content="${state.prerendering.cache}">`);
-    }
-    if (http_equiv.length > 0) {
-      head = http_equiv.join("\n") + head;
+      head.add_http_equiv(
+        `<meta http-equiv="cache-control" content="${state.prerendering.cache}">`
+      );
     }
   } else {
     const csp_header = csp.csp_provider.get_header();
@@ -4396,9 +3974,8 @@ ${indent}}`);
       headers2.set("link", Array.from(link_headers).join(", "));
     }
   }
-  head += rendered.head;
   const html = options2.templates.app({
-    head,
+    head: head.build(),
     body: body2,
     assets: assets$1,
     nonce: (
@@ -4422,7 +3999,7 @@ ${indent}}`);
       async start(controller) {
         controller.enqueue(text_encoder$1.encode(transformed + "\n"));
         for await (const chunk of chunks) {
-          controller.enqueue(text_encoder$1.encode(chunk));
+          if (chunk.length) controller.enqueue(text_encoder$1.encode(chunk));
         }
         controller.close();
       },
@@ -4432,6 +4009,73 @@ ${indent}}`);
       headers: headers2
     }
   );
+}
+class Head {
+  #rendered;
+  #prerendering;
+  /** @type {string[]} */
+  #http_equiv = [];
+  /** @type {string[]} */
+  #link_tags = [];
+  /** @type {string[]} */
+  #script_preloads = [];
+  /** @type {string[]} */
+  #style_tags = [];
+  /** @type {string[]} */
+  #stylesheet_links = [];
+  /**
+   * @param {string} rendered
+   * @param {boolean} prerendering
+   */
+  constructor(rendered, prerendering) {
+    this.#rendered = rendered;
+    this.#prerendering = prerendering;
+  }
+  build() {
+    return [
+      ...this.#http_equiv,
+      ...this.#link_tags,
+      ...this.#script_preloads,
+      this.#rendered,
+      ...this.#style_tags,
+      ...this.#stylesheet_links
+    ].join("\n		");
+  }
+  /**
+   * @param {string} style
+   * @param {string[]} attributes
+   */
+  add_style(style, attributes) {
+    this.#style_tags.push(
+      `<style${attributes.length ? " " + attributes.join(" ") : ""}>${style}</style>`
+    );
+  }
+  /**
+   * @param {string} href
+   * @param {string[]} attributes
+   */
+  add_stylesheet(href, attributes) {
+    this.#stylesheet_links.push(`<link href="${href}" ${attributes.join(" ")}>`);
+  }
+  /** @param {string} href */
+  add_script_preload(href) {
+    this.#script_preloads.push(
+      `<link rel="preload" as="script" crossorigin="anonymous" href="${href}">`
+    );
+  }
+  /**
+   * @param {string} href
+   * @param {string[]} attributes
+   */
+  add_link_tag(href, attributes) {
+    if (!this.#prerendering) return;
+    this.#link_tags.push(`<link href="${href}" ${attributes.join(" ")}>`);
+  }
+  /** @param {string} tag */
+  add_http_equiv(tag) {
+    if (!this.#prerendering) return;
+    this.#http_equiv.push(tag);
+  }
 }
 class PageNodes {
   data;
@@ -4503,17 +4147,17 @@ class PageNodes {
     return this.#get_option("trailingSlash") ?? "never";
   }
   get_config() {
-    let current = {};
+    let current2 = {};
     for (const node of this.data) {
       if (!node?.universal?.config && !node?.server?.config) continue;
-      current = {
-        ...current,
+      current2 = {
+        ...current2,
         // TODO: should we override the server config value with the universal value similar to other page options?
         ...node?.universal?.config,
         ...node?.server?.config
       };
     }
-    return Object.keys(current).length ? current : void 0;
+    return Object.keys(current2).length ? current2 : void 0;
   }
   should_prerender_data() {
     return this.data.some(
@@ -4618,8 +4262,8 @@ async function handle_remote_call(event, state, options2, manifest, id) {
   return record_span({
     name: "sveltekit.remote.call",
     attributes: {},
-    fn: (current) => {
-      const traced_event = merge_tracing(event, current);
+    fn: (current2) => {
+      const traced_event = merge_tracing(event, current2);
       return with_request_store(
         { event: traced_event, state },
         () => handle_remote_call_internal(traced_event, state, options2, manifest, id)
@@ -4628,7 +4272,7 @@ async function handle_remote_call(event, state, options2, manifest, id) {
   });
 }
 async function handle_remote_call_internal(event, state, options2, manifest, id) {
-  const [hash2, name, prerender_args] = id.split("/");
+  const [hash2, name, additional_args] = id.split("/");
   const remotes = manifest._.remotes;
   if (!remotes[hash2]) error(404);
   const module = await remotes[hash2]();
@@ -4651,21 +4295,10 @@ async function handle_remote_call_internal(event, state, options2, manifest, id)
         );
       }
       const { payloads } = await event.request.json();
-      const args = payloads.map((payload2) => parse_remote_arg(payload2, transport));
-      const get_result = await with_request_store({ event, state }, () => info.run(args));
-      const results = await Promise.all(
-        args.map(async (arg, i) => {
-          try {
-            return { type: "result", data: get_result(arg, i) };
-          } catch (error2) {
-            return {
-              type: "error",
-              error: await handle_error_and_jsonify(event, state, options2, error2),
-              status: error2 instanceof HttpError || error2 instanceof SvelteKitError ? error2.status : 500
-            };
-          }
-        })
+      const args = await Promise.all(
+        payloads.map((payload2) => parse_remote_arg(payload2, transport))
       );
+      const results = await with_request_store({ event, state }, () => info.run(args, options2));
       return json(
         /** @type {RemoteFunctionResponse} */
         {
@@ -4691,21 +4324,19 @@ async function handle_remote_call_internal(event, state, options2, manifest, id)
           )}`
         );
       }
-      const form_data = await event.request.formData();
-      form_client_refreshes = /** @type {string[]} */
-      JSON.parse(
-        /** @type {string} */
-        form_data.get("sveltekit:remote_refreshes") ?? "[]"
-      );
-      form_data.delete("sveltekit:remote_refreshes");
+      const { data: data2, meta, form_data } = await deserialize_binary_form(event.request);
+      form_client_refreshes = meta.remote_refreshes;
+      if (additional_args && !("id" in data2)) {
+        data2.id = JSON.parse(decodeURIComponent(additional_args));
+      }
       const fn2 = info.fn;
-      const data2 = await with_request_store({ event, state }, () => fn2(form_data));
+      const result = await with_request_store({ event, state }, () => fn2(data2, meta, form_data));
       return json(
         /** @type {RemoteFunctionResponse} */
         {
           type: "result",
-          result: stringify(data2, transport),
-          refreshes: await serialize_refreshes(form_client_refreshes)
+          result: stringify(result, transport),
+          refreshes: result.issues ? void 0 : await serialize_refreshes(meta.remote_refreshes)
         }
       );
     }
@@ -4722,7 +4353,7 @@ async function handle_remote_call_internal(event, state, options2, manifest, id)
         }
       );
     }
-    const payload = info.type === "prerender" ? prerender_args : (
+    const payload = info.type === "prerender" ? additional_args : (
       /** @type {string} */
       // new URL(...) necessary because we're hiding the URL from the user in the event object
       new URL(event.request.url).searchParams.get("payload")
@@ -4745,7 +4376,7 @@ async function handle_remote_call_internal(event, state, options2, manifest, id)
         {
           type: "redirect",
           location: error2.location,
-          refreshes: await serialize_refreshes(form_client_refreshes ?? [])
+          refreshes: await serialize_refreshes(form_client_refreshes)
         }
       );
     }
@@ -4769,16 +4400,18 @@ async function handle_remote_call_internal(event, state, options2, manifest, id)
   }
   async function serialize_refreshes(client_refreshes) {
     const refreshes = state.refreshes ?? {};
-    for (const key2 of client_refreshes) {
-      if (refreshes[key2] !== void 0) continue;
-      const [hash3, name2, payload] = key2.split("/");
-      const loader = manifest._.remotes[hash3];
-      const fn2 = (await loader?.())?.default?.[name2];
-      if (!fn2) error(400, "Bad Request");
-      refreshes[key2] = with_request_store(
-        { event, state },
-        () => fn2(parse_remote_arg(payload, transport))
-      );
+    if (client_refreshes) {
+      for (const key2 of client_refreshes) {
+        if (refreshes[key2] !== void 0) continue;
+        const [hash3, name2, payload] = key2.split("/");
+        const loader = manifest._.remotes[hash3];
+        const fn2 = (await loader?.())?.default?.[name2];
+        if (!fn2) error(400, "Bad Request");
+        refreshes[key2] = with_request_store(
+          { event, state },
+          () => fn2(parse_remote_arg(payload, transport))
+        );
+      }
     }
     if (Object.keys(refreshes).length === 0) {
       return void 0;
@@ -4797,8 +4430,8 @@ async function handle_remote_form_post(event, state, manifest, id) {
   return record_span({
     name: "sveltekit.remote.form.post",
     attributes: {},
-    fn: (current) => {
-      const traced_event = merge_tracing(event, current);
+    fn: (current2) => {
+      const traced_event = merge_tracing(event, current2);
       return with_request_store(
         { event: traced_event, state },
         () => handle_remote_form_post_internal(traced_event, state, manifest, id)
@@ -4811,7 +4444,7 @@ async function handle_remote_form_post_internal(event, state, manifest, id) {
   const remotes = manifest._.remotes;
   const module = await remotes[hash2]?.();
   let form = (
-    /** @type {RemoteForm<any>} */
+    /** @type {RemoteForm<any, any>} */
     module?.default[name]
   );
   if (!form) {
@@ -4833,13 +4466,16 @@ async function handle_remote_form_post_internal(event, state, manifest, id) {
     form = with_request_store({ event, state }, () => form.for(JSON.parse(action_id)));
   }
   try {
-    const form_data = await event.request.formData();
     const fn = (
       /** @type {RemoteInfo & { type: 'form' }} */
       /** @type {any} */
       form.__.fn
     );
-    await with_request_store({ event, state }, () => fn(form_data));
+    const { data, meta, form_data } = await deserialize_binary_form(event.request);
+    if (action_id && !("id" in data)) {
+      data.id = JSON.parse(decodeURIComponent(action_id));
+    }
+    await with_request_store({ event, state }, () => fn(data, meta, form_data));
     return {
       type: "success",
       status: 200
@@ -5105,13 +4741,16 @@ async function render_page(event, event_state, page, options2, manifest, state, 
       data_serializer: ssr === false ? server_data_serializer(event, event_state, options2) : data_serializer
     });
   } catch (e) {
+    if (e instanceof Redirect) {
+      return redirect_response(e.status, e.location);
+    }
     return await respond_with_error({
       event,
       event_state,
       options: options2,
       manifest,
       state,
-      status: 500,
+      status: e instanceof HttpError ? e.status : 500,
       error: e,
       resolve_opts
     });
@@ -5441,7 +5080,8 @@ function create_fetch({ event, options: options2, manifest, state, get_cookie_he
         if ((request.method === "GET" || request.method === "HEAD") && (mode === "no-cors" && url.origin !== event.url.origin || url.origin === event.url.origin)) {
           request.headers.delete("origin");
         }
-        if (url.origin !== event.url.origin) {
+        const decoded = decodeURIComponent(url.pathname);
+        if (url.origin !== event.url.origin || base && decoded !== base && !decoded.startsWith(`${base}/`)) {
           if (`.${url.hostname}`.endsWith(`.${event.url.hostname}`) && credentials !== "omit") {
             const cookie = get_cookie_header(url, request.headers.get("cookie"));
             if (cookie) request.headers.set("cookie", cookie);
@@ -5449,7 +5089,6 @@ function create_fetch({ event, options: options2, manifest, state, get_cookie_he
           return fetch(request);
         }
         const prefix = assets || base;
-        const decoded = decodeURIComponent(url.pathname);
         const filename = (decoded.startsWith(prefix) ? decoded.slice(prefix.length) : decoded).slice(1);
         const filename_html = `${filename}/index.html`;
         const is_asset = manifest.assets.has(filename) || filename in manifest._.server_assets;
@@ -5499,8 +5138,8 @@ function create_fetch({ event, options: options2, manifest, state, get_cookie_he
         const response = await internal_fetch(request, options2, manifest, state);
         const set_cookie = response.headers.get("set-cookie");
         if (set_cookie) {
-          for (const str of setCookieExports.splitCookiesString(set_cookie)) {
-            const { name, value, ...options3 } = setCookieExports.parseString(str, {
+          for (const str of splitCookiesString(set_cookie)) {
+            const { name, value, ...options3 } = parseString(str, {
               decodeValues: false
             });
             const path = options3.path ?? (url.pathname.split("/").slice(0, -1).join("/") || "/");
@@ -5616,8 +5255,8 @@ async function internal_respond(request, options2, manifest, state) {
     invalidated_data_nodes = url.searchParams.get(INVALIDATED_PARAM)?.split("").map((node) => node === "1");
     url.searchParams.delete(INVALIDATED_PARAM);
   } else if (remote_id) {
-    url.pathname = base;
-    url.search = "";
+    url.pathname = request.headers.get("x-sveltekit-pathname") ?? base;
+    url.search = request.headers.get("x-sveltekit-search") ?? "";
   }
   const headers2 = {};
   const { cookies, new_cookies, get_cookie_header, set_internal, set_trailing_slash } = get_cookies(
@@ -5630,7 +5269,8 @@ async function internal_respond(request, options2, manifest, state) {
     handleValidationError: options2.hooks.handleValidationError,
     tracing: {
       record_span
-    }
+    },
+    is_in_remote_function: false
   };
   const event = {
     cookies,
@@ -5655,7 +5295,11 @@ async function internal_respond(request, options2, manifest, state) {
             "Use `event.cookies.set(name, value, options)` instead of `event.setHeaders` to set cookies"
           );
         } else if (lower in headers2) {
-          throw new Error(`"${key2}" header is already set`);
+          if (lower === "server-timing") {
+            headers2[lower] += ", " + value;
+          } else {
+            throw new Error(`"${key2}" header is already set`);
+          }
         } else {
           headers2[lower] = value;
           if (state.prerendering && lower === "cache-control") {
@@ -5703,20 +5347,27 @@ async function internal_respond(request, options2, manifest, state) {
   } catch {
     return text("Malformed URI", { status: 400 });
   }
-  if (resolved_path !== url.pathname && !state.prerendering?.fallback && has_prerendered_path(manifest, resolved_path)) {
+  if (
+    // the resolved path has been decoded so it should be compared to the decoded url pathname
+    resolved_path !== decode_pathname(url.pathname) && !state.prerendering?.fallback && has_prerendered_path(manifest, resolved_path)
+  ) {
     const url2 = new URL(request.url);
     url2.pathname = is_data_request ? add_data_suffix(resolved_path) : is_route_resolution_request ? add_resolution_suffix(resolved_path) : resolved_path;
-    const response = await fetch(url2, request);
-    const headers22 = new Headers(response.headers);
-    if (headers22.has("content-encoding")) {
-      headers22.delete("content-encoding");
-      headers22.delete("content-length");
+    try {
+      const response = await fetch(url2, request);
+      const headers22 = new Headers(response.headers);
+      if (headers22.has("content-encoding")) {
+        headers22.delete("content-encoding");
+        headers22.delete("content-length");
+      }
+      return new Response(response.body, {
+        headers: headers22,
+        status: response.status,
+        statusText: response.statusText
+      });
+    } catch (error2) {
+      return await handle_fatal_error(event, event_state, options2, error2);
     }
-    return new Response(response.body, {
-      headers: headers22,
-      status: response.status,
-      statusText: response.statusText
-    });
   }
   let route = null;
   if (base && !state.prerendering?.fallback) {
@@ -5736,18 +5387,13 @@ async function internal_respond(request, options2, manifest, state) {
     headers22.set("cache-control", "public, max-age=0, must-revalidate");
     return text("Not found", { status: 404, headers: headers22 });
   }
-  if (!state.prerendering?.fallback && !remote_id) {
+  if (!state.prerendering?.fallback) {
     const matchers = await manifest._.matchers();
-    for (const candidate of manifest._.routes) {
-      const match = candidate.pattern.exec(resolved_path);
-      if (!match) continue;
-      const matched = exec(match, candidate.params, matchers);
-      if (matched) {
-        route = candidate;
-        event.route = { id: route.id };
-        event.params = decode_params(matched);
-        break;
-      }
+    const result = find_route(resolved_path, manifest._.routes, matchers);
+    if (result) {
+      route = result.route;
+      event.route = { id: route.id };
+      event.params = result.params;
     }
   }
   let resolve_opts = {
@@ -5758,7 +5404,7 @@ async function internal_respond(request, options2, manifest, state) {
   let trailing_slash = "never";
   try {
     const page_nodes = route?.page ? new PageNodes(await load_page_nodes(route.page, manifest)) : void 0;
-    if (route) {
+    if (route && !remote_id) {
       if (url.pathname === base || url.pathname === base + "/") {
         trailing_slash = "always";
       } else if (page_nodes) {
@@ -5825,6 +5471,7 @@ async function internal_respond(request, options2, manifest, state) {
             current: root_span
           }
         };
+        event_state.allows_commands = MUTATIVE_METHODS.includes(request.method);
         return await with_request_store(
           { event: traced_event, state: event_state },
           () => options2.hooks.handle({
@@ -5976,20 +5623,20 @@ async function internal_respond(request, options2, manifest, state) {
               resolve_opts
             );
           } else {
-            const allowed_methods2 = new Set(allowed_page_methods);
+            const allowed_methods = new Set(allowed_page_methods);
             const node = await manifest._.nodes[route.page.leaf]();
             if (node?.server?.actions) {
-              allowed_methods2.add("POST");
+              allowed_methods.add("POST");
             }
             if (method === "OPTIONS") {
               response2 = new Response(null, {
                 status: 204,
                 headers: {
-                  allow: Array.from(allowed_methods2.values()).join(", ")
+                  allow: Array.from(allowed_methods.values()).join(", ")
                 }
               });
             } else {
-              const mod = [...allowed_methods2].reduce(
+              const mod = [...allowed_methods].reduce(
                 (acc, curr) => {
                   acc[curr] = true;
                   return acc;
@@ -6080,6 +5727,7 @@ function filter_env(env, allowed, disallowed) {
 function set_app(value) {
 }
 let init_promise;
+let current = null;
 class Server {
   /** @type {import('types').SSROptions} */
   #options;
@@ -6089,6 +5737,19 @@ class Server {
   constructor(manifest) {
     this.#options = options;
     this.#manifest = manifest;
+    if (IN_WEBCONTAINER) {
+      const respond2 = this.respond.bind(this);
+      this.respond = async (...args) => {
+        const { promise, resolve: resolve2 } = (
+          /** @type {PromiseWithResolvers<void>} */
+          with_resolvers()
+        );
+        const previous = current;
+        current = promise;
+        await previous;
+        return respond2(...args).finally(resolve2);
+      };
+    }
   }
   /**
    * @param {import('@sveltejs/kit').ServerInitOptions} opts

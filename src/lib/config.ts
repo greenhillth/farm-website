@@ -5,6 +5,7 @@ const CONFIG = {
 	api: apiBase,
 	backend: {
 		farm: `${apiBase}/farm`,
+		titles: `${apiBase}/farm/titles`,
 		geojson: `${apiBase}/farm`,
 		weather: `${apiBase}/weather`,
 		currentWeather: `${apiBase}/weather/current`,

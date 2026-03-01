@@ -1,3 +1,4 @@
+const SCHEME = /^[a-z][a-z\d+\-.]+:/i;
 const internal = new URL("sveltekit-internal://");
 function resolve(base, path) {
   if (path[0] === "/" && path[1] === "/") return path;
@@ -29,9 +30,9 @@ function make_trackable(url, callback, search_params_callback, allow_hash = fals
     value: new Proxy(tracked.searchParams, {
       get(obj, key) {
         if (key === "get" || key === "getAll" || key === "has") {
-          return (param) => {
+          return (param, ...rest) => {
             search_params_callback(param);
-            return obj[key](param);
+            return obj[key](param, ...rest);
           };
         }
         callback();
@@ -55,10 +56,10 @@ function make_trackable(url, callback, search_params_callback, allow_hash = fals
     });
   }
   {
-    tracked[Symbol.for("nodejs.util.inspect.custom")] = (depth, opts, inspect) => {
+    tracked[/* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom")] = (depth, opts, inspect) => {
       return inspect(url, opts);
     };
-    tracked.searchParams[Symbol.for("nodejs.util.inspect.custom")] = (depth, opts, inspect) => {
+    tracked.searchParams[/* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom")] = (depth, opts, inspect) => {
       return inspect(url.searchParams, opts);
     };
   }
@@ -89,7 +90,7 @@ function disable_search(url) {
 }
 function allow_nodejs_console_log(url) {
   {
-    url[Symbol.for("nodejs.util.inspect.custom")] = (depth, opts, inspect) => {
+    url[/* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom")] = (depth, opts, inspect) => {
       return inspect(new URL(url), opts);
     };
   }
@@ -158,6 +159,7 @@ const validate_layout_server_exports = validator(valid_layout_server_exports);
 const validate_page_server_exports = validator(valid_page_server_exports);
 const validate_server_exports = validator(valid_server_exports);
 export {
+  SCHEME as S,
   decode_params as a,
   validate_layout_exports as b,
   validate_page_server_exports as c,
