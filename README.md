@@ -19,6 +19,16 @@ npm run lint       # prettier --check + eslint
 npm run format     # prettier --write
 ```
 
+## Tests
+
+```sh
+npx playwright install chromium   # once: the browser for component tests
+npm test                          # unit tests (node) and component tests (Chromium)
+npm run test:coverage             # the same, with a coverage report in coverage/index.html
+```
+
+In VS Code, the Vitest extension shows both test projects in the Testing view, where you can run, debug or run with coverage.
+
 ## Building and running
 
 ```sh
