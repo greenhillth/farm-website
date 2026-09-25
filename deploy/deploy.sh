@@ -28,10 +28,12 @@ env_get() { # env_get KEY: value of KEY in .env, empty if unset
 
 env_set() { # env_set KEY VALUE: replace or append KEY=VALUE in .env
 	local tmp
-	tmp=$(mktemp .env.XXXXXX)
-	awk -v k="$1" 'index($0, k "=") != 1' .env >"$tmp"
-	printf '%s=%s\n' "$1" "$2" >>"$tmp"
-	mv "$tmp" .env
+	tmp=$(mktemp .env.XXXXXX) || return 1
+	if awk -v k="$1" 'index($0, k "=") != 1' .env >"$tmp" && printf '%s=%s\n' "$1" "$2" >>"$tmp" && mv "$tmp" .env; then
+		return 0
+	fi
+	rm -f "$tmp"
+	return 1
 }
 
 container_state() { # healthy | unhealthy | starting | running | restarting | exited | missing

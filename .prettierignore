@@ -9,3 +9,7 @@ bun.lockb
 /static/
 .svelte-kit/
 node_modules/
+
+# Local agent scratch and worktrees (git-ignored)
+.superpowers/sdd/
+.claude/worktrees/
