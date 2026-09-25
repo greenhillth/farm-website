@@ -83,7 +83,7 @@
 	<a
 		href="/weather"
 		aria-label="Back to weather"
-		class="absolute top-3 left-3 z-[1000] flex items-center gap-2 rounded-full border border-border bg-panel/95 px-3 py-2 text-sm text-white shadow-md backdrop-blur hover:bg-panel focus:ring-2 focus:ring-accent/40 focus:outline-none"
+		class="absolute top-3 left-3 z-[1000] flex items-center gap-2 rounded-full border border-border bg-panel/95 px-3 py-2 text-sm text-white shadow-md backdrop-blur transition hover:border-accent/60 hover:bg-panel focus:ring-2 focus:ring-accent/40 focus:outline-none"
 	>
 		<!-- arrow-left icon -->
 		<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="size-5" viewBox="0 0 24 24"

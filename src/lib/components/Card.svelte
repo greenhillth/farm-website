@@ -10,7 +10,7 @@
 
 <a class="group block" {href} aria-label={title}>
 	<article
-		class="relative overflow-hidden rounded-xl border border-border bg-panel shadow-sm transition-transform duration-200 ease-out will-change-transform group-hover:scale-[1.02]"
+		class="relative overflow-hidden rounded-xl border border-border bg-panel shadow-sm transition duration-200 ease-out will-change-transform group-hover:scale-[1.02] group-hover:border-accent group-focus-visible:border-accent"
 	>
 		<!-- Hero -->
 		{#if image}

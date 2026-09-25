@@ -1,8 +1,14 @@
 @import 'tailwindcss';
-/* Tailwind entry (replaces tw.css) */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+
+/* Tailwind colour utilities (text-muted, bg-panel, border-border…) read the :root vars below */
+@theme {
+	--color-bg: rgb(var(--bg));
+	--color-panel: rgb(var(--panel));
+	--color-text: rgb(var(--text));
+	--color-muted: rgb(var(--muted));
+	--color-accent: rgb(var(--accent));
+	--color-border: rgb(var(--border));
+}
 
 /* Keep Leaflet typography consistent if you use it */
 .leaflet-container {
