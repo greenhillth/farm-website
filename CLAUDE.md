@@ -53,6 +53,16 @@ Backend API contracts that the frontend expects are written up in the root markd
 - Svelte 5 runes (`$props`, `$state`) are used in newer components (`+layout.svelte`, `src/lib/components/`). Some pages, like `weather/`, still use Svelte 4 `export let`. Use runes for new code.
 - Tailwind 4 runs through `@tailwindcss/vite` and has no JS config. The custom palette (`bg`, `panel`, `text`, `muted`, `border`, `accent`) is an `@theme` block in `src/app.css` that reads the `:root` RGB-triplet vars. Change colours there, in one place.
 
+## Deployment
+
+Production runs the Docker image `ghcr.io/greenhillth/farm-website:<tag>` on the on-site Ubuntu server behind cloudflared. The runbook is `deploy/README.md`.
+
+- Releases are `vX.Y.Z` tags on `main` whose `package.json` `version` matches (`scripts/check-release.sh`). The `release` workflow pushes the image and creates a GitHub Release. Merging to `main` never deploys.
+- Tom deploys on the server with `/opt/farm-website/deploy.sh vX.Y.Z`, which health-checks and rolls back automatically. `deploy/test/run-tests.sh` tests it locally (needs Docker).
+- **Never** push tags, force-push, change branch protection or GHCR settings, or run anything on the server unless Tom explicitly asks for that step in the current conversation.
+- Runtime config (`ORIGIN`, `BACKEND_ORIGIN`, `BODY_SIZE_LIMIT`) belongs in the server's `.env`, never in the image or the repo.
+- Work goes on feature branches and into `main` by PR. CI (`checks`, `container`) must pass.
+
 ## SDD Tooling
 
 For Subagent-Driven Development (SDD) task execution:
