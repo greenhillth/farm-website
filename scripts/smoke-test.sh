@@ -118,6 +118,10 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -H "Origin: https://evil.example" 
 	-F "file=@$TMP/big.csv;type=text/csv" "$APP/api/soil-tests/import")
 if [ "$code" = 403 ]; then pass "cross-site upload -> 403"; else fail "cross-site upload -> $code (want 403)"; fi
 
+code=$(curl -s -o "$TMP/chunked.json" -w '%{http_code}' -H "Origin: $APP" \
+	-H 'Transfer-Encoding: chunked' --data-binary "@$TMP/big.csv" "$APP/api/soil-tests/import")
+if [ "$code" = 200 ]; then pass "chunked upload -> 200"; else fail "chunked upload -> $code: $(cat "$TMP/chunked.json")"; fi
+
 if [ "$FAILED" -ne 0 ]; then
 	if [ -f "$TMP/app.log" ]; then cat "$TMP/app.log"; fi
 	if [ -n "$CID" ]; then docker logs "$CID"; fi

@@ -6,13 +6,31 @@ import type { RequestHandler } from './$types';
 const backendBase = () =>
 	(env.BACKEND_ORIGIN ?? `http://localhost:${env.BACKEND_PORT ?? '8000'}`).replace(/\/+$/, '');
 
+// Hop-by-hop headers (RFC 7230 §6.1) describe this leg of the connection, not the request, so
+// they must not be forwarded; undici's fetch() throws on several of them (transfer-encoding,
+// keep-alive, upgrade) rather than ignoring them. "host" and "expect" are dropped for the same
+// reason (curl sends "Expect: 100-continue" on large bodies, which undici also rejects).
+const HOP_BY_HOP_HEADERS = [
+	'host',
+	'expect',
+	'connection',
+	'keep-alive',
+	'proxy-connection',
+	'te',
+	'trailer',
+	'transfer-encoding',
+	'upgrade'
+];
+
 const proxy: RequestHandler = async ({ request, fetch, url }) => {
 	const targetUrl = `${backendBase()}${url.pathname}${url.search}`;
 	const headers = new Headers(request.headers);
-	headers.delete('host');
-	// undici's fetch() doesn't support forwarding "expect" (curl sends "Expect: 100-continue"
-	// on large multipart bodies); dropping it is safe since the body is already buffered below.
-	headers.delete('expect');
+	// A "Connection" header can name additional per-connection headers to strip; the body is
+	// already buffered below, so dropping any of these (including transfer-encoding) is safe.
+	const named = (headers.get('connection') ?? '').split(',').map((name) => name.trim());
+	for (const name of [...HOP_BY_HOP_HEADERS, ...named]) {
+		if (name) headers.delete(name);
+	}
 
 	const init: RequestInit = {
 		method: request.method,
