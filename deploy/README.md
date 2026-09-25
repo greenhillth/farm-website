@@ -10,7 +10,7 @@ Releases are `vX.Y.Z` tags on `main`. Merging to `main` never deploys.
 git switch -c release/v1.2.0 origin/main
 npm version 1.2.0 --no-git-tag-version
 git commit -am "Release v1.2.0"
-gh pr create --fill          # merge once CI (checks, container) is green
+gh pr create --fill          # merge once CI (checks, container, deploy-tests) is green
 git fetch origin
 git tag v1.2.0 origin/main
 git push origin v1.2.0       # runs the release workflow

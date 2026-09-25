@@ -61,7 +61,7 @@ Production runs the Docker image `ghcr.io/greenhillth/farm-website:<tag>` on the
 - Tom deploys on the server with `/opt/farm-website/deploy.sh vX.Y.Z`, which health-checks and rolls back automatically. `deploy/test/run-tests.sh` tests it locally (needs Docker).
 - **Never** push tags, force-push, change branch protection or GHCR settings, or run anything on the server unless Tom explicitly asks for that step in the current conversation.
 - Runtime config (`ORIGIN`, `BACKEND_ORIGIN`, `BODY_SIZE_LIMIT`) belongs in the server's `.env`, never in the image or the repo.
-- Work goes on feature branches and into `main` by PR. CI (`checks`, `container`) must pass.
+- Work goes on feature branches and into `main` by PR. CI (`checks`, `container`, `deploy-tests`) must pass.
 
 ## SDD Tooling
 
