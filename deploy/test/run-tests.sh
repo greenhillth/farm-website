@@ -57,7 +57,9 @@ for v in v1.0.0 v1.0.1 v1.0.3 v1.0.4 v1.0.5; do
 	docker build -q --build-arg VERSION=$v -t "$REPO:$v" -f "$HERE/fixture.Dockerfile" "$HERE" >/dev/null
 done
 printf 'FROM %s\nCMD ["false"]\n' "$REPO:v1.0.1" | docker build -q -t "$REPO:v1.0.2" - >/dev/null
-for v in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5; do
+# v1.0.6 can't even start (missing entrypoint), so `docker compose up` itself fails.
+printf 'FROM %s\nENTRYPOINT ["/nonexistent"]\n' "$REPO:v1.0.1" | docker build -q -t "$REPO:v1.0.6" - >/dev/null
+for v in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6; do
 	docker push -q "$REPO:$v" >/dev/null
 	docker rmi "$REPO:$v" >/dev/null # deploy.sh must pull from the registry
 done
@@ -66,9 +68,16 @@ A=$(new_site a)
 
 echo "--- 1: malformed tags are rejected before any pull"
 for bad in 1.0.1 v1.0 latest; do
-	if "$A/deploy.sh" "$bad" >/dev/null 2>&1; then fail "accepted '$bad'"; else pass "rejected '$bad'"; fi
+	if out=$("$A/deploy.sh" "$bad" 2>&1); then
+		fail "accepted '$bad'"
+	elif echo "$out" | grep -q "not a release tag" && ! echo "$out" | grep -q Pulling; then
+		pass "rejected '$bad' before pulling"
+	else
+		fail "'$bad' not rejected by the tag check: $out"
+	fi
 done
 if [ -z "$(env_val "$A" IMAGE_TAG)" ]; then pass ".env untouched"; else fail ".env IMAGE_TAG changed"; fi
+if [ ! -f "$A/deploy.log" ]; then pass "nothing logged"; else fail "deploy.log: $(cat "$A/deploy.log")"; fi
 
 echo "--- 2: first deploy, run by absolute path from another directory"
 if (cd / && "$A/deploy.sh" v1.0.0); then pass "deployed v1.0.0"; else fail "deploy v1.0.0 exited non-zero"; fi
@@ -105,6 +114,16 @@ B=$(new_site b)
 if "$B/deploy.sh" v1.0.2 >/dev/null 2>&1; then fail "broken first deploy reported success"; else pass "broken first deploy failed"; fi
 state=$(cd "$B" && docker inspect -f '{{.State.Status}}' "$(docker compose ps -a -q web)" 2>/dev/null || echo missing)
 if [ "$state" != running ] && [ "$state" != restarting ]; then pass "nothing running ($state)"; else fail "container is $state"; fi
+if [ -z "$(env_val "$B" IMAGE_TAG)" ]; then pass ".env IMAGE_TAG cleared"; else fail ".env IMAGE_TAG is $(env_val "$B" IMAGE_TAG), want empty"; fi
+if grep -q "none -> v1.0.2 FAILED, no previous release; stopped" "$B/deploy.log"; then pass "logged failed first deploy"; else fail "deploy.log: $(cat "$B/deploy.log" 2>/dev/null)"; fi
+(cd "$B" && docker compose down >/dev/null 2>&1)
+
+echo "--- 10: failed compose up rolls back"
+C=$(new_site c)
+"$C/deploy.sh" v1.0.5 >/dev/null || fail "deploy v1.0.5"
+if "$C/deploy.sh" v1.0.6 >/dev/null 2>&1; then fail "unstartable v1.0.6 reported success"; else pass "unstartable v1.0.6 failed"; fi
+if [ "$(served)" = v1.0.5 ] && [ "$(env_val "$C" IMAGE_TAG)" = v1.0.5 ]; then pass "rolled back to v1.0.5"; else fail "after failed up: serving $(served), .env $(env_val "$C" IMAGE_TAG)"; fi
+if grep -q "v1.0.5 -> v1.0.6 FAILED, rolled back to v1.0.5" "$C/deploy.log"; then pass "logged rollback"; else fail "deploy.log: $(cat "$C/deploy.log" 2>/dev/null)"; fi
 
 if [ "$FAILED" -ne 0 ]; then
 	echo "deploy tests FAILED"

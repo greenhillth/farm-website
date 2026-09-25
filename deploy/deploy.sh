@@ -58,9 +58,8 @@ wait_healthy() { # wait_healthy PORT: 0 once the container is healthy and / answ
 	return 1
 }
 
-switch_to() { # switch_to TAG
-	env_set IMAGE_TAG "$1"
-	docker compose up -d --remove-orphans
+switch_to() { # switch_to TAG: non-zero if compose couldn't start it (callers treat that as unhealthy)
+	env_set IMAGE_TAG "$1" && docker compose up -d --remove-orphans
 }
 
 prune_images() { # prune_images REPO KEEP_A KEEP_B: keep the newest KEEP_IMAGES tags plus KEEP_A and KEEP_B
@@ -102,8 +101,7 @@ echo "Pulling $REPO:$TAG"
 docker pull "$REPO:$TAG" || die "pull failed; nothing changed (still on ${PREVIOUS:-nothing})"
 
 echo "Switching ${PREVIOUS:-nothing} -> $TAG"
-switch_to "$TAG"
-if wait_healthy "$PORT"; then
+if switch_to "$TAG" && wait_healthy "$PORT"; then
 	log "${PREVIOUS:-none} -> $TAG ok"
 	prune_images "$REPO" "$TAG" "$PREVIOUS"
 	echo "Deployed $TAG"
@@ -115,6 +113,7 @@ docker compose logs --tail 30 web >&2 || true
 
 if [ -z "$PREVIOUS" ]; then
 	docker compose stop web || true
+	env_set IMAGE_TAG "" # the broken tag must not become PREVIOUS for the next deploy
 	log "none -> $TAG FAILED, no previous release; stopped"
 	die "no previous release to roll back to; container stopped"
 fi
@@ -124,8 +123,7 @@ if [ "$PREVIOUS" = "$TAG" ]; then
 fi
 
 echo "Rolling back to $PREVIOUS" >&2
-switch_to "$PREVIOUS"
-if wait_healthy "$PORT"; then
+if switch_to "$PREVIOUS" && wait_healthy "$PORT"; then
 	log "$PREVIOUS -> $TAG FAILED, rolled back to $PREVIOUS"
 	die "rolled back to $PREVIOUS"
 fi
