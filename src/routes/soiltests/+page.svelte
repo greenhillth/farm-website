@@ -704,6 +704,7 @@
 				return state.direction === 'desc' ? -compare : compare;
 			});
 		}
+		if (state.type !== 'metric') return copy;
 		return copy.sort((a, b) => {
 			const aRaw = a.metrics[state.key];
 			const bRaw = b.metrics[state.key];

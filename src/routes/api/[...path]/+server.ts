@@ -26,7 +26,13 @@ const proxy: RequestHandler = async ({ request, params, fetch, url }) => {
 		init.body = body;
 	}
 
-	const response = await fetch(targetUrl, init);
+	let response: Response;
+	try {
+		response = await fetch(targetUrl, init);
+	} catch (err) {
+		console.error(`[api proxy] ${request.method} ${targetUrl} failed`, err);
+		return new Response('Backend unavailable', { status: 502 });
+	}
 
 	return new Response(response.body, {
 		status: response.status,
