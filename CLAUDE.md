@@ -19,9 +19,12 @@ npm start              # node build (PORT env, adapter-node default 3000); start
 npm run check          # svelte-kit sync + svelte-check (type checking)
 npm run lint           # prettier --check + eslint
 npm run format         # prettier --write
+npm test               # vitest: every test project, once
+npm run test:watch     # vitest in watch mode
+npm run test:coverage  # tests plus v8 coverage into coverage/ (html, lcov)
 ```
 
-There's no unit test suite. `scripts/smoke-test.sh --local` (after `npm run build`) starts the built app against a stub backend (`scripts/stub-backend.mjs`) and checks the pages, `/api` proxying, CSRF and the upload size limit. `--image <ref>` does the same for a Docker image. `deploy/test/run-tests.sh` tests `deploy/deploy.sh` against a throwaway local registry (needs Docker, about a minute), and `scripts/test/check-release.test.sh` tests the release-tag check. CI runs all of these. Check UI changes in a browser as well.
+Unit tests use Vitest (`npm test`), configured in `vite.config.ts`. The `server` project runs `src/**/*.test.ts` in node with `TZ=Australia/Melbourne` (the farm's time zone; CI runners use UTC, which hides local-time date bugs). Tests marked `it.fails` pin known bugs: when you fix one, remove `.fails`. `scripts/smoke-test.sh --local` (after `npm run build`) starts the built app against a stub backend (`scripts/stub-backend.mjs`) and checks the pages, `/api` proxying, CSRF and the upload size limit. `--image <ref>` does the same for a Docker image. `deploy/test/run-tests.sh` tests `deploy/deploy.sh` against a throwaway local registry (needs Docker, about a minute), and `scripts/test/check-release.test.sh` tests the release-tag check. CI runs all of these. Check UI changes in a browser as well.
 
 `npm run lint` has a backlog of ESLint errors (mostly `no-explicit-any`, missing `{#each}` keys, and `href`s not wrapped in `resolve()`). Don't let new code add to it.
 
