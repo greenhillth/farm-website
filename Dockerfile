@@ -8,6 +8,8 @@ COPY . .
 RUN npm run build
 
 FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+LABEL org.opencontainers.image.title="farm-website" \
+      org.opencontainers.image.description="Farm management frontend (SvelteKit, adapter-node)"
 WORKDIR /app
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
 COPY package.json package-lock.json .npmrc ./

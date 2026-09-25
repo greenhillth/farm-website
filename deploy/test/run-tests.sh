@@ -6,8 +6,9 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 DEPLOY_DIR=$(dirname "$HERE")
 REG_PORT=${REG_PORT:-5055}
 TEST_PORT=${TEST_PORT:-4987}
-REPO=localhost:$REG_PORT/farm-deploy-test
-REG_NAME=farm-deploy-test-registry
+REPO=localhost:$REG_PORT/farm-website-test-fixture
+REG_NAME=farm-website-test-registry
+TEST_LABEL="farm-website.test=deploy"
 export HEALTH_TIMEOUT=${HEALTH_TIMEOUT:-20}
 WORK=$(mktemp -d)
 FAILED=0
@@ -27,6 +28,10 @@ cleanup() {
 	for ref in $(docker images "$REPO" --format '{{.Repository}}:{{.Tag}}'); do
 		docker rmi "$ref" >/dev/null 2>&1 || true
 	done
+	# Belt-and-suspenders: anything else the tests labelled that wasn't caught above.
+	for cid in $(docker ps -aq --filter "label=$TEST_LABEL" 2>/dev/null); do
+		docker rm -f "$cid" >/dev/null 2>&1 || true
+	done
 	rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -36,7 +41,7 @@ new_site() { # new_site NAME -> prints the path of a fresh deploy dir with an em
 	mkdir -p "$dir"
 	cp "$DEPLOY_DIR/compose.yml" "$DEPLOY_DIR/deploy.sh" "$dir/"
 	cat >"$dir/.env" <<EOF
-COMPOSE_PROJECT_NAME=farmdeploytest-$1
+COMPOSE_PROJECT_NAME=farm-website-test-$1
 IMAGE_REPO=$REPO
 IMAGE_TAG=
 HOST_PORT=$TEST_PORT
@@ -48,7 +53,7 @@ env_val() { grep "^$2=" "$1/.env" | cut -d= -f2-; }
 served() { curl -fsS "http://127.0.0.1:$TEST_PORT/" 2>/dev/null || echo "(nothing)"; }
 
 echo "--- building fixtures"
-docker run -d --name "$REG_NAME" -p "127.0.0.1:$REG_PORT:5000" registry:2 >/dev/null
+docker run -d --name "$REG_NAME" --label "$TEST_LABEL" -p "127.0.0.1:$REG_PORT:5000" registry:2 >/dev/null
 ready=0
 for _ in $(seq 1 20); do
 	if curl -fs "http://127.0.0.1:$REG_PORT/v2/" >/dev/null; then
@@ -64,16 +69,16 @@ fi
 
 build_pids=
 for v in v1.0.0 v1.0.1 v1.0.3 v1.0.4 v1.0.5; do
-	docker build -q --build-arg VERSION=$v -t "$REPO:$v" -f "$HERE/fixture.Dockerfile" "$HERE" >/dev/null &
+	docker build -q --label "$TEST_LABEL" --build-arg VERSION=$v -t "$REPO:$v" -f "$HERE/fixture.Dockerfile" "$HERE" >/dev/null &
 	build_pids="$build_pids $!"
 done
 for pid in $build_pids; do wait "$pid"; done
 
 # v1.0.2 and v1.0.6 are FROM v1.0.1, which just finished building above.
-printf 'FROM %s\nCMD ["false"]\n' "$REPO:v1.0.1" | docker build -q -t "$REPO:v1.0.2" - >/dev/null &
+printf 'FROM %s\nCMD ["false"]\n' "$REPO:v1.0.1" | docker build -q --label "$TEST_LABEL" -t "$REPO:v1.0.2" - >/dev/null &
 v102_pid=$!
 # v1.0.6 can't even start (missing entrypoint), so `docker compose up` itself fails.
-printf 'FROM %s\nENTRYPOINT ["/nonexistent"]\n' "$REPO:v1.0.1" | docker build -q -t "$REPO:v1.0.6" - >/dev/null &
+printf 'FROM %s\nENTRYPOINT ["/nonexistent"]\n' "$REPO:v1.0.1" | docker build -q --label "$TEST_LABEL" -t "$REPO:v1.0.6" - >/dev/null &
 v106_pid=$!
 wait "$v102_pid"
 wait "$v106_pid"

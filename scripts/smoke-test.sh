@@ -74,7 +74,9 @@ case "$MODE" in
 	# 0.0.0.0 so the container can reach the stub through the Docker host gateway
 	STUB_HOST=0.0.0.0 STUB_PORT=$STUB_PORT node scripts/stub-backend.mjs &
 	STUB_PID=$!
-	CID=$(docker run -d -p "127.0.0.1:$APP_PORT:3000" \
+	docker rm -f farm-website-smoke >/dev/null 2>&1 || true
+	CID=$(docker run -d --name farm-website-smoke --label farm-website.test=smoke \
+		-p "127.0.0.1:$APP_PORT:3000" \
 		--add-host host.docker.internal:host-gateway \
 		-e ORIGIN="$APP" -e BACKEND_ORIGIN="http://host.docker.internal:$STUB_PORT" \
 		-e BODY_SIZE_LIMIT=25M "$IMAGE")
