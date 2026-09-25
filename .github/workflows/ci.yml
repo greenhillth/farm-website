@@ -26,7 +26,8 @@ jobs:
       - run: npx prettier --check .
       - run: npm run build
       - run: scripts/smoke-test.sh --local
-      - run: shellcheck scripts/*.sh deploy/deploy.sh deploy/test/run-tests.sh
+      - run: shellcheck scripts/*.sh scripts/test/*.sh deploy/deploy.sh deploy/test/run-tests.sh
+      - run: scripts/test/check-release.test.sh
       - name: ESLint (non-blocking until the backlog is cleared)
         continue-on-error: true
         run: |
