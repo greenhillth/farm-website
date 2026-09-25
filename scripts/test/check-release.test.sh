@@ -29,9 +29,13 @@ echo '{"name":"x","version":"1.1.0"}' >package.json
 git commit -qam two
 git tag v1.1.0
 git switch -q main
+echo '{"name":"x","version":"1.0.0-rc1"}' >package.json
+git commit -qam rc
+git tag v1.0.0-rc1
 
 expect pass "tag on main with matching version" -- "$CHECK" v1.0.0 main
 expect fail "version mismatch" -- "$CHECK" v1.0.1 main
+expect fail "prerelease tag (not vX.Y.Z)" -- "$CHECK" v1.0.0-rc1 main
 expect fail "tag not on main" -- "$CHECK" v1.1.0 main
 expect fail "malformed tag" -- "$CHECK" 1.0.0 main
 expect fail "unknown tag" -- "$CHECK" v9.9.9 main
