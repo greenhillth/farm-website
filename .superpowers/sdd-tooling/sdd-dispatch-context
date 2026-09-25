@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Generate SDD dispatch context blocks to reduce subagent friction.
+# Usage: bash sdd-dispatch-context [--env|--commands|--conventions]
+# Omit flag to print all three blocks.
+set -euo pipefail
+
+FLAG="${1:-all}"
+
+if [[ "$FLAG" == "all" || "$FLAG" == "--env" ]]; then
+cat << 'EOF'
+**Environment (pre-configured, no setup needed):**
+- Node 24 LTS is installed and on PATH
+- npm, docker, git, bash are available globally
+- No .nvm sourcing needed — just run commands
+- All paths work as absolute or relative to working directory
+- Do NOT attempt to install/configure tools
+
+EOF
+fi
+
+if [[ "$FLAG" == "all" || "$FLAG" == "--commands" ]]; then
+cat << 'EOF'
+**Command execution rules:**
+- Run commands directly: `npm run build`, `npx prettier`, `docker build`, etc.
+- Do NOT wrap in temporary shell scripts
+- Do NOT check tool availability before running them
+- Report test output (stdout/stderr) inline in your report
+
+EOF
+fi
+
+if [[ "$FLAG" == "all" || "$FLAG" == "--conventions" ]]; then
+cat << 'EOF'
+**Project conventions (from CLAUDE.md, all current):**
+- Frontend: SvelteKit 2 + adapter-node, Node 24 LTS pinned
+- Commands: `npm ci` (not npm install), `npm run build`, `npm run check`
+- Formatting: Prettier (tabs, width 100, plugins for Svelte/Tailwind)
+- Commit trailer: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`
+EOF
+fi

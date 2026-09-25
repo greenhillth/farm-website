@@ -53,6 +53,20 @@ Backend API contracts that the frontend expects are written up in the root markd
 - Svelte 5 runes (`$props`, `$state`) are used in newer components (`+layout.svelte`, `src/lib/components/`). Some pages, like `weather/`, still use Svelte 4 `export let`. Use runes for new code.
 - Tailwind 4 runs through `@tailwindcss/vite` and has no JS config. The custom palette (`bg`, `panel`, `text`, `muted`, `border`, `accent`) is an `@theme` block in `src/app.css` that reads the `:root` RGB-triplet vars. Change colours there, in one place.
 
+## SDD Tooling
+
+For Subagent-Driven Development (SDD) task execution:
+
+- **Dispatch context tool:** `.superpowers/sdd-tooling/sdd-dispatch-context`
+  - Generates pre-configured environment, command execution, and project convention blocks
+  - Reduces subagent friction by 10–15% per task (eliminates setup questions)
+  - Use: `bash .superpowers/sdd-tooling/sdd-dispatch-context` and paste output into dispatch
+  - Skill reference: `.superpowers/sdd-tooling/SKILL.md`
+
+- **Handoff documents:** `docs/superpowers/handoffs/` contains task handovers (e.g., `2026-09-25-deployment-pipeline-task5-7.md`)
+  - Includes resumption instructions and tooling guidance
+  - Use when continuing a plan from a prior session
+
 ## Dependencies
 
 - TypeScript is pinned to `~6.0`. SvelteKit, svelte-check and typescript-eslint don't support TS 7 yet, so don't bump it until their peer ranges allow it.
