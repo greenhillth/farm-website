@@ -1,0 +1,14 @@
+{
+	"recommendations": [
+		"svelte.svelte-vscode",
+		"esbenp.prettier-vscode",
+		"dbaeumer.vscode-eslint",
+		"bradlc.vscode-tailwindcss",
+		"vitest.explorer",
+		"ms-azuretools.vscode-containers",
+		"docker.docker",
+		"github.vscode-github-actions",
+		"timonwong.shellcheck"
+	],
+	"unwantedRecommendations": ["firsttris.vscode-jest-runner", "formulahendry.code-runner"]
+}
