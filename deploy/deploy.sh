@@ -48,12 +48,14 @@ wait_healthy() { # wait_healthy PORT: 0 once the container is healthy and / answ
 	local waited=0 state
 	while [ "$waited" -lt "$HEALTH_TIMEOUT" ]; do
 		state=$(container_state)
-		if [ "$state" = healthy ] && curl -fsS -o /dev/null "http://127.0.0.1:$1/"; then
+		if [ "$state" = healthy ] && curl -fsS --max-time 5 -o /dev/null "http://127.0.0.1:$1/"; then
 			return 0
 		fi
-		if [ "$state" = unhealthy ]; then return 1; fi
-		sleep 2
-		waited=$((waited + 2))
+		case "$state" in
+		unhealthy | exited | dead | restarting) return 1 ;;
+		esac
+		sleep 1
+		waited=$((waited + 1))
 	done
 	return 1
 }

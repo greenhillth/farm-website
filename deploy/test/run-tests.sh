@@ -49,18 +49,42 @@ served() { curl -fsS "http://127.0.0.1:$TEST_PORT/" 2>/dev/null || echo "(nothin
 
 echo "--- building fixtures"
 docker run -d --name "$REG_NAME" -p "127.0.0.1:$REG_PORT:5000" registry:2 >/dev/null
+ready=0
 for _ in $(seq 1 20); do
-	if curl -fs "http://127.0.0.1:$REG_PORT/v2/" >/dev/null; then break; fi
+	if curl -fs "http://127.0.0.1:$REG_PORT/v2/" >/dev/null; then
+		ready=1
+		break
+	fi
 	sleep 1
 done
+if [ "$ready" -ne 1 ]; then
+	echo "FAIL registry did not start on port $REG_PORT"
+	exit 1
+fi
+
+build_pids=
 for v in v1.0.0 v1.0.1 v1.0.3 v1.0.4 v1.0.5; do
-	docker build -q --build-arg VERSION=$v -t "$REPO:$v" -f "$HERE/fixture.Dockerfile" "$HERE" >/dev/null
+	docker build -q --build-arg VERSION=$v -t "$REPO:$v" -f "$HERE/fixture.Dockerfile" "$HERE" >/dev/null &
+	build_pids="$build_pids $!"
 done
-printf 'FROM %s\nCMD ["false"]\n' "$REPO:v1.0.1" | docker build -q -t "$REPO:v1.0.2" - >/dev/null
+for pid in $build_pids; do wait "$pid"; done
+
+# v1.0.2 and v1.0.6 are FROM v1.0.1, which just finished building above.
+printf 'FROM %s\nCMD ["false"]\n' "$REPO:v1.0.1" | docker build -q -t "$REPO:v1.0.2" - >/dev/null &
+v102_pid=$!
 # v1.0.6 can't even start (missing entrypoint), so `docker compose up` itself fails.
-printf 'FROM %s\nENTRYPOINT ["/nonexistent"]\n' "$REPO:v1.0.1" | docker build -q -t "$REPO:v1.0.6" - >/dev/null
+printf 'FROM %s\nENTRYPOINT ["/nonexistent"]\n' "$REPO:v1.0.1" | docker build -q -t "$REPO:v1.0.6" - >/dev/null &
+v106_pid=$!
+wait "$v102_pid"
+wait "$v106_pid"
+
+push_pids=
 for v in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6; do
-	docker push -q "$REPO:$v" >/dev/null
+	docker push -q "$REPO:$v" >/dev/null &
+	push_pids="$push_pids $!"
+done
+for pid in $push_pids; do wait "$pid"; done
+for v in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6; do
 	docker rmi "$REPO:$v" >/dev/null # deploy.sh must pull from the registry
 done
 
