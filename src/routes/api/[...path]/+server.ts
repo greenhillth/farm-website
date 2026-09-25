@@ -1,20 +1,18 @@
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 
-const resolveBackendBase = () =>
-	env.BACKEND_ORIGIN ?? `http://localhost:${env.BACKEND_PORT ?? '8000'}`;
+// Forwards /api/* to the backend with the path unchanged (gbros-api's routes include /api),
+// matching the dev proxy in vite.config.ts and handleFetch in hooks.server.ts.
+const backendBase = () =>
+	(env.BACKEND_ORIGIN ?? `http://localhost:${env.BACKEND_PORT ?? '8000'}`).replace(/\/+$/, '');
 
-const buildTargetUrl = (path: string, search: string) => {
-	const base = resolveBackendBase().replace(/\/$/, '');
-	const safePath = path.replace(/^\/+/, '');
-	const pathname = safePath ? `/${safePath}` : '';
-	return `${base}${pathname}${search}`;
-};
-
-const proxy: RequestHandler = async ({ request, params, fetch, url }) => {
-	const targetUrl = buildTargetUrl(params.path ?? '', url.search);
+const proxy: RequestHandler = async ({ request, fetch, url }) => {
+	const targetUrl = `${backendBase()}${url.pathname}${url.search}`;
 	const headers = new Headers(request.headers);
 	headers.delete('host');
+	// undici's fetch() doesn't support forwarding "expect" (curl sends "Expect: 100-continue"
+	// on large multipart bodies); dropping it is safe since the body is already buffered below.
+	headers.delete('expect');
 
 	const init: RequestInit = {
 		method: request.method,

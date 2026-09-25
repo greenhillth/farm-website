@@ -21,7 +21,7 @@ npm run lint           # prettier --check + eslint
 npm run format         # prettier --write
 ```
 
-There are no tests. Check UI changes by running the dev server with the backend up and viewing the page in a browser.
+There's no unit test suite. `scripts/smoke-test.sh --local` (after `npm run build`) starts the built app against a stub backend (`scripts/stub-backend.mjs`) and checks the pages, `/api` proxying, CSRF and the upload size limit. `--image <ref>` does the same for a Docker image. Check UI changes in a browser as well.
 
 `npm run lint` has a backlog of ESLint errors (mostly `no-explicit-any`, missing `{#each}` keys, and `href`s not wrapped in `resolve()`). Don't let new code add to it.
 
@@ -32,7 +32,7 @@ Every backend call goes through a relative `/api/...` path. The full list of end
 Three layers forward `/api` to the backend, and which one applies depends on how the app is running:
 
 1. **Dev**: `vite.config.ts` `server.proxy` sends `/api` to `http://localhost:8000` before SvelteKit sees the request.
-2. **Production (node build), browser requests**: `src/routes/api/[...path]/+server.ts` is a catch-all proxy for all methods to `BACKEND_ORIGIN`, falling back to `http://localhost:${BACKEND_PORT ?? 8000}`. It strips the `/api` prefix only because the route param excludes it, so backend paths are `/<path>`, not `/api/<path>`. Keep this in mind when you compare with the dev proxy, which keeps the `/api` prefix.
+2. **Production (node build), browser requests**: `src/routes/api/[...path]/+server.ts` is a catch-all proxy for all methods. It forwards `/api/<path>?<query>` unchanged to `BACKEND_ORIGIN` (default `http://localhost:${BACKEND_PORT ?? 8000}`), so `BACKEND_ORIGIN` is a bare origin with no `/api` suffix. It returns 502 if the backend is unreachable. Request bodies are capped by adapter-node's `BODY_SIZE_LIMIT` (the default 512K is too small for CSV imports, so production sets 25M).
 3. **Server-side `fetch` in load functions**: `src/hooks.server.ts` `handleFetch` rewrites same-origin `/api/*` to `BACKEND_ORIGIN` (default `http://127.0.0.1:8000`), keeping the full path, and adds `x-forwarded-*` headers.
 
 `BACKEND_ORIGIN` and `BACKEND_PORT` are runtime env vars read through `$env/dynamic/private`.
