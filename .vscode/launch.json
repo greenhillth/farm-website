@@ -1,0 +1,38 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Dev server (debug server code)",
+			"type": "node-terminal",
+			"request": "launch",
+			"command": "npm run dev",
+			"cwd": "${workspaceFolder}",
+			"serverReadyAction": {
+				"pattern": "ready in",
+				"action": "startDebugging",
+				"name": "Chrome: localhost:4001"
+			}
+		},
+		{
+			"name": "Chrome: localhost:4001",
+			"type": "chrome",
+			"request": "launch",
+			"url": "http://localhost:4001",
+			"webRoot": "${workspaceFolder}"
+		},
+		{
+			"name": "Built app (node build)",
+			"type": "node",
+			"request": "launch",
+			"program": "${workspaceFolder}/build/index.js",
+			"preLaunchTask": "build",
+			"env": {
+				"PORT": "3000",
+				"ORIGIN": "http://localhost:3000",
+				"BACKEND_ORIGIN": "http://localhost:8000",
+				"BODY_SIZE_LIMIT": "25M"
+			},
+			"skipFiles": ["<node_internals>/**"]
+		}
+	]
+}

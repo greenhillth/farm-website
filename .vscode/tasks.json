@@ -1,0 +1,79 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build",
+			"type": "npm",
+			"script": "build",
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "check",
+			"type": "shell",
+			"command": "npx svelte-kit sync && npx svelte-check --tsconfig ./tsconfig.json --output machine",
+			"problemMatcher": {
+				"owner": "svelte-check",
+				"fileLocation": ["relative", "${workspaceFolder}"],
+				"pattern": {
+					"regexp": "^\\d+\\s+(ERROR|WARNING)\\s+\"(.+?)\"\\s+(\\d+):(\\d+)\\s+\"(.*)\"$",
+					"severity": 1,
+					"file": 2,
+					"line": 3,
+					"column": 4,
+					"message": 5
+				}
+			}
+		},
+		{
+			"label": "lint",
+			"type": "shell",
+			"command": "npx eslint .",
+			"problemMatcher": "$eslint-stylish"
+		},
+		{
+			"label": "test: coverage",
+			"type": "npm",
+			"script": "test:coverage",
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "smoke test (local)",
+			"type": "shell",
+			"command": "scripts/smoke-test.sh --local",
+			"dependsOn": "build",
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "deploy tests",
+			"type": "shell",
+			"command": "deploy/test/run-tests.sh",
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "release-check tests",
+			"type": "shell",
+			"command": "scripts/test/check-release.test.sh",
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "docker: build image",
+			"type": "shell",
+			"command": "docker build -t farm-website:local .",
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "docker: smoke test image",
+			"type": "shell",
+			"command": "scripts/smoke-test.sh --image farm-website:local",
+			"dependsOn": "docker: build image",
+			"group": "test",
+			"problemMatcher": []
+		}
+	]
+}

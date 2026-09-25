@@ -56,6 +56,10 @@ Backend API contracts that the frontend expects are written up in the root markd
 - Svelte 5 runes (`$props`, `$state`) are used in newer components (`+layout.svelte`, `src/lib/components/`). Some pages, like `weather/`, still use Svelte 4 `export let`. Use runes for new code.
 - Tailwind 4 runs through `@tailwindcss/vite` and has no JS config. The custom palette (`bg`, `panel`, `text`, `muted`, `border`, `accent`) is an `@theme` block in `src/app.css` that reads the `:root` RGB-triplet vars. Change colours there, in one place.
 
+## Editor (VS Code)
+
+`.vscode/` holds the shared editor setup: `settings.json`, `extensions.json` (recommendations), `launch.json` and `tasks.json`. Everything else in `.vscode/` is git-ignored, so personal settings belong in your user settings. The Vitest extension shows both test projects in the Testing view and runs them with coverage. `launch.json` debugs the Vite dev server (it opens Chrome on `:4001` once Vite is ready) or the built app. `tasks.json` runs svelte-check (errors land in the Problems panel), ESLint, the smoke, deploy and release-check tests, and the Docker image build and smoke test.
+
 ## Deployment
 
 Production runs the Docker image `ghcr.io/greenhillth/farm-website:<tag>` on the on-site Ubuntu server behind cloudflared. The runbook is `deploy/README.md`.
