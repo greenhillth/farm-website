@@ -51,7 +51,7 @@ Triggers: `pull_request`, and `push` to `main`.
 2. **Blocking:** `npm run check`, `npx prettier --check .`, `npm run build`.
 3. **Non-blocking:** `npx eslint .` with `continue-on-error: true`. It writes the error count to the job summary. Once the backlog reaches 0, removing `continue-on-error` makes it blocking.
 4. **Blocking:** `shellcheck deploy/deploy.sh`.
-5. **Blocking container smoke test:** `docker build` the image, run it with `ORIGIN=http://localhost:3000` and an unreachable `BACKEND_ORIGIN`, and wait for the healthcheck. Then assert that `/`, `/map`, `/soiltests` and `/weather` return 200, and `/api/farm` returns 502.
+5. **Blocking smoke tests:** `scripts/smoke-test.sh` starts a stub backend (`scripts/stub-backend.mjs`) that echoes each request's method, path and size. It runs against both `node build` (`--local`, in the `checks` job) and the built image (`--image`, in the `container` job). It asserts that `/`, `/map`, `/soiltests`, `/weather` and `/weather/outdoor` return 200, that `/api/...` reaches the backend with the `/api` prefix and query string intact, that a 1 MB same-origin multipart upload returns 200, and that a cross-site upload returns 403. For the image it also checks that the container is healthy and runs as `node`.
 
 ### `.github/workflows/release.yml`
 
@@ -77,6 +77,10 @@ Monthly and grouped (one PR per ecosystem) for `npm`, `github-actions` and `dock
 - **HEALTHCHECK:** `wget -qO- http://127.0.0.1:3000/ >/dev/null` (interval 10s, 3 retries).
 - `.dockerignore` excludes `node_modules`, `build`, `.svelte-kit`, `.git`, `.env*`, `docs` and `eg`.
 
+### 3a. `/api` proxy fix (prerequisite)
+
+gbros-api's routes all start with `/api/`, and the Vite dev proxy and `hooks.server.ts` `handleFetch` both forward the full path. `src/routes/api/[...path]/+server.ts` stripped the `/api` prefix, which made the correct `BACKEND_ORIGIN` depend on which code path handled the request. The route must forward `url.pathname` + `url.search` unchanged. The smoke test pins this behaviour.
+
 ### Server layout: `/opt/farm-website/`
 
 These files are copied once from the repo's `deploy/` directory:
@@ -87,7 +91,8 @@ These files are copied once from the repo's `deploy/` directory:
   - `IMAGE_REPO` (optional; defaults to `ghcr.io/greenhillth/farm-website`, and is only overridden for testing)
   - `HOST_PORT`, which must match cloudflared's target (confirmed during cutover)
   - `ORIGIN=https://farm.greenhill.net.au`. This is required: SvelteKit's CSRF check otherwise rejects multipart CSV uploads through `/api` with a 403.
-  - `BACKEND_ORIGIN=http://host.docker.internal:8000`
+  - `BACKEND_ORIGIN=http://host.docker.internal:8000`, a bare origin. The `/api` proxy forwards paths unchanged (see §3a).
+  - `BODY_SIZE_LIMIT=25M`. adapter-node's default of 512K would reject larger CSV uploads.
 - `deploy.sh` and `deploy.log`.
 
 ### `deploy/deploy.sh`
@@ -106,7 +111,7 @@ Usage: `deploy.sh <vX.Y.Z>` or `deploy.sh --status`.
 
 ### Pre-cutover testing (local, needs Docker)
 
-Start a throwaway local registry (`registry:2` on `localhost:5000`), push locally built test images to it, and run `deploy.sh` with `IMAGE_REPO=localhost:5000/farm-website`, covering:
+Start a throwaway local registry (`registry:2` on `localhost:5055`; macOS AirPlay occupies 5000), push locally built test images to it, and run `deploy.sh` with `IMAGE_REPO=localhost:5000/farm-website`, covering:
 
 - a good tag, which deploys and reports healthy
 - a nonexistent tag, which fails at pull and leaves the running container untouched
