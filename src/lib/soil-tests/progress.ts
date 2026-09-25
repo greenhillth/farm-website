@@ -1,13 +1,7 @@
 export const CSV_PROGRESS_EVENT_NAME = 'farm:csv-import-progress';
 
 export type CsvProgressStage =
-	| 'idle'
-	| 'uploading'
-	| 'queued'
-	| 'parsing'
-	| 'importing'
-	| 'complete'
-	| 'error';
+	'idle' | 'uploading' | 'queued' | 'parsing' | 'importing' | 'complete' | 'error';
 
 export type CsvProgressState = {
 	visible: boolean;

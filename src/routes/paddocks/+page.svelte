@@ -172,8 +172,8 @@
 </script>
 
 <header class="container mx-auto flex items-center justify-between gap-4 px-4 py-4">
-	<a href="/" class="text-muted text-sm hover:text-white">&larr; Back to home</a>
-	<div class="text-muted text-xs">Paddock Manager</div>
+	<a href="/" class="text-sm text-muted hover:text-white">&larr; Back to home</a>
+	<div class="text-xs text-muted">Paddock Manager</div>
 </header>
 
 <main class="container mx-auto space-y-5 px-4 pb-8">
@@ -182,19 +182,19 @@
 			<input
 				placeholder="Search by name or ID…"
 				bind:value={q}
-				class="border-border focus:ring-accent/40 w-full max-w-md rounded-md border bg-white/5 px-3 py-2 text-sm outline-none focus:ring-2"
+				class="w-full max-w-md rounded-md border border-border bg-white/5 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/40"
 			/>
-			<a href="/map" class="text-muted text-sm hover:text-white">Open map →</a>
+			<a href="/map" class="text-sm text-muted hover:text-white">Open map →</a>
 		</div>
 
 		{#if loading}
-			<div class="text-muted text-sm">Loading paddocks…</div>
+			<div class="text-sm text-muted">Loading paddocks…</div>
 		{:else if error}
 			<div class="text-sm text-red-400">{error}</div>
 		{:else}
 			<div class="overflow-x-auto">
 				<table class="w-full text-sm">
-					<thead class="text-muted border-border/60 border-b text-left">
+					<thead class="border-b border-border/60 text-left text-muted">
 						<tr>
 							<th class="py-2 pr-4">Name</th>
 							<th class="py-2 pr-4">ID</th>
@@ -206,13 +206,13 @@
 					</thead>
 					<tbody>
 						{#each filtered as p}
-							<tr class="border-border/40 border-b hover:bg-white/5">
+							<tr class="border-b border-border/40 hover:bg-white/5">
 								<td class="py-2 pr-4">
 									<div class="flex items-center gap-2">
 										<span class="font-medium text-white">{p.name}</span>
 										{#if p.centroid}
 											<a
-												class="text-muted text-xs underline hover:text-white"
+												class="text-xs text-muted underline hover:text-white"
 												href={`/map?metric=OM#${encodeURIComponent(p.name)}`}
 											>
 												View on map
@@ -253,7 +253,7 @@
 
 	<div class="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
 		<Panel title="Recent Notes">
-			<ul class="text-muted list-disc space-y-1 pl-5 text-sm">
+			<ul class="list-disc space-y-1 pl-5 text-sm text-muted">
 				<li>South paddock: inspect fence line</li>
 				<li>North ridge: soil sampling next week</li>
 				<li>Creek paddock: spot spray blackberry regrowth</li>
@@ -261,7 +261,7 @@
 		</Panel>
 
 		<Panel title="Upcoming Tasks">
-			<ul class="text-muted list-disc space-y-1 pl-5 text-sm">
+			<ul class="list-disc space-y-1 pl-5 text-sm text-muted">
 				<li>Fertilize OM trial plots (Friday)</li>
 				<li>Check troughs in Top Flat</li>
 			</ul>

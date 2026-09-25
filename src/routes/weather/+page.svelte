@@ -52,7 +52,7 @@
 </script>
 
 <header class="container mx-auto flex items-center justify-between gap-4 px-4 py-4">
-	<a href="/" class="text-muted text-sm hover:text-white">&larr; Back to home</a>
+	<a href="/" class="text-sm text-muted hover:text-white">&larr; Back to home</a>
 	<div class="flex items-center gap-3 text-xs">
 		<div class="text-muted">Reported {secondsAgo}s ago</div>
 		<span
@@ -71,24 +71,24 @@
 			<Panel title="Outdoor" className="h-full">
 				<div class="grid grid-cols-2 gap-4">
 					<div>
-						<div class="text-muted mb-1 text-xs">Temperature</div>
+						<div class="mb-1 text-xs text-muted">Temperature</div>
 						<div class="text-3xl font-semibold">
 							{fmt(w.outdoor.temp)}<span class="align-top text-base"> °C</span>
 						</div>
-						<div class="text-muted mt-1 text-xs">
+						<div class="mt-1 text-xs text-muted">
 							{arrow(w.outdoor.trend)}
 							{fmt(Math.abs(w.outdoor.trend))} °C/hr
 						</div>
-						<div class="text-muted mt-1 text-xs">↗ 12.7 °C ↘ 4.9 °C</div>
-						<div class="text-accent mt-1 text-xs">VPD {fmt(w.outdoor.vpd, 3)} kPa</div>
+						<div class="mt-1 text-xs text-muted">↗ 12.7 °C ↘ 4.9 °C</div>
+						<div class="mt-1 text-xs text-accent">VPD {fmt(w.outdoor.vpd, 3)} kPa</div>
 					</div>
 					<div>
-						<div class="text-muted mb-1 text-xs">Humidity</div>
+						<div class="mb-1 text-xs text-muted">Humidity</div>
 						<div class="text-3xl font-semibold">
 							{w.outdoor.humidity}<span class="align-top text-base"> %</span>
 						</div>
-						<div class="text-muted mt-1 text-xs">Feels Like {fmt(w.outdoor.feelsLike)} °C</div>
-						<div class="text-muted mt-1 text-xs">Dew Point {fmt(w.outdoor.dewPoint)} °C</div>
+						<div class="mt-1 text-xs text-muted">Feels Like {fmt(w.outdoor.feelsLike)} °C</div>
+						<div class="mt-1 text-xs text-muted">Dew Point {fmt(w.outdoor.dewPoint)} °C</div>
 					</div>
 				</div>
 			</Panel>
@@ -98,22 +98,22 @@
 			<Panel title="Indoor" className="h-full">
 				<div class="grid grid-cols-2 gap-4">
 					<div>
-						<div class="text-muted mb-1 text-xs">Temperature</div>
+						<div class="mb-1 text-xs text-muted">Temperature</div>
 						<div class="text-3xl font-semibold">
 							{fmt(w.indoor.temp)}<span class="align-top text-base"> °C</span>
 						</div>
-						<div class="text-muted mt-1 text-xs">
+						<div class="mt-1 text-xs text-muted">
 							{arrow(w.indoor.trend)}
 							{fmt(Math.abs(w.indoor.trend))} °C/hr
 						</div>
-						<div class="text-muted mt-1 text-xs">↗ 14.6 °C ↘ 11.6 °C</div>
+						<div class="mt-1 text-xs text-muted">↗ 14.6 °C ↘ 11.6 °C</div>
 					</div>
 					<div>
-						<div class="text-muted mb-1 text-xs">Humidity</div>
+						<div class="mb-1 text-xs text-muted">Humidity</div>
 						<div class="text-3xl font-semibold">
 							{w.indoor.humidity}<span class="align-top text-base"> %</span>
 						</div>
-						<div class="text-muted mt-1 text-xs">↗ 64 % ↘ 56 %</div>
+						<div class="mt-1 text-xs text-muted">↗ 64 % ↘ 56 %</div>
 					</div>
 				</div>
 			</Panel>
@@ -123,20 +123,20 @@
 			<Panel title="Solar and UVI" className="h-full">
 				<div class="grid grid-cols-2 gap-4">
 					<div>
-						<div class="text-muted text-xs">{w.solar.moon}</div>
+						<div class="text-xs text-muted">{w.solar.moon}</div>
 						<div class="mt-2">
-							<div class="text-muted mb-1 text-xs">Solar</div>
+							<div class="mb-1 text-xs text-muted">Solar</div>
 							<div class="text-3xl font-semibold">
 								{fmt(w.solar.solar)}<span class="align-top text-base"> W/m²</span>
 							</div>
-							<div class="text-muted mt-1 text-xs">↗ 828.9 W/m²</div>
+							<div class="mt-1 text-xs text-muted">↗ 828.9 W/m²</div>
 						</div>
 					</div>
 					<div>
-						<div class="text-muted mb-1 text-xs">UVI</div>
+						<div class="mb-1 text-xs text-muted">UVI</div>
 						<div class="text-3xl font-semibold">{w.solar.uvi}</div>
-						<div class="text-muted mt-4 text-xs">☀ Sun Rise {w.solar.sunrise}</div>
-						<div class="text-muted text-xs">☀ Sun Set {w.solar.sunset}</div>
+						<div class="mt-4 text-xs text-muted">☀ Sun Rise {w.solar.sunrise}</div>
+						<div class="text-xs text-muted">☀ Sun Set {w.solar.sunset}</div>
 					</div>
 				</div>
 			</Panel>
@@ -146,13 +146,13 @@
 			<Panel title="Rainfall" className="h-full">
 				<div class="grid grid-cols-2 gap-4">
 					<div>
-						<div class="text-muted mb-1 text-xs">Rain Rate /hr</div>
+						<div class="mb-1 text-xs text-muted">Rain Rate /hr</div>
 						<div class="text-3xl font-semibold">
 							{fmt(w.rain.rate)}<span class="align-top text-base"> mm</span>
 						</div>
-						<div class="text-muted mt-2 text-xs">Daily {fmt(w.rain.daily)} mm</div>
+						<div class="mt-2 text-xs text-muted">Daily {fmt(w.rain.daily)} mm</div>
 					</div>
-					<div class="text-muted space-y-1 text-xs">
+					<div class="space-y-1 text-xs text-muted">
 						<div>Event <span class="text-green-400">{fmt(w.rain.event)} mm</span></div>
 						<div>Hourly {fmt(w.rain.hourly)} mm</div>
 						<div>Weekly {fmt(w.rain.weekly)} mm</div>
@@ -173,7 +173,7 @@
 								cx="60"
 								cy="60"
 								r="54"
-								class="stroke-border fill-transparent"
+								class="fill-transparent stroke-border"
 								stroke-width="2"
 							/>
 							<text x="60" y="64" text-anchor="middle" class="fill-white text-3xl font-semibold"
@@ -189,7 +189,7 @@
 							</g>
 						</svg>
 					</div>
-					<div class="text-muted text-sm">
+					<div class="text-sm text-muted">
 						<div class="text-lg font-semibold text-white">Wind {fmt(w.wind.speed)} m/s</div>
 						<div>
 							↗ {fmt(w.wind.speed * 3.6)} km/h <span class="text-xs">{w.wind.timeSpeed}</span>
@@ -207,26 +207,26 @@
 			<Panel title="Pressure" className="h-full">
 				<div class="grid grid-cols-2 gap-4">
 					<div>
-						<div class="text-muted mb-1 text-xs">Relative</div>
+						<div class="mb-1 text-xs text-muted">Relative</div>
 						<div class="text-3xl font-semibold">
 							{fmt(w.pressure.rel, 1)}<span class="align-top text-base"> hPa</span>
 						</div>
-						<div class="text-muted mt-1 text-xs">
+						<div class="mt-1 text-xs text-muted">
 							{arrow(w.pressure.deltaRel)}
 							{fmt(Math.abs(w.pressure.deltaRel), 1)} hPa
 						</div>
-						<div class="text-muted mt-1 text-xs">↗ 994.2 hPa ↘ 990.1 hPa</div>
+						<div class="mt-1 text-xs text-muted">↗ 994.2 hPa ↘ 990.1 hPa</div>
 					</div>
 					<div>
-						<div class="text-muted mb-1 text-xs">Absolute</div>
+						<div class="mb-1 text-xs text-muted">Absolute</div>
 						<div class="text-3xl font-semibold">
 							{fmt(w.pressure.abs, 1)}<span class="align-top text-base"> hPa</span>
 						</div>
-						<div class="text-muted mt-1 text-xs">
+						<div class="mt-1 text-xs text-muted">
 							{arrow(w.pressure.deltaAbs)}
 							{fmt(Math.abs(w.pressure.deltaAbs), 1)} hPa
 						</div>
-						<div class="text-muted mt-1 text-xs">↗ 994.2 hPa ↘ 990.1 hPa</div>
+						<div class="mt-1 text-xs text-muted">↗ 994.2 hPa ↘ 990.1 hPa</div>
 					</div>
 				</div>
 			</Panel>

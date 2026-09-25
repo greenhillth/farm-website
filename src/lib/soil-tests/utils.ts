@@ -93,9 +93,7 @@ export async function fetchSoilTests(): Promise<FetchSoilTestsResult> {
 	const paddockLookup = new Map<number, { name: string; farm?: string }>();
 	for (const feature of paddocksJson?.features ?? []) {
 		const props = feature?.properties ?? {};
-		const id = normalisePaddockId(
-			props.fieldID ?? props.ADSFLDID ?? props.FIELDID ?? props.id
-		);
+		const id = normalisePaddockId(props.fieldID ?? props.ADSFLDID ?? props.FIELDID ?? props.id);
 		if (id === undefined) continue;
 		const name = String(props.fieldName ?? props.FIELDNAME ?? 'Unnamed paddock');
 		const farm = props.FARM ? String(props.FARM) : undefined;

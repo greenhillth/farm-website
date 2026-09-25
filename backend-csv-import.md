@@ -5,36 +5,40 @@ This document captures the complete backend requirements for the soil test CSV w
 ## 1. API surface
 
 ### `POST /api/soil-tests/import`
+
 - **Purpose**: accept the CSV file, create an import job, and return the initial progress payload.
 - **Request**: `multipart/form-data` containing a `file` field (CSV). Optional query `onDuplicate=skip|replace` (default `skip`).
 - **Response**: `202 Accepted` with a JSON envelope:
   ```json
   {
-    "jobId": "5d6c902f-a5c0-4f3e-9651-968db4974fc5",
-    "stage": "queued",
-    "percent": 10,
-    "message": "Upload received. Waiting to start parsing…",
-    "detail": null,
-    "inserted": 0,
-    "skipped": 0,
-    "totalRows": null,
-    "processedRows": 0,
-    "pollAfterMs": 2000
+  	"jobId": "5d6c902f-a5c0-4f3e-9651-968db4974fc5",
+  	"stage": "queued",
+  	"percent": 10,
+  	"message": "Upload received. Waiting to start parsing…",
+  	"detail": null,
+  	"inserted": 0,
+  	"skipped": 0,
+  	"totalRows": null,
+  	"processedRows": 0,
+  	"pollAfterMs": 2000
   }
   ```
 - **Failure codes**: `400` (malformed CSV/params), `413` (file too large), `500` (storage or job queue failure).
 
 ### `GET /api/soil-tests/import/{jobId}/status`
+
 - **Purpose**: expose the progress bar snapshot used by the frontend poller.
 - **Response**: `200 OK` with the same shape as above plus `lastUpdated` (ISO timestamp). Return `404` for unknown IDs, or `410 Gone` if the job record has been purged.
 - Optional headers: `Cache-Control: no-store` and `Retry-After: {pollAfterMs}` to guide polling cadence.
 
-### `DELETE /api/soil-tests/import/{jobId}` *(optional)*
+### `DELETE /api/soil-tests/import/{jobId}` _(optional)_
+
 - Cancels an in-flight job. Reply with `202 Accepted` when the cancellation request is enqueued, `404` if the job is unknown, `409` when the job already completed.
 
 ## 2. CSV ingestion rules
 
 ### 2.1 Expected headers
+
 The frontend now ships `static/samples/soil-tests.csv` as the canonical template:
 
 ```
@@ -47,6 +51,7 @@ id_sample,fieldID,sample_date,client,grower,crop,name_sample,P,olsen_P,K,Ca,Mg,S
 - **Optional qualifiers**: `client`, `grower`, `crop` (safe to omit).
 
 ### 2.2 Date handling
+
 - Accept both ISO strings and Excel serial day counts (e.g. `45888`).
 - Conversion algorithm:
   ```python
@@ -66,12 +71,13 @@ id_sample,fieldID,sample_date,client,grower,crop,name_sample,P,olsen_P,K,Ca,Mg,S
 - Store dates as ISO `YYYY-MM-DD` strings in SQLite.
 
 ### 2.3 Validation checklist
+
 1. Fail with `400` if the CSV has zero data rows.
 2. Coerce `fieldID` and `id_sample` to integers; reject non-integers.
 3. Trim text columns; treat empty strings as `NULL` for optional fields.
 4. Convert numeric columns with `float()` (skip commas/units). Blank cells remain `NULL`.
 5. Ensure at least one metric (core or optional) is non-null before persisting each row. Skipped rows should be reported in the progress summary.
-6. Deduplicate according to `onDuplicate` policy: 
+6. Deduplicate according to `onDuplicate` policy:
    - `skip` → ignore rows whose `(fieldID, id_sample)` already exist.
    - `replace` → overwrite by deleting matching rows before insert.
 
@@ -92,20 +98,21 @@ id_sample,fieldID,sample_date,client,grower,crop,name_sample,P,olsen_P,K,Ca,Mg,S
 ## 4. SQLite persistence
 
 ### 4.1 Soil test table
+
 Recommended columns (types use SQLite affinity):
 
-| Column              | Type    | Notes                                          |
-| ------------------- | ------- | ---------------------------------------------- |
-| `id`                | INTEGER | Primary key, autoincrement.                    |
-| `field_id`          | INTEGER | References paddock table.                      |
-| `sample_id`         | INTEGER | Lab ID (`id_sample`).                          |
-| `sample_name`       | TEXT    | `name_sample`.                                 |
-| `sample_date`       | TEXT    | ISO `YYYY-MM-DD`.                              |
-| `client`            | TEXT    | Optional.                                      |
-| `grower`            | TEXT    | Optional.                                      |
-| `crop`              | TEXT    | Optional.                                      |
-| `created_at`        | TEXT    | Timestamp inserted.                            |
-| Metric columns      | REAL    | `P`, `K`, `Ca`, `Mg`, `S`, `Na`, `ph_water`, plus the optional metrics listed above.
+| Column         | Type    | Notes                                                                                |
+| -------------- | ------- | ------------------------------------------------------------------------------------ |
+| `id`           | INTEGER | Primary key, autoincrement.                                                          |
+| `field_id`     | INTEGER | References paddock table.                                                            |
+| `sample_id`    | INTEGER | Lab ID (`id_sample`).                                                                |
+| `sample_name`  | TEXT    | `name_sample`.                                                                       |
+| `sample_date`  | TEXT    | ISO `YYYY-MM-DD`.                                                                    |
+| `client`       | TEXT    | Optional.                                                                            |
+| `grower`       | TEXT    | Optional.                                                                            |
+| `crop`         | TEXT    | Optional.                                                                            |
+| `created_at`   | TEXT    | Timestamp inserted.                                                                  |
+| Metric columns | REAL    | `P`, `K`, `Ca`, `Mg`, `S`, `Na`, `ph_water`, plus the optional metrics listed above. |
 
 Add a unique index on `(field_id, sample_id)` to back the duplicate policy.
 

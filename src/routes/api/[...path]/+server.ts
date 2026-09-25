@@ -1,7 +1,8 @@
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 
-const resolveBackendBase = () => env.BACKEND_ORIGIN ?? `http://localhost:${env.BACKEND_PORT ?? '8000'}`;
+const resolveBackendBase = () =>
+	env.BACKEND_ORIGIN ?? `http://localhost:${env.BACKEND_PORT ?? '8000'}`;
 
 const buildTargetUrl = (path: string, search: string) => {
 	const base = resolveBackendBase().replace(/\/$/, '');

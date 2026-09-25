@@ -11,32 +11,32 @@
 	const w = data.w;
 	const history = Array.isArray(data.history) ? data.history : [];
 
-        const metricFields = {
-                outdoor: ['temp_c', 'humidity_pct'],
-                indoor: [],
-                solar: ['solar_wm2'],
-                rain: ['rain_1h_mm', 'rain_24h_mm'],
-                wind: ['wind_avg_ms', 'wind_gust_ms', 'wind_dir_deg'],
-                pressure: ['pressure_hpa'],
-                battery: []
-        } as const satisfies Partial<Record<string, (keyof WeatherHistoryRow)[]>>;
+	const metricFields = {
+		outdoor: ['temp_c', 'humidity_pct'],
+		indoor: [],
+		solar: ['solar_wm2'],
+		rain: ['rain_1h_mm', 'rain_24h_mm'],
+		wind: ['wind_avg_ms', 'wind_gust_ms', 'wind_dir_deg'],
+		pressure: ['pressure_hpa'],
+		battery: []
+	} as const satisfies Partial<Record<string, (keyof WeatherHistoryRow)[]>>;
 
-        const metricKey = metric as keyof typeof metricFields;
-        const selectedFields: (keyof WeatherHistoryRow)[] =
-                metricFields[metricKey] ?? ([] as (keyof WeatherHistoryRow)[]);
-        const timestampColumn: keyof WeatherHistoryRow = 'timestamp_utc';
-        const baseColumns: (keyof WeatherHistoryRow)[] = selectedFields.length
-                ? [timestampColumn, ...selectedFields]
-                : [timestampColumn];
-        const dynamicColumns: (keyof WeatherHistoryRow)[] =
-                history.length && typeof history[0] === 'object'
-                        ? (Object.keys(history[0]) as (keyof WeatherHistoryRow)[]).filter(
-                                  (key) => key !== timestampColumn
-                          )
-                        : [];
-        const columns: (keyof WeatherHistoryRow)[] = selectedFields.length
-                ? baseColumns
-                : [timestampColumn, ...dynamicColumns];
+	const metricKey = metric as keyof typeof metricFields;
+	const selectedFields: (keyof WeatherHistoryRow)[] =
+		metricFields[metricKey] ?? ([] as (keyof WeatherHistoryRow)[]);
+	const timestampColumn: keyof WeatherHistoryRow = 'timestamp_utc';
+	const baseColumns: (keyof WeatherHistoryRow)[] = selectedFields.length
+		? [timestampColumn, ...selectedFields]
+		: [timestampColumn];
+	const dynamicColumns: (keyof WeatherHistoryRow)[] =
+		history.length && typeof history[0] === 'object'
+			? (Object.keys(history[0]) as (keyof WeatherHistoryRow)[]).filter(
+					(key) => key !== timestampColumn
+				)
+			: [];
+	const columns: (keyof WeatherHistoryRow)[] = selectedFields.length
+		? baseColumns
+		: [timestampColumn, ...dynamicColumns];
 	const rangeHours = Math.max(1, Math.round((data.range.to - data.range.from) / 3600));
 
 	const parseUtc = (value: string) => {
@@ -47,7 +47,7 @@
 		return new Date(stamped);
 	};
 
-        const formatValue = (key: keyof WeatherHistoryRow, value: unknown) => {
+	const formatValue = (key: keyof WeatherHistoryRow, value: unknown) => {
 		if (value === null || value === undefined) return '';
 		if (key === 'timestamp_utc' && typeof value === 'string') {
 			const parsed = parseUtc(value);
@@ -83,7 +83,7 @@
 	<a
 		href="/weather"
 		aria-label="Back to weather"
-		class="border-border bg-panel/95 hover:bg-panel focus:ring-accent/40 absolute top-3 left-3 z-[1000] flex items-center gap-2 rounded-full border px-3 py-2 text-sm text-white shadow-md backdrop-blur focus:ring-2 focus:outline-none"
+		class="absolute top-3 left-3 z-[1000] flex items-center gap-2 rounded-full border border-border bg-panel/95 px-3 py-2 text-sm text-white shadow-md backdrop-blur hover:bg-panel focus:ring-2 focus:ring-accent/40 focus:outline-none"
 	>
 		<!-- arrow-left icon -->
 		<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="size-5" viewBox="0 0 24 24"
@@ -102,7 +102,7 @@
 
 	<section class="mb-6 text-center">
 		<div class="text-xl font-semibold">High {high.toFixed(1)}°C / Low {low.toFixed(1)}°C</div>
-		<div class="text-muted text-sm">BoM Benchmark: High {bom.high}°C, Low {bom.low}°C</div>
+		<div class="text-sm text-muted">BoM Benchmark: High {bom.high}°C, Low {bom.low}°C</div>
 	</section>
 
 	<section class="overflow-x-auto">
@@ -129,7 +129,7 @@
 
 	<section class="mt-8">
 		<h2 class="mb-1 text-lg font-semibold">Recent readings</h2>
-		<p class="text-muted mb-2 text-xs">Showing last {rangeHours}h of data.</p>
+		<p class="mb-2 text-xs text-muted">Showing last {rangeHours}h of data.</p>
 		{#if history.length}
 			<div class="overflow-x-auto">
 				<table class="min-w-full text-left text-sm">
@@ -154,7 +154,7 @@
 				</table>
 			</div>
 		{:else}
-			<p class="text-muted text-sm">No recent readings available.</p>
+			<p class="text-sm text-muted">No recent readings available.</p>
 		{/if}
 	</section>
 </div>

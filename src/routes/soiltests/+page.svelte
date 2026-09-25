@@ -255,10 +255,10 @@
 		defaultOpen?: boolean;
 	};
 
-const csvMetricHeadings: MetricKey[] = [];
-for (const column of metricColumns) {
-	csvMetricHeadings.push(column.key);
-}
+	const csvMetricHeadings: MetricKey[] = [];
+	for (const column of metricColumns) {
+		csvMetricHeadings.push(column.key);
+	}
 
 	const optionalMetricHeadings = optionalColumns.map((column) => column.key);
 	const optionalQualifierHeadings = ['grower', 'crop'] as const;
@@ -314,35 +314,36 @@ for (const column of metricColumns) {
 				}
 			]
 		},
-	{
-		id: 'optional-metric-headings',
-		title: 'Optional metric headings',
-		tone: 'optional',
-		defaultOpen: false,
-		note: 'Extra numeric metrics exported by some labs. Include them when available; otherwise omit the columns.',
-		rows: [
-			{
-				headings: optionalMetricHeadings,
-				datatype: 'Numeric values (see lab units)',
-				description: 'Supplementary lab metrics such as Cl, Cu, Fe, Mn, Zn, EC, buffer pH, and depth readings.'
-			}
-		]
-	},
-	{
-		id: 'optional-qualifiers',
-		title: 'Optional qualifiers',
-		tone: 'optional',
-		defaultOpen: false,
-		note: 'Context columns that appear in some exports. Safe to omit if your lab does not provide them.',
-		rows: [
-			{
-				headings: Array.from(optionalQualifierHeadings),
-				datatype: 'Text',
-				description: 'High-level context such as grower or crop.'
-			}
-		]
-	}
-];
+		{
+			id: 'optional-metric-headings',
+			title: 'Optional metric headings',
+			tone: 'optional',
+			defaultOpen: false,
+			note: 'Extra numeric metrics exported by some labs. Include them when available; otherwise omit the columns.',
+			rows: [
+				{
+					headings: optionalMetricHeadings,
+					datatype: 'Numeric values (see lab units)',
+					description:
+						'Supplementary lab metrics such as Cl, Cu, Fe, Mn, Zn, EC, buffer pH, and depth readings.'
+				}
+			]
+		},
+		{
+			id: 'optional-qualifiers',
+			title: 'Optional qualifiers',
+			tone: 'optional',
+			defaultOpen: false,
+			note: 'Context columns that appear in some exports. Safe to omit if your lab does not provide them.',
+			rows: [
+				{
+					headings: Array.from(optionalQualifierHeadings),
+					datatype: 'Text',
+					description: 'High-level context such as grower or crop.'
+				}
+			]
+		}
+	];
 
 	let csvSectionOpen: Record<string, boolean> = csvSections.reduce<Record<string, boolean>>(
 		(accumulator, section) => {
@@ -362,9 +363,9 @@ for (const column of metricColumns) {
 		csvSectionOpen = { ...csvSectionOpen, [id]: !csvSectionOpen[id] };
 	}
 
-let activeCsvJobId: string | null = null;
-let progressPollTimer: ReturnType<typeof setTimeout> | null = null;
-let progressPollAbort: AbortController | null = null;
+	let activeCsvJobId: string | null = null;
+	let progressPollTimer: ReturnType<typeof setTimeout> | null = null;
+	let progressPollAbort: AbortController | null = null;
 
 	type ManualForm = {
 		fieldId: string | number;
@@ -382,13 +383,13 @@ let progressPollAbort: AbortController | null = null;
 		client: ''
 	};
 
-function createEmptyMetrics(): Record<MetricKey, string> {
-	const empty = {} as Record<MetricKey, string>;
-	for (const column of metricColumns) {
-		empty[column.key] = '';
+	function createEmptyMetrics(): Record<MetricKey, string> {
+		const empty = {} as Record<MetricKey, string>;
+		for (const column of metricColumns) {
+			empty[column.key] = '';
+		}
+		return empty;
 	}
-	return empty;
-}
 
 	let manualMetrics: Record<MetricKey, string> = createEmptyMetrics();
 
@@ -450,71 +451,74 @@ function createEmptyMetrics(): Record<MetricKey, string> {
 		};
 	}
 
-function stopProgressPolling() {
-	if (progressPollTimer) {
-		clearTimeout(progressPollTimer);
-		progressPollTimer = null;
-	}
-	if (progressPollAbort) {
-		progressPollAbort.abort();
-		progressPollAbort = null;
-	}
-}
-
-type CsvProgressResponse = CsvProgressUpdate & {
-	pollAfterMs?: number;
-};
-
-async function pollImportJob(jobId: string, defaultDelay: number) {
-	const controller = progressPollAbort;
-	if (!controller) return;
-	try {
-		const response = await fetch(CONFIG.backend.upload.test.status(jobId), {
-			signal: controller.signal
-		});
-		if (!response.ok) {
-			if (response.status === 404 || response.status === 410) {
-				throw new Error('Import job not found.');
-			}
-			throw new Error(`Progress request failed (${response.status})`);
+	function stopProgressPolling() {
+		if (progressPollTimer) {
+			clearTimeout(progressPollTimer);
+			progressPollTimer = null;
 		}
-		const payload = (await response.json()) as CsvProgressResponse;
-		const update: CsvProgressUpdate = {
-			jobId,
-			stage: payload.stage ?? 'queued',
-			percent: payload.percent,
-			message: payload.message,
-			detail: payload.detail
-		};
-		await handleCsvProgressUpdate(update);
-		if (controller.signal.aborted) return;
-		if (update.stage === 'complete' || update.stage === 'error') {
+		if (progressPollAbort) {
+			progressPollAbort.abort();
+			progressPollAbort = null;
+		}
+	}
+
+	type CsvProgressResponse = CsvProgressUpdate & {
+		pollAfterMs?: number;
+	};
+
+	async function pollImportJob(jobId: string, defaultDelay: number) {
+		const controller = progressPollAbort;
+		if (!controller) return;
+		try {
+			const response = await fetch(CONFIG.backend.upload.test.status(jobId), {
+				signal: controller.signal
+			});
+			if (!response.ok) {
+				if (response.status === 404 || response.status === 410) {
+					throw new Error('Import job not found.');
+				}
+				throw new Error(`Progress request failed (${response.status})`);
+			}
+			const payload = (await response.json()) as CsvProgressResponse;
+			const update: CsvProgressUpdate = {
+				jobId,
+				stage: payload.stage ?? 'queued',
+				percent: payload.percent,
+				message: payload.message,
+				detail: payload.detail
+			};
+			await handleCsvProgressUpdate(update);
+			if (controller.signal.aborted) return;
+			if (update.stage === 'complete' || update.stage === 'error') {
+				stopProgressPolling();
+				return;
+			}
+			const nextDelay = Math.max(
+				500,
+				typeof payload.pollAfterMs === 'number' ? payload.pollAfterMs : defaultDelay
+			);
+			if (progressPollAbort !== controller) return;
+			progressPollTimer = setTimeout(() => {
+				if (progressPollAbort === controller) {
+					void pollImportJob(jobId, nextDelay);
+				}
+			}, nextDelay);
+		} catch (err) {
+			if (controller.signal.aborted) return;
+			console.error('Failed to poll soil test import progress', err);
+			const message = err instanceof Error ? err.message : 'Failed to fetch progress';
+			await handleCsvProgressUpdate({ jobId, stage: 'error', message, detail: message });
 			stopProgressPolling();
-			return;
 		}
-		const nextDelay = Math.max(500, typeof payload.pollAfterMs === 'number' ? payload.pollAfterMs : defaultDelay);
-		if (progressPollAbort !== controller) return;
-		progressPollTimer = setTimeout(() => {
-			if (progressPollAbort === controller) {
-				void pollImportJob(jobId, nextDelay);
-			}
-		}, nextDelay);
-	} catch (err) {
-		if (controller.signal.aborted) return;
-		console.error('Failed to poll soil test import progress', err);
-		const message = err instanceof Error ? err.message : 'Failed to fetch progress';
-		await handleCsvProgressUpdate({ jobId, stage: 'error', message, detail: message });
-		stopProgressPolling();
 	}
-}
 
-function startProgressPolling(jobId: string, initialDelay = 2000) {
-	stopProgressPolling();
-	const controller = new AbortController();
-	progressPollAbort = controller;
-	const fallbackDelay = Math.max(500, initialDelay);
-	void pollImportJob(jobId, fallbackDelay);
-}
+	function startProgressPolling(jobId: string, initialDelay = 2000) {
+		stopProgressPolling();
+		const controller = new AbortController();
+		progressPollAbort = controller;
+		const fallbackDelay = Math.max(500, initialDelay);
+		void pollImportJob(jobId, fallbackDelay);
+	}
 
 	function resetCsvUploadState() {
 		stopProgressPolling();
@@ -983,7 +987,8 @@ function startProgressPolling(jobId: string, initialDelay = 2000) {
 	$: sortedTests = sortTests(tests, sortState);
 	$: filtered = q
 		? sortedTests.filter((test) => {
-				const haystack = `${test.paddockName} ${test.fieldId} ${test.sampleName ?? ''} ${test.sampleId} ${test.farm ?? ''}`.toLowerCase();
+				const haystack =
+					`${test.paddockName} ${test.fieldId} ${test.sampleName ?? ''} ${test.sampleId} ${test.farm ?? ''}`.toLowerCase();
 				return haystack.includes(q.toLowerCase());
 			})
 		: sortedTests;
@@ -1017,8 +1022,8 @@ function startProgressPolling(jobId: string, initialDelay = 2000) {
 {/if}
 
 <header class="container mx-auto flex items-center justify-between gap-4 px-4 py-4">
-	<a href="/" class="text-muted text-sm hover:text-white">&larr; Back to home</a>
-	<div class="text-muted text-xs">Soil Tests</div>
+	<a href="/" class="text-sm text-muted hover:text-white">&larr; Back to home</a>
+	<div class="text-xs text-muted">Soil Tests</div>
 </header>
 
 <main class="container mx-auto space-y-5 px-4 pb-8">
@@ -1027,22 +1032,22 @@ function startProgressPolling(jobId: string, initialDelay = 2000) {
 			<input
 				placeholder="Search by paddock or sample…"
 				bind:value={q}
-				class="border-border focus:ring-accent/40 w-full rounded-md border bg-white/5 px-3 py-2 text-sm outline-none focus:ring-2 sm:max-w-md"
+				class="w-full rounded-md border border-border bg-white/5 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/40 sm:max-w-md"
 			/>
 			<div class="flex flex-wrap items-center gap-3 text-xs sm:ml-auto">
 				<span class="text-muted">Showing {filtered.length} of {tests.length} samples</span>
-				<span class="hidden sm:inline text-muted">{sortDescription}</span>
+				<span class="hidden text-muted sm:inline">{sortDescription}</span>
 				<div class="flex items-center gap-2">
 					<button
 						type="button"
 						on:click={() => openUploader('manual')}
-						class="border-border focus:ring-accent/40 rounded-md border bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/20 focus:ring-2 focus:outline-none"
+						class="rounded-md border border-border bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/20 focus:ring-2 focus:ring-accent/40 focus:outline-none"
 					>
 						Add soil test
 					</button>
 					<button
 						type="button"
-						class="border-border focus:ring-accent/40 rounded-md border bg-red-500/20 px-3 py-2 text-sm text-red-300 transition hover:bg-red-500/30 focus:ring-2 focus:outline-none"
+						class="rounded-md border border-border bg-red-500/20 px-3 py-2 text-sm text-red-300 transition hover:bg-red-500/30 focus:ring-2 focus:ring-accent/40 focus:outline-none"
 						on:click={toggleEditMode}
 						aria-pressed={isEditMode}
 					>
@@ -1073,15 +1078,15 @@ function startProgressPolling(jobId: string, initialDelay = 2000) {
 		{/if}
 
 		{#if loading}
-			<div class="text-muted text-sm">Loading soil tests…</div>
+			<div class="text-sm text-muted">Loading soil tests…</div>
 		{:else if error}
 			<div class="text-sm text-red-400">{error}</div>
 		{:else if filtered.length === 0}
-			<div class="text-muted text-sm">No samples match your search.</div>
+			<div class="text-sm text-muted">No samples match your search.</div>
 		{:else}
 			<div class="overflow-x-auto">
 				<table class="w-full text-sm">
-					<thead class="text-muted border-border/60 border-b text-left">
+					<thead class="border-b border-border/60 text-left text-muted">
 						<tr>
 							<th class="w-10 py-2 pr-2">
 								{#if isEditMode}
@@ -1161,7 +1166,7 @@ function startProgressPolling(jobId: string, initialDelay = 2000) {
 					<tbody>
 						{#each filtered as test}
 							<tr
-								class="border-border/40 border-b transition-colors hover:bg-white/5"
+								class="border-b border-border/40 transition-colors hover:bg-white/5"
 								class:selected-row={selectedIds.has(test.id)}
 							>
 								<td class="w-10 py-2 pr-2 align-top">
@@ -1184,14 +1189,14 @@ function startProgressPolling(jobId: string, initialDelay = 2000) {
 										<span class="font-medium text-white">{test.sampleName ?? 'Unnamed sample'}</span
 										>
 										{#if test.sampleId}
-											<span class="text-muted text-xs">Sample ID {test.sampleId}</span>
+											<span class="text-xs text-muted">Sample ID {test.sampleId}</span>
 										{/if}
 									</div>
 								</td>
 								<td class="py-2 pr-4">
 									<div class="flex flex-col">
 										<span>{test.paddockName}</span>
-										<span class="text-muted text-xs">Field ID {test.fieldId}</span>
+										<span class="text-xs text-muted">Field ID {test.fieldId}</span>
 									</div>
 								</td>
 								<td class="py-2 pr-4">{test.farm ?? '-'}</td>
@@ -1332,7 +1337,7 @@ function startProgressPolling(jobId: string, initialDelay = 2000) {
 				</form>
 			{:else}
 				<form class="modal__body" on:submit={handleCsvSubmit} bind:this={csvUploadForm}>
-					<p class="text-muted text-sm">
+					<p class="text-sm text-muted">
 						Upload a CSV exported from the lab and double-check the headings below match your file
 						exactly.
 					</p>
@@ -1400,18 +1405,18 @@ function startProgressPolling(jobId: string, initialDelay = 2000) {
 						</div>
 					</div>
 					<div class="modal__csv-actions">
-							<a
-									class="modal__sample-link"
-									href={sampleCsvDownloadPath}
-									download={sampleCsvDownloadName}
-							>
-									<span aria-hidden="true">⬇</span>
-									Download sample CSV
-							</a>
-							<p class="modal__csv-hint">
-									The sample file includes the headings above and one example row you can
-									replace with your data.
-							</p>
+						<a
+							class="modal__sample-link"
+							href={sampleCsvDownloadPath}
+							download={sampleCsvDownloadName}
+						>
+							<span aria-hidden="true">⬇</span>
+							Download sample CSV
+						</a>
+						<p class="modal__csv-hint">
+							The sample file includes the headings above and one example row you can replace with
+							your data.
+						</p>
 					</div>
 					<label class="modal__dropzone" class:modal__dropzone--hidden={Boolean(csvFile)}>
 						<input
@@ -1475,7 +1480,9 @@ function startProgressPolling(jobId: string, initialDelay = 2000) {
 						<div class="modal__error">{uploadError}</div>
 					{/if}
 					<footer class="modal__footer">
-						<button type="button" on:click={closeUploader} class="modal__secondary">{csvProgress.stage === 'complete' ? 'Close' : 'Cancel'}</button>
+						<button type="button" on:click={closeUploader} class="modal__secondary"
+							>{csvProgress.stage === 'complete' ? 'Close' : 'Cancel'}</button
+						>
 						{#if csvProgress.stage === 'complete' && !csvFile}
 							<button type="button" class="modal__primary" on:click={closeUploader}>Exit</button>
 						{:else}
@@ -1622,10 +1629,10 @@ function startProgressPolling(jobId: string, initialDelay = 2000) {
 	}
 
 	.modal__csv-actions {
-			display: flex;
-			flex-wrap: wrap;
-			gap: 0.75rem;
-			align-items: center;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		align-items: center;
 	}
 
 	.modal__hint {
@@ -1635,34 +1642,36 @@ function startProgressPolling(jobId: string, initialDelay = 2000) {
 	}
 
 	.modal__sample-link {
-			display: inline-flex;
-			align-items: center;
-			gap: 0.45rem;
-			border-radius: 0.5rem;
-			border: 1px solid rgba(59, 130, 246, 0.5);
-			background: rgba(59, 130, 246, 0.18);
-			color: #f8fafc;
-			font-size: 0.85rem;
-			padding: 0.5rem 0.95rem;
-			text-decoration: none;
-			transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
+		border-radius: 0.5rem;
+		border: 1px solid rgba(59, 130, 246, 0.5);
+		background: rgba(59, 130, 246, 0.18);
+		color: #f8fafc;
+		font-size: 0.85rem;
+		padding: 0.5rem 0.95rem;
+		text-decoration: none;
+		transition:
+			border-color 160ms ease,
+			background-color 160ms ease,
+			transform 160ms ease;
 	}
 
 	.modal__sample-link:hover {
-			border-color: rgba(59, 130, 246, 0.75);
-			background: rgba(59, 130, 246, 0.28);
-			transform: translateY(-1px);
+		border-color: rgba(59, 130, 246, 0.75);
+		background: rgba(59, 130, 246, 0.28);
+		transform: translateY(-1px);
 	}
-	
+
 	.modal__sample-link span[aria-hidden='true'] {
-			font-size: 1rem;
+		font-size: 1rem;
 	}
 
 	.modal__csv-hint {
-			font-size: 0.75rem;
-			color: rgba(248, 250, 252, 0.72);
+		font-size: 0.75rem;
+		color: rgba(248, 250, 252, 0.72);
 	}
-
 
 	.csv-guidance {
 		border: 1px solid rgba(148, 163, 184, 0.2);
@@ -1682,27 +1691,27 @@ function startProgressPolling(jobId: string, initialDelay = 2000) {
 		scrollbar-width: thin;
 		scrollbar-color: rgba(148, 163, 184, 0.6) transparent;
 		overscroll-behavior: contain;
-}
+	}
 
 	.csv-guidance__table-wrapper::-webkit-scrollbar {
 		width: 6px;
-}
+	}
 
 	.csv-guidance__table-wrapper::-webkit-scrollbar-thumb {
 		background: rgba(148, 163, 184, 0.6);
 		border-radius: 999px;
-}
+	}
 
 	.csv-guidance__table-wrapper::-webkit-scrollbar-thumb:hover {
 		background: rgba(148, 163, 184, 0.8);
-}
+	}
 
 	.csv-guidance__table {
 		width: 100%;
 		border-collapse: collapse;
 		table-layout: fixed;
 		--csv-header-height: 2.2rem;
-}
+	}
 
 	.csv-guidance__table th,
 	.csv-guidance__table td {
@@ -1722,7 +1731,7 @@ function startProgressPolling(jobId: string, initialDelay = 2000) {
 		top: 0;
 		z-index: 3;
 		height: var(--csv-header-height);
-}
+	}
 
 	.csv-guidance__table td {
 		border-top: 1px solid rgba(148, 163, 184, 0.18);
@@ -1777,8 +1786,10 @@ function startProgressPolling(jobId: string, initialDelay = 2000) {
 		position: sticky;
 		top: var(--csv-header-height);
 		z-index: 2;
-		box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.5), 0 1px 0 rgba(15, 23, 42, 0.65);
-}
+		box-shadow:
+			inset 0 1px 0 rgba(15, 23, 42, 0.5),
+			0 1px 0 rgba(15, 23, 42, 0.65);
+	}
 
 	.csv-guidance__table tbody:first-of-type .csv-guidance__section-header th {
 		border-top: none;

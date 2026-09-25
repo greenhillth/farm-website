@@ -230,12 +230,10 @@ export function derivePaddockIdentity(props: Record<string, unknown>) {
 		props.Id
 	];
 	const displayValue = displayCandidates.find(
-		(candidate) =>
-			candidate !== null && candidate !== undefined && String(candidate).trim() !== ''
+		(candidate) => candidate !== null && candidate !== undefined && String(candidate).trim() !== ''
 	);
 	const displayId = displayValue === undefined ? '–' : String(displayValue);
-	const fieldId =
-		extractFieldId(props as SoilTestRecord) ?? normaliseFieldId(displayValue);
+	const fieldId = extractFieldId(props as SoilTestRecord) ?? normaliseFieldId(displayValue);
 	return { name, displayId, fieldId };
 }
 

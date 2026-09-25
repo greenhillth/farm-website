@@ -101,7 +101,7 @@
 	<main class="relative container mx-auto px-4 py-8">
 		<header class="mb-6 flex items-center justify-between gap-4">
 			<h1 class="text-xl font-semibold md:text-2xl">Greenhill Bros Farm</h1>
-			<a href="/map" class="text-muted text-sm hover:text-white">Open map →</a>
+			<a href="/map" class="text-sm text-muted hover:text-white">Open map →</a>
 		</header>
 
 		<section class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

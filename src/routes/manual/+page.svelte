@@ -119,7 +119,8 @@
 	const csvHeaders = [
 		{
 			label: 'fieldID',
-			description: 'Required. Integer paddock identifier matching the ID displayed under each paddock name.'
+			description:
+				'Required. Integer paddock identifier matching the ID displayed under each paddock name.'
 		},
 		{
 			label: 'name_sample',
@@ -167,13 +168,13 @@
 </svelte:head>
 
 <header class="container mx-auto flex items-center justify-between gap-4 px-4 py-4">
-	<a href="/" class="text-muted text-sm hover:text-white">&larr; Back to home</a>
-	<div class="text-muted text-xs">Operations manual</div>
+	<a href="/" class="text-sm text-muted hover:text-white">&larr; Back to home</a>
+	<div class="text-xs text-muted">Operations manual</div>
 </header>
 
 <main class="container mx-auto space-y-5 px-4 pb-12">
 	<Panel title="Welcome to the farm manual">
-		<div class="text-muted space-y-4 text-sm leading-relaxed">
+		<div class="space-y-4 text-sm leading-relaxed text-muted">
 			<p>
 				This guide walks through the key screens in the farm webapp and how to keep soil data up to
 				date. Dip in whenever you need a refresher or a quick pointer for someone new on the team.
@@ -183,16 +184,16 @@
 				{#each quickLinks as link}
 					<a
 						href={link.href}
-						class="group border-border/50 hover:border-accent/60 flex flex-col gap-1 rounded-lg border bg-white/5 px-4 py-3 transition hover:bg-white/10"
+						class="group flex flex-col gap-1 rounded-lg border border-border/50 bg-white/5 px-4 py-3 transition hover:border-accent/60 hover:bg-white/10"
 					>
 						<span class="text-sm font-semibold text-white">{link.label}</span>
-						<span class="text-muted text-xs group-hover:text-white/80">{link.description}</span>
-						<span class="text-muted mt-1 text-xs group-hover:text-white">{link.cta}</span>
+						<span class="text-xs text-muted group-hover:text-white/80">{link.description}</span>
+						<span class="mt-1 text-xs text-muted group-hover:text-white">{link.cta}</span>
 					</a>
 				{/each}
 			</div>
 
-			<p class="text-muted text-xs">
+			<p class="text-xs text-muted">
 				Tip: the manual mirrors the layout you already know—headers at the top, panels for content
 				and accent buttons for actions.
 			</p>
@@ -201,12 +202,12 @@
 
 	<Panel title="Getting around the webapp">
 		<div class="space-y-4">
-			<p class="text-muted text-sm leading-relaxed">
+			<p class="text-sm leading-relaxed text-muted">
 				Every feature follows the same structure, so once you are comfortable in one page you can
 				move through the others with confidence.
 			</p>
 
-			<ol class="text-muted list-decimal space-y-3 pl-5 text-sm leading-relaxed">
+			<ol class="list-decimal space-y-3 pl-5 text-sm leading-relaxed text-muted">
 				{#each navigationSteps as step}
 					<li class="space-y-1">
 						<div class="font-medium text-white">{step.title}</div>
@@ -215,7 +216,7 @@
 				{/each}
 			</ol>
 
-			<div class="border-border/40 text-muted rounded-lg border bg-white/5 px-4 py-3 text-xs">
+			<div class="rounded-lg border border-border/40 bg-white/5 px-4 py-3 text-xs text-muted">
 				Shortcut: right-click or press Ctrl/Cmd + click on any card or link to open it in a new tab
 				without losing your place.
 			</div>
@@ -224,20 +225,20 @@
 
 	<Panel title="Available tools at a glance">
 		<div class="space-y-4">
-			<p class="text-muted text-sm leading-relaxed">
+			<p class="text-sm leading-relaxed text-muted">
 				These are the core tools in the app today. Each one lives behind a card on the home screen
 				and uses the same panel styling you see here.
 			</p>
 
 			<div class="grid gap-3 md:grid-cols-2">
 				{#each features as feature}
-					<article class="border-border/40 rounded-lg border bg-white/5 p-4">
+					<article class="rounded-lg border border-border/40 bg-white/5 p-4">
 						<div class="flex items-center justify-between gap-3">
 							<h3 class="text-sm font-semibold text-white">{feature.title}</h3>
-							<a href={feature.href} class="text-muted text-xs hover:text-white">Open →</a>
+							<a href={feature.href} class="text-xs text-muted hover:text-white">Open →</a>
 						</div>
-						<p class="text-muted mt-2 text-sm leading-relaxed">{feature.summary}</p>
-						<ul class="text-muted mt-3 list-disc space-y-2 pl-5 text-xs">
+						<p class="mt-2 text-sm leading-relaxed text-muted">{feature.summary}</p>
+						<ul class="mt-3 list-disc space-y-2 pl-5 text-xs text-muted">
 							{#each feature.tips as tip}
 								<li>{tip}</li>
 							{/each}
@@ -250,24 +251,24 @@
 
 	<Panel title="Uploading soil test data">
 		<div class="space-y-4">
-			<p class="text-muted text-sm leading-relaxed">
+			<p class="text-sm leading-relaxed text-muted">
 				Keep the Soil tests table current by either entering single samples manually or importing a
 				batch from a CSV file exported by the lab.
 			</p>
 
 			<div class="grid gap-4 lg:grid-cols-2">
-				<section class="border-border/40 rounded-lg border bg-white/5 p-4">
+				<section class="rounded-lg border border-border/40 bg-white/5 p-4">
 					<h4 class="text-sm font-semibold text-white">Manual entry</h4>
-					<ol class="text-muted mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed">
+					<ol class="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
 						{#each manualSteps as step}
 							<li>{step}</li>
 						{/each}
 					</ol>
 				</section>
 
-				<section class="border-border/40 rounded-lg border bg-white/5 p-4">
+				<section class="rounded-lg border border-border/40 bg-white/5 p-4">
 					<h4 class="text-sm font-semibold text-white">CSV import</h4>
-					<ol class="text-muted mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed">
+					<ol class="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
 						{#each csvSteps as step}
 							<li>{step}</li>
 						{/each}
@@ -276,7 +277,7 @@
 			</div>
 
 			<div
-				class="border-border/40 text-muted rounded-lg border bg-white/5 p-4 text-xs leading-relaxed"
+				class="rounded-lg border border-border/40 bg-white/5 p-4 text-xs leading-relaxed text-muted"
 			>
 				<h5 class="text-sm font-semibold text-white">CSV column checklist</h5>
 				<p class="mt-1">
@@ -287,12 +288,12 @@
 					{#each csvHeaders as header}
 						<li>
 							<span class="font-medium text-white">{header.label}</span>
-							<span class="text-muted ml-1 block sm:ml-2 sm:inline">{header.description}</span>
+							<span class="ml-1 block text-muted sm:ml-2 sm:inline">{header.description}</span>
 						</li>
 					{/each}
 				</ul>
 				<div
-					class="border-border/30 bg-panel/70 text-muted mt-3 overflow-x-auto rounded-md border px-3 py-2 font-mono text-[11px]"
+					class="mt-3 overflow-x-auto rounded-md border border-border/30 bg-panel/70 px-3 py-2 font-mono text-[11px] text-muted"
 				>
 					fieldID,name_sample,sample_id,sample_date,client,P,K,Ca,Mg,S,Na,ph_water
 					<br />
@@ -306,7 +307,7 @@
 		<div class="grid gap-3 md:grid-cols-3">
 			{#each supportTips as tip}
 				<article
-					class="border-border/40 text-muted rounded-lg border bg-white/5 p-4 text-sm leading-relaxed"
+					class="rounded-lg border border-border/40 bg-white/5 p-4 text-sm leading-relaxed text-muted"
 				>
 					<h4 class="text-sm font-semibold text-white">{tip.title}</h4>
 					<p class="mt-2">{tip.description}</p>
