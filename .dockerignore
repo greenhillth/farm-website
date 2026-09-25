@@ -1,0 +1,12 @@
+node_modules
+build
+.svelte-kit
+.git
+.github
+.claude
+.env
+.env.*
+docs
+deploy
+eg
+*.md
