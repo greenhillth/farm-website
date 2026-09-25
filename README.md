@@ -32,15 +32,3 @@ Production runs as a Docker image built by CI from `vX.Y.Z` tags. See [deploy/RE
 ## Weather
 
 `/weather` shows the latest reading from the backend's `/weather/current`. `/weather/[metric]` shows 24-hour history from `/weather`. Fields the station doesn't report are filled with mock values (`src/lib/weather.ts`), and the page shows when it's using mock data.
-
-## Subagent-Driven Development (SDD)
-
-When executing multi-task plans with subagent coordination:
-
-- **Implementation plan:** `docs/superpowers/plans/` (e.g., `2026-09-25-deployment-pipeline.md`)
-- **Design spec:** `docs/superpowers/specs/` (e.g., `2026-09-25-deployment-pipeline-design.md`)
-- **Tooling for reduced friction:** `.superpowers/sdd-tooling/` (dispatch context generator, skill reference)
-- **Handoff docs:** `docs/superpowers/handoffs/` (task resumption instructions)
-- **Ledger:** `.superpowers/sdd/` (per-plan progress tracking)
-
-Use the tooling when dispatching subagent tasks to eliminate setup questions and standardize test execution. See [CLAUDE.md](CLAUDE.md#sdd-tooling) for details.

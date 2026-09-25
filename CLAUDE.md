@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Farm management frontend (soil-test map, soil-test upload/management, weather dashboard) built with **SvelteKit 2 + Svelte 5 + Tailwind 4 + Leaflet**, using `@sveltejs/adapter-node`. It is a frontend only. All data comes from the separate FastAPI backend (`../gbros-api`), reached through `/api`.
 
-`development` is the branch that matches production. `main` is out of date and contains an older, unrelated static-HTML version of the site. Don't port files or instructions from `main`.
+`main` is the production branch. Work goes on feature branches and into `main` by PR, and releases are `vX.Y.Z` tags on `main` (see Deployment). The old static-HTML version of the site is kept only as the tag `archive/static-site`. Don't port files or instructions from it.
 
 ## Commands
 
@@ -21,7 +21,7 @@ npm run lint           # prettier --check + eslint
 npm run format         # prettier --write
 ```
 
-There's no unit test suite. `scripts/smoke-test.sh --local` (after `npm run build`) starts the built app against a stub backend (`scripts/stub-backend.mjs`) and checks the pages, `/api` proxying, CSRF and the upload size limit. `--image <ref>` does the same for a Docker image. Check UI changes in a browser as well.
+There's no unit test suite. `scripts/smoke-test.sh --local` (after `npm run build`) starts the built app against a stub backend (`scripts/stub-backend.mjs`) and checks the pages, `/api` proxying, CSRF and the upload size limit. `--image <ref>` does the same for a Docker image. `deploy/test/run-tests.sh` tests `deploy/deploy.sh` against a throwaway local registry (needs Docker, about a minute), and `scripts/test/check-release.test.sh` tests the release-tag check. CI runs all of these. Check UI changes in a browser as well.
 
 `npm run lint` has a backlog of ESLint errors (mostly `no-explicit-any`, missing `{#each}` keys, and `href`s not wrapped in `resolve()`). Don't let new code add to it.
 
@@ -37,7 +37,7 @@ Three layers forward `/api` to the backend, and which one applies depends on how
 
 `BACKEND_ORIGIN` and `BACKEND_PORT` are runtime env vars read through `$env/dynamic/private`.
 
-Backend API contracts that the frontend expects are written up in the root markdown files: `endpoints.md` (manual/import upload), `backend-csv-import.md` and `progression-bar-req.md` (async CSV import job + progress polling), and `soil-edit.md` (bulk delete). `deployment_plan.md` is a proposal, not a record of the current deployment.
+Backend API contracts that the frontend expects are written up in the root markdown files: `endpoints.md` (manual/import upload), `backend-csv-import.md` and `progression-bar-req.md` (async CSV import job + progress polling), and `soil-edit.md` (bulk delete). `deployment_plan.md` is an early proposal that has been superseded. The real deployment is described in `deploy/README.md` and `docs/superpowers/specs/2026-09-25-deployment-pipeline-design.md`.
 
 ## Code layout
 
@@ -62,20 +62,6 @@ Production runs the Docker image `ghcr.io/greenhillth/farm-website:<tag>` on the
 - **Never** push tags, force-push, change branch protection or GHCR settings, or run anything on the server unless Tom explicitly asks for that step in the current conversation.
 - Runtime config (`ORIGIN`, `BACKEND_ORIGIN`, `BODY_SIZE_LIMIT`) belongs in the server's `.env`, never in the image or the repo.
 - Work goes on feature branches and into `main` by PR. CI (`checks`, `container`, `deploy-tests`) must pass.
-
-## SDD Tooling
-
-For Subagent-Driven Development (SDD) task execution:
-
-- **Dispatch context tool:** `.superpowers/sdd-tooling/sdd-dispatch-context`
-  - Generates pre-configured environment, command execution, and project convention blocks
-  - Reduces subagent friction by 10–15% per task (eliminates setup questions)
-  - Use: `bash .superpowers/sdd-tooling/sdd-dispatch-context` and paste output into dispatch
-  - Skill reference: `.superpowers/sdd-tooling/SKILL.md`
-
-- **Handoff documents:** `docs/superpowers/handoffs/` contains task handovers (e.g., `2026-09-25-deployment-pipeline-task5-7.md`)
-  - Includes resumption instructions and tooling guidance
-  - Use when continuing a plan from a prior session
 
 ## Dependencies
 
