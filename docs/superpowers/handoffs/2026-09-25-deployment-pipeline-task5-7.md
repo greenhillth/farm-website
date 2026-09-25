@@ -112,11 +112,13 @@ Do not dispatch any subagents. Work only on this task.
 ## Tooling Reference
 
 **SDD Dispatch Context Tool:**
+
 - Location: `.superpowers/sdd-tooling/sdd-dispatch-context`
 - Use: `bash .superpowers/sdd-tooling/sdd-dispatch-context [--env|--commands|--conventions]`
 - Purpose: Eliminate subagent setup questions, standardize test execution
 - Token savings: ~10–15% per task
 
 **Skill Documentation:**
+
 - Location: `.superpowers/sdd-tooling/SKILL.md`
 - Reference: describes all three blocks, dispatch template, common mistakes

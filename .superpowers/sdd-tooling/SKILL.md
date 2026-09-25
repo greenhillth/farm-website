@@ -106,6 +106,7 @@ Do not dispatch any subagents. Work only on this task.
 ## Results
 
 **Before tooling (Tasks 1–4):** Subagents spent 5–10 turns asking about:
+
 - "Is nvm installed?"
 - "Should I create a test script?"
 - "What's the working directory?"

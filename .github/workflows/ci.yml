@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npx prettier --check .
+      - run: npm run build
+      - run: scripts/smoke-test.sh --local
+      - run: shellcheck scripts/*.sh deploy/deploy.sh deploy/test/run-tests.sh
+      - name: ESLint (non-blocking until the backlog is cleared)
+        continue-on-error: true
+        run: |
+          npx eslint . --format json --output-file eslint.json || true
+          count=$(node -p 'require("./eslint.json").reduce((n, f) => n + f.errorCount, 0)')
+          echo "### ESLint: $count errors (non-blocking)" >> "$GITHUB_STEP_SUMMARY"
+          test "$count" -eq 0
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: farm-website:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - run: scripts/smoke-test.sh --image farm-website:ci
