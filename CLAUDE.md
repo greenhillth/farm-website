@@ -11,7 +11,7 @@ Farm management frontend (soil-test map, soil-test upload/management, weather da
 ## Commands
 
 ```sh
-npm install            # package-lock.json is gitignored
+npm ci                 # install from the committed lockfile (Node 24, see .nvmrc)
 npm run dev            # vite dev server on port 4001 (strictPort, host: true)
 npm run build          # adapter-node output into build/
 npm run preview        # preview build on port 4002
@@ -58,4 +58,4 @@ Backend API contracts that the frontend expects are written up in the root markd
 - TypeScript is pinned to `~6.0`. SvelteKit, svelte-check and typescript-eslint don't support TS 7 yet, so don't bump it until their peer ranges allow it.
 - `overrides.cookie` in `package.json` patches a low-severity advisory in SvelteKit's `cookie` dependency. **Never run `npm audit fix --force`.** It "fixes" that advisory by downgrading `@sveltejs/kit` to 0.0.x.
 - Vite 8 uses Rolldown, not esbuild/Rollup. `optimizeDeps` / `ssr.noExternal` for Leaflet are still needed.
-- `build/` and `.svelte-kit/` are committed even though `.gitignore` lists them, so running a build changes tracked files. Don't commit build output unless asked.
+- `build/` and `.svelte-kit/` are gitignored build output and aren't tracked. `package-lock.json` is committed: change dependencies with `npm install <pkg>` and commit the lockfile.
