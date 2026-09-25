@@ -27,7 +27,7 @@ npm test                          # unit tests (node) and component tests (Chrom
 npm run test:coverage             # the same, with a coverage report in coverage/index.html
 ```
 
-In VS Code, the Vitest extension shows both test projects in the Testing view, where you can run, debug or run with coverage.
+The VS Code Vitest extension doesn't activate yet, so the Testing view is empty (see TODO). Run the tests from the terminal for now.
 
 ## Building and running
 
@@ -42,3 +42,7 @@ Production runs as a Docker image built by CI from `vX.Y.Z` tags. See [deploy/RE
 ## Weather
 
 `/weather` shows the latest reading from the backend's `/weather/current`. `/weather/[metric]` shows 24-hour history from `/weather`. Fields the station doesn't report are filled with mock values (`src/lib/weather.ts`), and the page shows when it's using mock data.
+
+## TODO
+
+- Fix the VS Code Vitest extension. It doesn't activate in this workspace, so the Testing view shows no tests and coverage/debug-from-the-Testing-view doesn't work. `npm test` and `npm run test:coverage` work from the terminal.

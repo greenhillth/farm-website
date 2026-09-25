@@ -58,7 +58,7 @@ Backend API contracts that the frontend expects are written up in the root markd
 
 ## Editor (VS Code)
 
-`.vscode/` holds the shared editor setup: `settings.json`, `extensions.json` (recommendations), `launch.json` and `tasks.json`. Everything else in `.vscode/` is git-ignored, so personal settings belong in your user settings. The Vitest extension shows both test projects in the Testing view and runs them with coverage. `launch.json` debugs the Vite dev server (it opens Chrome on `:4001` once Vite is ready) or the built app. `tasks.json` runs svelte-check (errors land in the Problems panel), ESLint, the smoke, deploy and release-check tests, and the Docker image build and smoke test.
+`.vscode/` holds the shared editor setup: `settings.json`, `extensions.json` (recommendations), `launch.json` and `tasks.json`. Everything else in `.vscode/` is git-ignored, so personal settings belong in your user settings. The Vitest extension (recommended) doesn't activate yet, so the Testing view is empty; this is a TODO in `README.md`. Run the tests from the terminal. `launch.json` debugs the Vite dev server (it opens Chrome on `:4001` once Vite is ready) or the built app. `tasks.json` runs svelte-check (errors land in the Problems panel), ESLint, the smoke, deploy and release-check tests, and the Docker image build and smoke test.
 
 ## Deployment
 
