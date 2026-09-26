@@ -1505,8 +1505,8 @@
 	cancelText="Cancel"
 	loading={deletingTests}
 	disableConfirm={selectedCount === 0}
-	on:confirm={doBulkDelete}
-	on:cancel={cancelDelete}
+	onconfirm={doBulkDelete}
+	oncancel={cancelDelete}
 >
 	<p class="text-sm text-slate-200">
 		You are about to delete {selectedCount} test record{selectedCount === 1 ? '' : 's'}. Are you
