@@ -40,14 +40,14 @@
 					</tbody>
 				</table>
 			</div>
-			<svelte:fragment slot="footer">
+			{#snippet footer()}
 				<div
 					class="flex items-center justify-between gap-2 border-t border-border/60 px-4 py-3 text-sm md:px-5"
 				>
 					<div class="text-muted">Total</div>
 					<div class="font-semibold">{total.toFixed(1)} hours</div>
 				</div>
-			</svelte:fragment>
+			{/snippet}
 		</Panel>
 
 		<Panel title="Quick Add">
