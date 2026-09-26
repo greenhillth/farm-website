@@ -61,8 +61,9 @@ export type WeatherResult = { weather: Weather; connected: boolean; source: 'eco
 import { fetchBackendWeatherMeta } from '$lib/providers/backend';
 import CONFIG from './config';
 
-export async function fetchWeather(): Promise<WeatherResult> {
-	const { data, connected, source } = await fetchBackendWeatherMeta();
+/** Pass SvelteKit's `fetch` from a load function; relative `/api` URLs fail on the server otherwise. */
+export async function fetchWeather(fetchFn: typeof fetch = fetch): Promise<WeatherResult> {
+	const { data, connected, source } = await fetchBackendWeatherMeta(fetchFn);
 	return { weather: data, connected, source };
 }
 
