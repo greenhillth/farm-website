@@ -6,11 +6,11 @@ A beginner's guide to getting a change onto https://farm.greenhill.net.au. It as
 
 Getting code to production has three stages. GitHub does the first two by itself; you trigger the second and do the third.
 
-| Stage              | What happens                                                                                                                                               | Who starts it                                      | Where to look                                                             |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------- |
-| **1. CI** (checks) | Type-checks, tests, lint, builds the app and the Docker image, and tests `deploy.sh`. Nothing is published.                                                | Automatic, on every PR and every merge into `main` | The PR page (bottom), or the **Actions** tab                              |
-| **2. Release**     | Builds the Docker image and publishes it to GitHub's container registry as `ghcr.io/greenhillth/farm-website:vX.Y.Z`. Creates a GitHub Release with notes. | You, by pushing a `vX.Y.Z` tag                     | **Actions** tab, then **Releases** and **Packages** on the repo home page |
-| **3. Deploy**      | The server downloads that image and switches to it. If it isn't healthy within 60 seconds, the server switches back to the previous version.               | You, on the server                                 | The server terminal and `/opt/farm-website/deploy.log`                    |
+| Stage              | What happens                                                                                                                                               | Who starts it                                                   | Where to look                                                             |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| **1. CI** (checks) | Type-checks, tests, lint, builds the app and the Docker image, and tests `deploy.sh`. Nothing is published.                                                | Automatic, on every PR and every merge into `staging` or `main` | The PR page (bottom), or the **Actions** tab                              |
+| **2. Release**     | Builds the Docker image and publishes it to GitHub's container registry as `ghcr.io/greenhillth/farm-website:vX.Y.Z`. Creates a GitHub Release with notes. | You, by pushing a `vX.Y.Z` tag                                  | **Actions** tab, then **Releases** and **Packages** on the repo home page |
+| **3. Deploy**      | The server downloads that image and switches to it. If it isn't healthy within 60 seconds, the server switches back to the previous version.               | You, on the server                                              | The server terminal and `/opt/farm-website/deploy.log`                    |
 
 Nothing reaches production by accident. Merging a PR runs CI but deploys nothing, and pushing a tag publishes an image but doesn't run it. Only `deploy.sh` changes what the site serves.
 
@@ -18,7 +18,7 @@ Nothing reaches production by accident. Merging a PR runs CI but deploys nothing
 
 - **GitHub Actions** is GitHub running scripts for you on a fresh Linux machine each time something happens in the repo.
 - A **workflow** is one of those scripts, a YAML file in `.github/workflows/`. This repo has two:
-  - `ci.yml` runs on every pull request and every push to `main`.
+  - `ci.yml` runs on every pull request and every push to `staging` or `main`.
   - `release.yml` runs when a tag like `v1.3.0` is pushed.
 - A **job** is one part of a workflow that runs on its own machine. `ci.yml` has three jobs:
   - **`checks`**: `npm run check`, the tests (including Chromium component tests), Prettier, the build, a smoke test of the built app, and shell-script checks. ESLint also runs but is non-blocking until its backlog is cleared.
@@ -54,19 +54,26 @@ Pick the version number first. Versions are `MAJOR.MINOR.PATCH`:
 
 The latest version is on the repo's **Releases** page, or run `git tag --list 'v*' --sort=-v:refname | head -1`.
 
-### 1. Bump the version in a release PR
+### 1. Bump the version in a release PR, then promote `staging`
 
 ```sh
-git switch main
+git switch staging
 git pull
 git switch -c release/v1.3.0
 npm version 1.3.0 --no-git-tag-version   # changes "version" in package.json and package-lock.json
 git commit -am "Release v1.3.0"
 git push -u origin release/v1.3.0
-gh pr create --fill
+gh pr create --fill --base staging
 gh pr checks --watch                     # wait for green
 gh pr merge --merge
+
+# Promote everything on staging, including the bump, to main
+gh pr create --base main --head staging --title "Release v1.3.0"
+gh pr checks --watch
+gh pr merge --merge
 ```
+
+Check that `staging` still exists afterwards (`git ls-remote --heads origin staging`). If the automatic deletion of merged branches removed it, click **Restore branch** on the promotion PR.
 
 ### 2. Tag `main` and push the tag
 

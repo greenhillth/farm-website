@@ -41,7 +41,7 @@ Production runs as a Docker image built by CI from `vX.Y.Z` tags. See [docs/depl
 
 ## Contributing
 
-`main` is production. Every change goes through a short-lived branch and a pull request that must pass CI. See [docs/git-workflow.md](docs/git-workflow.md) for the rules and for what to do when.
+`main` is production and `staging` collects finished work before it ships. Every change goes through a short-lived branch and a pull request into `staging` that must pass CI, and `staging` reaches `main` through another PR. See [docs/git-workflow.md](docs/git-workflow.md) for the rules and for what to do when.
 
 ## Weather
 
