@@ -15,6 +15,8 @@ docs/readme ──────┘
 
 There is no `development` branch. `main` plus short-lived branches is the whole model.
 
+For a start-to-finish walkthrough of a feature or bug fix, by hand or with Claude Code, and for using worktrees to run several pieces of work side by side, see [Branches, worktrees and the everyday flow](branches-and-worktrees.md).
+
 ## What GitHub enforces
 
 These are GitHub rulesets (Settings → Rules → Rulesets), so you can't break them by accident:
