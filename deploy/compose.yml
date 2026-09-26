@@ -1,0 +1,11 @@
+# farm-website on the production server. deploy.sh manages IMAGE_TAG in .env.
+name: farm-website
+services:
+  web:
+    image: ${IMAGE_REPO:-ghcr.io/greenhillth/farm-website}:${IMAGE_TAG:-unset}
+    env_file: .env
+    ports:
+      - '127.0.0.1:${HOST_PORT:?HOST_PORT must be set in .env}:3000'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    restart: unless-stopped

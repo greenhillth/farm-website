@@ -1,2 +1,35 @@
 node_modules
-.vscode
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+__pycache__
+.gitignore
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+.svelte-kit
+build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+pics/*
+
+# Test coverage
+coverage

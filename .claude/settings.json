@@ -1,0 +1,21 @@
+{
+	"enabledPlugins": {
+		"frontend-design@claude-plugins-official": true,
+		"svelte@svelte": true
+	},
+	"permissions": {
+		"allow": [
+			"Bash(git log *)",
+			"Bash(git status *)",
+			"Bash(git show *)",
+			"Bash(git diff *)",
+			"Bash(git grep *)",
+			"Bash(git rev-parse *)",
+			"Bash(git ls-files *)",
+			"Bash(git merge-base *)",
+			"Bash(rg *)",
+			"Bash(shellcheck *)",
+			"Bash(actionlint *)"
+		]
+	}
+}

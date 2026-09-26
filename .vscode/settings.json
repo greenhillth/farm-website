@@ -1,5 +1,23 @@
 {
-  "python-envs.defaultEnvManager": "ms-python.python:conda",
-  "python-envs.defaultPackageManager": "ms-python.python:conda",
-  "python-envs.pythonProjects": []
+	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"editor.formatOnSave": true,
+	"prettier.documentSelectors": ["**/*.svelte"],
+	"eslint.validate": ["javascript", "typescript", "svelte"],
+	"typescript.tsdk": "node_modules/typescript/lib",
+	"typescript.enablePromptUseWorkspaceTsdk": true,
+	"files.associations": {
+		"*.css": "tailwindcss"
+	},
+	"tailwindCSS.experimental.configFile": "src/app.css",
+	"search.exclude": {
+		"**/build": true,
+		"**/.svelte-kit": true,
+		"**/coverage": true,
+		"package-lock.json": true
+	},
+	"files.watcherExclude": {
+		"**/build/**": true,
+		"**/.svelte-kit/**": true,
+		"**/coverage/**": true
+	}
 }
