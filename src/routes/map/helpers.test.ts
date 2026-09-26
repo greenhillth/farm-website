@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	VIRIDIS_STOPS,
+	buildPaddockTooltipHtml,
 	clamp,
 	computeMetricStats,
 	extractFieldId,
@@ -10,6 +11,7 @@ import {
 	viridisColor,
 	type NormalisedSoilSample
 } from './helpers';
+import CONFIG from '$lib/config';
 import type { MetricOption } from '$lib/config';
 
 const sample = (fieldId: number, P?: number): NormalisedSoilSample => ({
@@ -86,5 +88,44 @@ describe('computeMetricStats', () => {
 
 	it('returns null when no sample has a value', () => {
 		expect(computeMetricStats(phosphorus, new Map([[1, sample(1)]]))).toBeNull();
+	});
+});
+
+describe('buildPaddockTooltipHtml', () => {
+	const phosphorus = CONFIG.soilMetrics.find((m) => m.id === 'P')!;
+	const none = CONFIG.soilMetrics.find((m) => m.id === 'none')!;
+	const base = {
+		name: 'North',
+		displayId: '7',
+		metric: phosphorus,
+		valueText: '55 mg/kg',
+		sampleDate: '2026-03-01',
+		colorable: true
+	};
+
+	it('escapes the paddock name, id and value', () => {
+		const html = buildPaddockTooltipHtml({
+			...base,
+			name: '<script>x</script>',
+			displayId: '"7"',
+			valueText: '<1'
+		});
+		expect(html).toContain('&lt;script&gt;x&lt;/script&gt;');
+		expect(html).toContain('ID: &quot;7&quot;');
+		expect(html).toContain('Phosphorus: &lt;1');
+		expect(html).not.toContain('<script>');
+	});
+
+	it('shows only the name and id when no metric is selected', () => {
+		expect(buildPaddockTooltipHtml({ ...base, metric: none })).toBe(
+			'<div><strong>North</strong></div><div>ID: 7</div>'
+		);
+	});
+
+	it('shows the sample date, or says there is no recent sample', () => {
+		expect(buildPaddockTooltipHtml(base)).toContain('Sample: ');
+		const noSample = buildPaddockTooltipHtml({ ...base, sampleDate: null, valueText: null });
+		expect(noSample).toContain('Phosphorus: No data');
+		expect(noSample).toContain('No recent sample');
 	});
 });

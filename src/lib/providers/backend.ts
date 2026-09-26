@@ -122,9 +122,9 @@ function mapReadingToWeather(r: WeatherReading): Weather {
 	};
 }
 
-export async function fetchBackendWeatherMeta(): Promise<WeatherMeta> {
+export async function fetchBackendWeatherMeta(fetchFn: typeof fetch = fetch): Promise<WeatherMeta> {
 	try {
-		const res = await fetch(`${CONFIG.backend.currentWeather}`);
+		const res = await fetchFn(CONFIG.backend.currentWeather);
 		if (!res.ok) throw new Error(`backend /weather/current failed: ${res.status}`);
 		const reading = (await res.json()) as WeatherReading;
 		return { data: mapReadingToWeather(reading), connected: true, source: 'ecowitt' };

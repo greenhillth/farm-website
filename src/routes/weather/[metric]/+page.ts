@@ -3,7 +3,7 @@ import { fetchWeather, fetchWeatherHistory } from '$lib/weather';
 import type { WeatherHistoryRow } from '$lib/weather';
 
 export const load: PageLoad = async ({ params, fetch }) => {
-	const res = await fetchWeather();
+	const res = await fetchWeather(fetch);
 	const now = Math.floor(Date.now() / 1000);
 	const from = now - 24 * 60 * 60;
 	let history: WeatherHistoryRow[] = [];
