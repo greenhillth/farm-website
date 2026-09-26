@@ -18,9 +18,11 @@ describe('Card.svelte', () => {
 		await expect.element(page.getByRole('heading', { name: 'Paddock map' })).toBeVisible();
 		await expect.element(page.getByText('Soil tests by paddock')).toBeVisible();
 		await expect.element(page.getByText('#soil')).toBeVisible();
+		// Without an image, the hero is a gradient placeholder.
+		await expect.element(page.getByRole('img')).not.toBeInTheDocument();
 	});
 
-	it('shows the image and badge only when given', async () => {
+	it('shows the image and badge when given', async () => {
 		render(Card, {
 			href: '/weather',
 			title: 'Weather',
