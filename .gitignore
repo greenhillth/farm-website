@@ -33,3 +33,6 @@ pics/*
 
 # Test coverage
 coverage
+
+# Claude Code worktrees (each is a separate checkout)
+.claude/worktrees/

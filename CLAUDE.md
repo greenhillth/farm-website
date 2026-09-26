@@ -70,7 +70,8 @@ The human guide is `docs/git-workflow.md`. GitHub rulesets enforce the following
 
 Rules for agents:
 
-- Start every change on a new branch from an up-to-date `origin/main`. Prefixes: `feat/`, `fix/`, `docs/`, `chore/`, `release/vX.Y.Z`. One topic per branch and PR.
+- Do file-changing work in a worktree under `.claude/worktrees/`, never by switching branches in the main checkout. Tom's VS Code uses the main checkout and can switch its branch mid-task. Run `npm ci` in a new worktree first. If it fails with `Tsconfig not found .../.svelte-kit/tsconfig.json`, run `npx svelte-kit sync` in the main checkout. See `docs/branches-and-worktrees.md`.
+- Start every change on a new branch from an up-to-date `origin/main`. Prefixes: `feat/`, `fix/`, `docs/`, `chore/`, `release/vX.Y.Z`. One topic per branch and PR. Rename Claude's default `worktree-<name>` branch (`git branch -m`) before pushing.
 - Before pushing, run what CI runs for the files you touched: `npm run check`, `npm test`, `npx prettier --check .`, plus `npm run build` and `scripts/smoke-test.sh --local` for app changes. Don't push while any of them fails.
 - Pushing your own branch and opening a PR is fine when Tom has asked for the change. Merging a PR, pushing a tag and anything on the server need Tom's explicit go-ahead in the current conversation.
 - After a merge, clean up locally: switch to `main`, pull, `git branch -d <branch>`, `git fetch --prune`. GitHub deletes the merged remote branch.
