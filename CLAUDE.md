@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Farm management frontend (soil-test map, soil-test upload/management, weather dashboard) built with **SvelteKit 2 + Svelte 5 + Tailwind 4 + Leaflet**, using `@sveltejs/adapter-node`. It is a frontend only. All data comes from the separate FastAPI backend (`../gbros-api`), reached through `/api`.
 
-`main` is the production branch. Work goes on feature branches and into `main` by PR, and releases are `vX.Y.Z` tags on `main` (see Deployment). The old static-HTML version of the site is kept only as the tag `archive/static-site`. Don't port files or instructions from it.
+`main` is the production branch and the only long-lived branch. Work goes on short-lived branches and into `main` by PR, and releases are `vX.Y.Z` tags on `main` (see Git workflow and Deployment). The old static-HTML version of the site is kept only as the tag `archive/static-site`. Don't port files or instructions from it.
 
 ## Commands
 
@@ -60,7 +60,24 @@ Backend API contracts that the frontend expects are written up in the root markd
 
 `.vscode/` holds the shared editor setup: `settings.json`, `extensions.json` (recommendations), `launch.json` and `tasks.json`. Everything else in `.vscode/` is git-ignored, so personal settings belong in your user settings. The Vitest extension (recommended) doesn't activate yet, so the Testing view is empty; this is a TODO in `README.md`. Run the tests from the terminal. `launch.json` debugs the Vite dev server (it opens Chrome on `:4001` once Vite is ready) or the built app. `tasks.json` runs svelte-check (errors land in the Problems panel), ESLint, the smoke, deploy and release-check tests, and the Docker image build and smoke test.
 
+## Git workflow
+
+The human guide is `docs/git-workflow.md`. GitHub rulesets enforce the following, so work with them rather than around them:
+
+- `main` accepts changes only through PRs. The checks `checks`, `container` and `deploy-tests` must pass, and merges must be merge commits. Nothing is pushed to `main` directly, and nothing force-pushes or deletes it.
+- Pushed `v*` tags can't be moved or deleted. A wrong release is fixed with the next version, never a re-tag.
+- There is no `development` branch. Don't recreate it.
+
+Rules for agents:
+
+- Start every change on a new branch from an up-to-date `origin/main`. Prefixes: `feat/`, `fix/`, `docs/`, `chore/`, `release/vX.Y.Z`. One topic per branch and PR.
+- Before pushing, run what CI runs for the files you touched: `npm run check`, `npm test`, `npx prettier --check .`, plus `npm run build` and `scripts/smoke-test.sh --local` for app changes. Don't push while any of them fails.
+- Pushing your own branch and opening a PR is fine when Tom has asked for the change. Merging a PR, pushing a tag and anything on the server need Tom's explicit go-ahead in the current conversation.
+- After a merge, clean up locally: switch to `main`, pull, `git branch -d <branch>`, `git fetch --prune`. GitHub deletes the merged remote branch.
+
 ## Deployment
+
+A beginner walkthrough of CI, releases and deploying is in `docs/deploying.md`.
 
 Production runs the Docker image `ghcr.io/greenhillth/farm-website:<tag>` on the on-site Ubuntu server behind cloudflared. The runbook is `deploy/README.md`.
 
@@ -68,7 +85,7 @@ Production runs the Docker image `ghcr.io/greenhillth/farm-website:<tag>` on the
 - Tom deploys on the server with `/opt/farm-website/deploy.sh vX.Y.Z`, which health-checks and rolls back automatically. `deploy/test/run-tests.sh` tests it locally (needs Docker).
 - **Never** push tags, force-push, change branch protection or GHCR settings, or run anything on the server unless Tom explicitly asks for that step in the current conversation.
 - Runtime config (`ORIGIN`, `BACKEND_ORIGIN`, `BODY_SIZE_LIMIT`) belongs in the server's `.env`, never in the image or the repo.
-- Work goes on feature branches and into `main` by PR. CI (`checks`, `container`, `deploy-tests`) must pass.
+- Before pushing a release tag, create it locally and run `scripts/check-release.sh vX.Y.Z origin/main`. A pushed tag can't be undone.
 
 ## Dependencies
 

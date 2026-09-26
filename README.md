@@ -37,7 +37,11 @@ scripts/smoke-test.sh --local   # built app vs a stub backend
 npm start                       # node build; PORT defaults to 3000
 ```
 
-Production runs as a Docker image built by CI from `vX.Y.Z` tags. See [deploy/README.md](deploy/README.md) for releasing, deploying and rolling back.
+Production runs as a Docker image built by CI from `vX.Y.Z` tags. See [docs/deploying.md](docs/deploying.md) for a step-by-step guide to CI, releases and deploying, and [deploy/README.md](deploy/README.md) for the server reference.
+
+## Contributing
+
+`main` is production. Every change goes through a short-lived branch and a pull request that must pass CI. See [docs/git-workflow.md](docs/git-workflow.md) for the rules and for what to do when.
 
 ## Weather
 
