@@ -1,5 +1,7 @@
 # Deploying farm-website
 
+This is the reference. New to GitHub Actions or releasing? Start with [docs/deploying.md](../docs/deploying.md), a step-by-step walkthrough. Branches and PRs are covered in [docs/git-workflow.md](../docs/git-workflow.md).
+
 Production runs the image `ghcr.io/greenhillth/farm-website:<tag>` on the on-site Ubuntu server, published on `127.0.0.1:$HOST_PORT` and exposed through cloudflared at https://farm.greenhill.net.au. Everything lives in `/opt/farm-website`: `compose.yml`, `.env`, `deploy.sh` and `deploy.log`.
 
 ## Releasing a new version
@@ -13,11 +15,12 @@ git commit -am "Release v1.2.0"
 gh pr create --fill          # merge once CI (checks, container, deploy-tests) is green
 git fetch origin
 git tag v1.2.0 origin/main
+scripts/check-release.sh v1.2.0 origin/main   # must print "v1.2.0 OK"; if not, `git tag -d v1.2.0`
 git push origin v1.2.0       # runs the release workflow
 gh run watch                 # image appears at ghcr.io/greenhillth/farm-website:v1.2.0
 ```
 
-The release workflow refuses tags that aren't on `main` or don't match `package.json`.
+The release workflow refuses tags that aren't on `main` or don't match `package.json`. Pushed `v*` tags can't be moved or deleted (a GitHub ruleset), so check before pushing. A bad pushed tag is fixed with the next version number.
 
 ## Deploying (on the server)
 
