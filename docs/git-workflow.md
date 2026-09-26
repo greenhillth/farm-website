@@ -36,7 +36,7 @@ These are GitHub rulesets (Settings → Rules → Rulesets), so you can't break 
 
 As the repo admin you can still merge a PR whose checks failed (the "bypass" option). Only do that in an emergency.
 
-`staging` has no ruleset yet. CI runs on every PR into it, but GitHub won't stop you merging a red PR or pushing to `staging` directly, so wait for green and always go through a PR. The rules on `main` still check everything when `staging` is promoted.
+The `staging` ruleset only stops `staging` being deleted, which includes the automatic deletion when it's merged into `main`. CI runs on every PR into `staging`, but GitHub won't stop you merging a red PR or pushing to `staging` directly, so wait for green and always go through a PR. The rules on `main` still check everything when `staging` is promoted.
 
 ## Branch names
 
@@ -92,7 +92,7 @@ gh pr checks --watch                      # main's rules require all three check
 gh pr merge --merge                       # merge commit; never squash, or staging and main drift apart
 ```
 
-The repo deletes merged branches automatically, and that would include `staging` unless a ruleset blocks its deletion. If `staging` ever disappears after a promotion, click **Restore branch** on the merged PR.
+The repo deletes merged branches automatically, but the `staging` ruleset blocks that for `staging`, so it stays after a promotion. If it ever disappears (for example, the ruleset was switched off), click **Restore branch** on the merged PR.
 
 Merging into `main` does **not** deploy anything. Shipping is a separate, deliberate step: see [Deploying](deploying.md).
 

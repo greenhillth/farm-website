@@ -73,7 +73,7 @@ gh pr checks --watch
 gh pr merge --merge
 ```
 
-Check that `staging` still exists afterwards (`git ls-remote --heads origin staging`). If the automatic deletion of merged branches removed it, click **Restore branch** on the promotion PR.
+A ruleset stops `staging` being deleted when the promotion merges. If it's ever missing afterwards (`git ls-remote --heads origin staging` prints nothing), click **Restore branch** on the promotion PR.
 
 ### 2. Tag `main` and push the tag
 

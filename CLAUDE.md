@@ -66,6 +66,7 @@ The human guide is `docs/git-workflow.md`. GitHub rulesets enforce the following
 
 - `main` accepts changes only through PRs. The checks `checks`, `container` and `deploy-tests` must pass, and merges must be merge commits. Nothing is pushed to `main` directly, and nothing force-pushes or deletes it.
 - Pushed `v*` tags can't be moved or deleted. A wrong release is fixed with the next version, never a re-tag.
+- `staging` can't be deleted, including by the automatic deletion of merged branches when it's promoted. Nothing else on `staging` is enforced, so still go through PRs and wait for green CI.
 - `staging` is the only other long-lived branch. Feature, fix, docs, chore and release branches merge into `staging` by PR, and `staging` merges into `main` by PR (merge commit). There is no `development` branch. Don't recreate it.
 
 Rules for agents:
