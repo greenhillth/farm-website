@@ -16,9 +16,12 @@ describe('isImportableDate', () => {
 		}
 	);
 
-	it.each(['', '01/05/2024', '2024-02-30', '2024-13-01', 'May 2024'])('rejects "%s"', (value) => {
-		expect(isImportableDate(value)).toBe(false);
-	});
+	it.each(['', '01/05/2024', '2024-02-30', '2024-13-01', 'May 2024', '2024', '20240501'])(
+		'rejects "%s"',
+		(value) => {
+			expect(isImportableDate(value)).toBe(false);
+		}
+	);
 });
 
 describe('validateCsv', () => {

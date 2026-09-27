@@ -38,10 +38,18 @@ export function sampleKey(fieldId: number | string, sampleId: number | string): 
 	return `${Number(fieldId)}:${Number(sampleId)}`;
 }
 
-/** All digits (an Excel date number) or an ISO date, optionally with a time. */
+// Excel serial dates for 1950-01-01 to 2199-12-31; outside that, a serial is more likely
+// a typo'd calendar date (e.g. 20240501) that the backend would silently misread.
+const MIN_EXCEL_SERIAL = 18264;
+const MAX_EXCEL_SERIAL = 109574;
+
+/** An Excel date serial in range, or an ISO date, optionally with a time. */
 export function isImportableDate(text: string): boolean {
 	const value = text.trim();
-	if (/^\d+$/.test(value)) return true;
+	if (/^\d+$/.test(value)) {
+		const serial = Number(value);
+		return serial >= MIN_EXCEL_SERIAL && serial <= MAX_EXCEL_SERIAL;
+	}
 	const match = ISO_DATE.exec(value);
 	if (!match) return false;
 	const [year, month, day] = match.slice(1, 4).map(Number);
