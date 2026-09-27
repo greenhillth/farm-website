@@ -1,585 +1,514 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { replaceState } from '$app/navigation';
+	import { page } from '$app/state';
 	import L from 'leaflet';
 	import type { TileLayerOptions } from 'leaflet';
-	import { onDestroy, onMount } from 'svelte';
+	import 'leaflet/dist/leaflet.css';
+	import { untrack } from 'svelte';
+	import type { Attachment } from 'svelte/attachments';
+	import { MediaQuery } from 'svelte/reactivity';
 
 	import CONFIG from '$lib/config';
 	import type { MetricId, MetricOption } from '$lib/config';
-	import { buildBaseLayer, buildTitleLayer, formatOwners } from '$lib/layers';
-	import type { TitleFeatureProperties } from '$lib/layers';
+	import { findPaddockAt, geometryArea, type GeometryLike } from '$lib/geo';
+	import { buildBaseLayer, buildTitleLayer, type TitleFeatureProperties } from '$lib/layers';
+	import { normaliseFieldId } from '$lib/soil-status';
 
-	import 'leaflet/dist/leaflet.css';
-
+	import DetailSheet from './components/DetailSheet.svelte';
+	import LocateButton from './components/LocateButton.svelte';
+	import MapControls from './components/MapControls.svelte';
+	import MetricChips from './components/MetricChips.svelte';
+	import MetricLegend from './components/MetricLegend.svelte';
+	import PaddockDetails from './components/PaddockDetails.svelte';
+	import PaddockSearch from './components/PaddockSearch.svelte';
+	import TitleDetails from './components/TitleDetails.svelte';
+	import type { LocateFix, PaddockOption } from './components/types';
 	import {
-		quickLinks as helperQuickLinks,
-		type BaseLayerConfig,
-		type LegendDetails,
-		type LegendPercents,
-		type MetricStats,
-		type NormalisedSoilSample,
 		NO_DATA_STYLE,
-		VIRIDIS_GRADIENT,
-		keepTooltipInView,
-		derivePaddockIdentity,
-		pickMetricValue,
-		parseDateMs,
-		setLayerBaseStyle,
-		updatePaddockTooltip,
-		formatLegendTick,
-		formatMetricValue,
-		formatSampleDate,
-		formatPercent,
-		formatFieldList,
-		viridisColor,
-		computeMetricStats,
+		buildPaddockTooltipHtml,
 		computeLegendDetails,
 		computeLegendPercents,
-		EMPTY_LEGEND_DETAILS,
-		EMPTY_LEGEND_PERCENTS,
-		extractFieldId,
-		type SoilTestRecord
+		computeMetricStats,
+		derivePaddockIdentity,
+		formatMetricValue,
+		setLayerBaseStyle,
+		updatePaddockTooltip,
+		viridisColor,
+		type BaseLayerConfig,
+		type NormalisedSoilSample
 	} from './helpers';
+	import { indexLatestSamples, paddockSoilSummary } from './soil-status';
 
-	const quickLinks = helperQuickLinks;
+	type Panel =
+		| { kind: 'layers' }
+		| { kind: 'search' }
+		| { kind: 'paddock'; id: number }
+		| { kind: 'title'; title: TitleFeatureProperties };
 
-	const metricOptions = CONFIG.soilMetrics;
-	if (metricOptions.length === 0) {
-		throw new Error('CONFIG.soilMetrics is empty; need at least one metric.');
-	}
+	type PaddockEntry = {
+		id: number | null;
+		name: string;
+		displayId: string;
+		areaHa: number | null;
+		geometry: GeometryLike;
+		layer: L.Polygon;
+	};
 
-	const metricsById = new Map<MetricId, MetricOption>(metricOptions.map((m) => [m.id, m]));
+	const SELECTED_STYLE = { color: '#ffffff', weight: 3 };
 
-	// Default to first metric id (type-safe)
-	const defaultMetric: MetricId = metricOptions[0].id;
+	const metrics = CONFIG.soilMetrics;
+	const metricsById = new Map<MetricId, MetricOption>(metrics.map((metric) => [metric.id, metric]));
+	const defaultMetric: MetricId = metrics[0].id;
 
 	const { url: imageryUrl, ...imageryOptions } = CONFIG.map;
-	const baseLayerConfigs: BaseLayerConfig[] = [
+	const baseLayers: BaseLayerConfig[] = [
 		{
 			id: 'imagery',
 			label: 'Satellite',
-			description: 'High-resolution aerial imagery for situational awareness.',
+			description: 'Aerial photos of the farm.',
 			url: imageryUrl,
 			options: imageryOptions as TileLayerOptions
 		},
 		{
 			id: 'streets',
 			label: 'Streets',
-			description: 'OpenStreetMap base map with roads and place labels.',
+			description: 'OpenStreetMap roads and place names.',
 			url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-			options: {
-				attribution: '© OpenStreetMap contributors',
-				maxZoom: 19
-			}
+			options: { attribution: '© OpenStreetMap contributors', maxZoom: 19 }
 		}
 	];
 
-	let mapContainer: HTMLDivElement;
-	let navPanel: HTMLElement;
+	const desktop = new MediaQuery('min-width: 48rem');
 
-	let map: L.Map | null = null;
-	let baseTileLayer: L.TileLayer | null = null;
-	let paddockLayer: L.GeoJSON | null = null;
-	let titleLayer: L.GeoJSON | null = null;
+	function metricFromUrl(): MetricId {
+		const id = page.url.searchParams.get('metric');
+		return id !== null && metricsById.has(id) ? id : defaultMetric;
+	}
+
+	// Leaflet objects are never proxied: they live in $state.raw and are replaced, not mutated.
+	let map = $state.raw<L.Map | null>(null);
+	let paddockLayer = $state.raw<L.GeoJSON | null>(null);
+	let titleLayer = $state.raw<L.GeoJSON | null>(null);
+	let entries = $state.raw<PaddockEntry[]>([]);
+	let soilByField = $state.raw(new Map<number, NormalisedSoilSample>());
+	let userFix = $state.raw<LocateFix | null>(null);
+	let panel = $state.raw<Panel | null>(null);
+
+	let navOpen = $state(true);
+	let showLabels = $state(true);
+	let showBoundaries = $state(true);
+	let showTitles = $state(false);
+	let isLoading = $state(true);
+	let loadError = $state<string | null>(null);
+	let titlesLoading = $state(false);
+	let titlesError = $state<string | null>(null);
+	let titlesCount = $state(0);
+	let soilLoading = $state(false);
+	let soilError = $state<string | null>(null);
+	let activeBaseLayer = $state(baseLayers[0].id);
+	let activeMetric = $state<MetricId>(metricFromUrl());
+	let toast = $state<string | null>(null);
+
 	let baseBounds: L.LatLngBounds | null = null;
-	let farmData: any = null;
+	let centredOnFix = false;
+	let toastTimer: ReturnType<typeof setTimeout> | undefined;
+	const tileCache = new Map<string, L.TileLayer>();
+	let currentTiles: L.TileLayer | null = null;
 
-	let navOpen = true;
-	let showLabels = true;
-	let showBoundaries = true;
-	let showTitles = false;
-	let isLoading = true;
-	let loadError: string | null = null;
-	let titlesLoading = false;
-	let titlesError: string | null = null;
-	let titlesCount = 0;
-	let selectedTitle: TitleFeatureProperties | null = null;
-
-	let activeBaseLayer: string = baseLayerConfigs[0]?.id ?? 'imagery';
-	let activeMetric: MetricId = defaultMetric;
-	let activeBase: BaseLayerConfig | undefined = baseLayerConfigs.find(
-		(layer) => layer.id === activeBaseLayer
+	const metric = $derived(metricsById.get(activeMetric) ?? metrics[0]);
+	const scaleReady = $derived(
+		metric.id !== 'none' &&
+			typeof metric.c_min === 'number' &&
+			typeof metric.c_max === 'number' &&
+			metric.c_max > metric.c_min
 	);
-	let paddockCount = 0;
-	let soilMetricsByField = new Map<number, NormalisedSoilSample>();
-	let soilMetricsVersion = 0;
-	let soilDataLoading = false;
-	let soilDataError: string | null = null;
-	let activeMetricStats: MetricStats | null = null;
-	let activeMetricPaddockCount = 0;
-	let styleUpdateMarker = '';
-	let metricScaleReady = false;
-	let isStreetsBase = activeBaseLayer === 'streets';
-	let legendPercents: LegendPercents = EMPTY_LEGEND_PERCENTS;
-	let legendDetails: LegendDetails = EMPTY_LEGEND_DETAILS;
-	let paddockIdentities = new Map<number, { name: string; displayId: string }>();
-
-	// Derived active metric object + message (no O(n) lookups on render)
-	$: activeMetricObj = metricsById.get(activeMetric)!; // safe due to guards below
-	$: styleUpdateMarker = `${activeMetric}:${soilMetricsVersion}`;
-	$: metricScaleReady =
-		activeMetricObj.id !== 'none' &&
-		typeof activeMetricObj.c_min === 'number' &&
-		typeof activeMetricObj.c_max === 'number' &&
-		activeMetricObj.c_max > activeMetricObj.c_min;
-	$: {
-		void soilMetricsVersion;
-		activeMetricStats = computeMetricStats(activeMetricObj, soilMetricsByField);
-	}
-	$: legendPercents = computeLegendPercents(activeMetricObj, activeMetricStats, metricScaleReady);
-	$: legendDetails = computeLegendDetails(
-		activeMetricObj,
-		activeMetricStats,
-		soilMetricsByField,
-		paddockIdentities
+	const byId = $derived(
+		new Map(
+			entries
+				.filter((entry): entry is PaddockEntry & { id: number } => entry.id !== null)
+				.map((entry) => [entry.id, entry])
+		)
 	);
-	$: isStreetsBase = activeBaseLayer === 'streets';
-	$: if (paddockLayer && styleUpdateMarker) {
-		applySoilMetricStyles();
+	const identities = $derived(
+		new Map(
+			[...byId.values()].map((entry) => [
+				entry.id,
+				{ name: entry.name, displayId: entry.displayId }
+			])
+		)
+	);
+	const stats = $derived(computeMetricStats(metric, soilByField));
+	const percents = $derived(computeLegendPercents(metric, stats, scaleReady));
+	const details = $derived(computeLegendDetails(metric, stats, soilByField, identities));
+	const colouredCount = $derived(
+		[...byId.keys()].filter((id) => typeof soilByField.get(id)?.metrics[metric.id] === 'number')
+			.length
+	);
+	const searchOptions: PaddockOption[] = $derived(
+		[...byId.values()]
+			.map(({ id, name, displayId }) => ({ id, name, displayId }))
+			.sort((a, b) => a.name.localeCompare(b.name))
+	);
+	const selectedId = $derived(panel?.kind === 'paddock' ? panel.id : null);
+	const selected = $derived(selectedId === null ? null : (byId.get(selectedId) ?? null));
+	const selectedSample = $derived(selectedId === null ? undefined : soilByField.get(selectedId));
+	// Hover labels are a desktop feature; on touch they get in the way of taps.
+	const labelsHidden = $derived(!desktop.current || !showLabels || !showBoundaries);
+	const statusLine = $derived(
+		isLoading
+			? 'Loading paddock boundaries…'
+			: loadError
+				? loadError
+				: `Showing ${entries.length} mapped paddocks${titlesCount > 0 ? ` and ${titlesCount} title boundaries` : ''}.`
+	);
+
+	function writeQuery(changes: Record<string, string | null>) {
+		const url = new URL(page.url);
+		for (const [key, value] of Object.entries(changes)) {
+			if (value === null) url.searchParams.delete(key);
+			else url.searchParams.set(key, value);
+		}
+		replaceState(url, page.state);
 	}
 
-	const tileLayerCache = new Map<string, L.TileLayer>();
-
-	let resizeObserver: ResizeObserver | null = null;
-	let invalidateTimer: ReturnType<typeof setTimeout> | null = null;
-
-	function scheduleInvalidate(delay = 240) {
-		if (!map) return;
-		if (invalidateTimer) clearTimeout(invalidateTimer);
-		invalidateTimer = setTimeout(() => {
-			map?.invalidateSize();
-		}, delay);
+	function chooseMetric(id: MetricId) {
+		activeMetric = id;
+		writeQuery({ metric: id === defaultMetric ? null : id });
 	}
 
-	function applyBaseLayer(id: string) {
-		if (!map) return;
-		const config = baseLayerConfigs.find((layer) => layer.id === id);
-		if (!config) return;
-
-		if (baseTileLayer && map.hasLayer(baseTileLayer)) {
-			map.removeLayer(baseTileLayer);
+	function selectPaddock(id: number, fit: boolean) {
+		const entry = byId.get(id);
+		if (!entry) return;
+		panel = { kind: 'paddock', id };
+		if (fit && map) {
+			// Keep the paddock clear of the sheet: the card on the right on desktop; on phones the
+			// sheet at the bottom and the chips at the top.
+			const padding: L.FitBoundsOptions = desktop.current
+				? { paddingTopLeft: [48, 48], paddingBottomRight: [480, 48] }
+				: { paddingTopLeft: [24, 80], paddingBottomRight: [24, 280] };
+			map.fitBounds(entry.layer.getBounds(), { ...padding, maxZoom: 17 });
 		}
+		writeQuery({ paddock: String(id) });
+	}
 
-		let layer = tileLayerCache.get(id);
-		if (!layer) {
-			layer = L.tileLayer(config.url, config.options);
-			tileLayerCache.set(id, layer);
-		}
+	function selectTitle(title: TitleFeatureProperties) {
+		if (panel?.kind === 'paddock') writeQuery({ paddock: null });
+		panel = { kind: 'title', title };
+	}
 
-		layer.addTo(map);
-		baseTileLayer = layer;
+	function closePanel() {
+		if (panel?.kind === 'paddock') writeQuery({ paddock: null });
+		panel = null;
+	}
+
+	function showToast(message: string) {
+		toast = message;
+		clearTimeout(toastTimer);
+		toastTimer = setTimeout(() => (toast = null), 5000);
+	}
+
+	function resetView() {
+		if (map && baseBounds?.isValid()) map.fitBounds(baseBounds, { padding: [24, 24] });
 	}
 
 	async function loadFarmData() {
-		if (!map) return;
-
+		const target = map;
+		if (!target) return;
 		isLoading = true;
 		loadError = null;
-
 		try {
 			const response = await fetch(CONFIG.backend.farm);
-			if (!response.ok) {
-				throw new Error(`Request failed (${response.status})`);
-			}
-
+			if (!response.ok) throw new Error(`Request failed (${response.status})`);
 			const geojson = await response.json();
-			farmData = geojson;
-			paddockCount = Array.isArray(geojson?.features) ? geojson.features.length : 0;
-			paddockIdentities = new Map<number, { name: string; displayId: string }>();
-			if (Array.isArray(geojson?.features)) {
-				for (const feature of geojson.features) {
-					const props = (feature?.properties ?? {}) as Record<string, unknown>;
-					const identity = derivePaddockIdentity(props);
-					if (typeof identity.fieldId === 'number' && Number.isInteger(identity.fieldId)) {
-						paddockIdentities.set(identity.fieldId, {
-							name: identity.name,
-							displayId: identity.displayId
-						});
-					}
-				}
-			}
 
-			if (paddockLayer && map.hasLayer(paddockLayer)) {
-				map.removeLayer(paddockLayer);
-			}
+			if (paddockLayer) target.removeLayer(paddockLayer);
+			const layer = buildBaseLayer(geojson, L);
+			const next: PaddockEntry[] = [];
+			layer.eachLayer((child) => {
+				const polygon = child as L.Polygon;
+				const feature = polygon.feature;
+				const identity = derivePaddockIdentity(
+					(feature?.properties ?? {}) as Record<string, unknown>
+				);
+				const id =
+					typeof identity.fieldId === 'number' && Number.isInteger(identity.fieldId)
+						? identity.fieldId
+						: null;
+				const area = geometryArea(feature?.geometry);
+				next.push({
+					id,
+					name: identity.name,
+					displayId: identity.displayId,
+					areaHa: area > 0 ? area / 10_000 : null,
+					geometry: feature?.geometry,
+					layer: polygon
+				});
+				polygon.on('click', () => {
+					if (id !== null) selectPaddock(id, false);
+				});
+			});
+			paddockLayer = layer;
+			entries = next;
 
-			paddockLayer = buildBaseLayer(geojson, L);
-			if (showBoundaries) {
-				paddockLayer.addTo(map);
-			}
+			const bounds = layer.getBounds();
+			if (bounds.isValid()) baseBounds = bounds;
 
-			const bounds = paddockLayer.getBounds?.();
-			if (bounds?.isValid()) {
-				baseBounds = bounds;
-				map.fitBounds(bounds, { padding: [24, 24] });
-			}
+			// Fit either the linked paddock or the whole farm, not both: Leaflet ignores a second
+			// fit while the first one's zoom animation is running.
+			const fromUrl = normaliseFieldId(page.url.searchParams.get('paddock'));
+			if (fromUrl !== null && byId.has(fromUrl)) selectPaddock(fromUrl, true);
+			else if (baseBounds) target.fitBounds(baseBounds, { padding: [24, 24] });
 		} catch (err) {
 			console.error('Failed to load farm data', err);
 			loadError = err instanceof Error ? err.message : 'Failed to load farm data.';
 		} finally {
 			isLoading = false;
-			scheduleInvalidate(120);
+		}
+	}
+
+	async function loadSoilTests() {
+		if (soilLoading) return;
+		soilLoading = true;
+		soilError = null;
+		try {
+			const response = await fetch(CONFIG.backend.latestTest);
+			if (!response.ok) throw new Error(`Request failed (${response.status})`);
+			const payload = await response.json();
+			if (!Array.isArray(payload)) throw new Error('Unexpected soil test response.');
+			soilByField = indexLatestSamples(payload, metrics);
+		} catch (err) {
+			console.error('Failed to load soil test data', err);
+			soilError = "Couldn't load soil tests. Check the connection and try again.";
+			soilByField = new Map();
+		} finally {
+			soilLoading = false;
 		}
 	}
 
 	async function loadTitleBoundaries() {
-		if (!map) return;
-		if (titlesLoading) return;
-
+		const target = map;
+		if (!target || titlesLoading) return;
 		titlesLoading = true;
 		titlesError = null;
-
 		try {
 			const response = await fetch(CONFIG.backend.titles);
-			if (!response.ok) {
-				throw new Error(`Request failed (${response.status})`);
-			}
-
+			if (!response.ok) throw new Error(`Request failed (${response.status})`);
 			const geojson = await response.json();
 			titlesCount = Array.isArray(geojson?.features) ? geojson.features.length : 0;
-
-			if (titleLayer && map.hasLayer(titleLayer)) {
-				map.removeLayer(titleLayer);
-			}
-
-			titleLayer = buildTitleLayer(geojson, L, (props) => {
-				selectedTitle = props;
-			});
-
-			if (showTitles) {
-				titleLayer.addTo(map);
-			}
+			if (titleLayer) target.removeLayer(titleLayer);
+			titleLayer = buildTitleLayer(geojson, L, selectTitle);
 		} catch (err) {
 			console.error('Failed to load title boundaries', err);
-			titlesError = err instanceof Error ? err.message : 'Failed to load title boundaries.';
+			titlesError = "Couldn't load title boundaries.";
 		} finally {
 			titlesLoading = false;
-			scheduleInvalidate(80);
 		}
 	}
 
-	async function loadSoilTests(force = false) {
-		if (soilDataLoading) return;
-		if (!force && soilMetricsByField.size > 0 && !soilDataError) return;
-
-		soilDataLoading = true;
-		soilDataError = null;
-
-		try {
-			const response = await fetch(`${CONFIG.backend.tests}?latest=true`);
-			if (!response.ok) {
-				throw new Error(`Request failed (${response.status})`);
-			}
-
-			const payload = await response.json();
-			if (!Array.isArray(payload)) {
-				throw new Error('Unexpected soil test response payload.');
-			}
-
-			const index = buildSoilMetricIndex(payload as SoilTestRecord[]);
-			soilMetricsByField = index;
-		} catch (err) {
-			console.error('Failed to load soil test data', err);
-			soilDataError = err instanceof Error ? err.message : 'Failed to load soil test data.';
-			soilMetricsByField = new Map<number, NormalisedSoilSample>();
-		} finally {
-			soilDataLoading = false;
-			soilMetricsVersion += 1;
-			scheduleInvalidate(80);
-		}
+	function handleFix(fix: LocateFix) {
+		userFix = fix;
+		if (centredOnFix || !map) return;
+		centredOnFix = true;
+		map.setView([fix.lat, fix.lon], Math.max(map.getZoom(), 16));
+		const hit = findPaddockAt(fix.lat, fix.lon, entries);
+		if (hit?.id != null) selectPaddock(hit.id, false);
+		else showToast("You're not inside a mapped paddock.");
 	}
 
-	function buildSoilMetricIndex(records: SoilTestRecord[]): Map<number, NormalisedSoilSample> {
-		const next = new Map<number, NormalisedSoilSample>();
-		for (const entry of records) {
-			if (!entry || typeof entry !== 'object') continue;
-			const fieldId = extractFieldId(entry);
-			if (fieldId === null) continue;
-
-			const metrics: NormalisedSoilSample['metrics'] = {};
-			for (const metric of metricOptions) {
-				if (metric.id === 'none') continue;
-				const value = pickMetricValue(entry, metric.id);
-				if (value !== null) {
-					metrics[metric.id] = value;
-				}
-			}
-
-			const sampleDateSource = (entry.sample_date ??
-				entry.sampleDate ??
-				entry.sample_datetime ??
-				entry.SampleDate ??
-				entry.date ??
-				entry.timestamp ??
-				null) as unknown;
-			const sampleDate = sampleDateSource ? String(sampleDateSource) : null;
-			const sampleDateMs = parseDateMs(sampleDateSource);
-			const sampleNameSource = (entry.name_sample ??
-				entry.sample_name ??
-				entry.sampleName ??
-				entry.SampleName ??
-				null) as unknown;
-			const sampleName =
-				sampleNameSource === null || sampleNameSource === undefined
-					? null
-					: String(sampleNameSource);
-
-			const existing = next.get(fieldId);
-			if (existing) {
-				const existingMs = existing.sampleDateMs ?? -Infinity;
-				const candidateMs = sampleDateMs ?? -Infinity;
-				if (candidateMs < existingMs) {
-					continue;
-				}
-			}
-
-			next.set(fieldId, {
-				fieldId,
-				sampleDate,
-				sampleDateMs,
-				sampleName,
-				metrics,
-				raw: entry
-			});
-		}
-		return next;
+	function handleLocateStop() {
+		centredOnFix = false;
+		userFix = null;
 	}
 
-	function applySoilMetricStyles() {
-		if (!paddockLayer) return;
-		const metric = metricsById.get(activeMetric);
-		if (!metric) return;
+	function toggleLayer(target: L.Map, layer: L.Layer, visible: boolean) {
+		if (visible && !target.hasLayer(layer)) layer.addTo(target);
+		else if (!visible && target.hasLayer(layer)) target.removeLayer(layer);
+	}
 
-		const cMin = typeof metric.c_min === 'number' ? metric.c_min : null;
-		const cMax = typeof metric.c_max === 'number' ? metric.c_max : null;
-		const colorable = metricScaleReady && cMin !== null && cMax !== null;
-		let withValues = 0;
+	function stylePaddock(entry: PaddockEntry, isSelected: boolean) {
+		const sample = entry.id === null ? undefined : soilByField.get(entry.id);
+		const value = sample?.metrics[metric.id];
+		const hasValue = typeof value === 'number' && Number.isFinite(value);
+		let style = {};
+		let valueText: string | null = null;
 
-		paddockLayer.eachLayer((layer: any) => {
-			const featureProps = (layer?.feature?.properties ?? {}) as Record<string, unknown>;
-			const { name, displayId, fieldId } = derivePaddockIdentity(featureProps);
-			const sample =
-				typeof fieldId === 'number' && Number.isInteger(fieldId)
-					? soilMetricsByField.get(fieldId)
-					: undefined;
-			const metricValue = sample?.metrics?.[metric.id];
+		if (scaleReady && hasValue) {
+			style = {
+				fillColor: viridisColor(value, metric.c_min as number, metric.c_max as number),
+				fillOpacity: 0.88,
+				color: '#0f172a',
+				weight: 1
+			};
+			valueText = formatMetricValue(value, metric);
+		} else if (scaleReady) {
+			style = NO_DATA_STYLE;
+			valueText = 'No data';
+		} else if (hasValue) {
+			valueText = formatMetricValue(value, metric);
+		} else if (sample) {
+			valueText = 'No data';
+		}
 
-			let valueText: string | null = null;
+		setLayerBaseStyle(entry.layer, isSelected ? { ...style, ...SELECTED_STYLE } : style);
+		if (isSelected) entry.layer.bringToFront();
+		updatePaddockTooltip(
+			entry.layer,
+			buildPaddockTooltipHtml({
+				name: entry.name,
+				displayId: entry.displayId,
+				metric,
+				valueText,
+				sampleDate: sample?.sampleDate ?? null,
+				colorable: scaleReady
+			})
+		);
+	}
 
-			if (colorable && typeof metricValue === 'number' && Number.isFinite(metricValue)) {
-				const fillColor = viridisColor(metricValue, cMin!, cMax!);
-				setLayerBaseStyle(layer, {
-					fillColor,
-					fillOpacity: 0.88,
-					color: '#0f172a',
-					weight: 1
-				});
-				valueText = formatMetricValue(metricValue, metric);
-				withValues += 1;
-			} else if (colorable) {
-				setLayerBaseStyle(layer, NO_DATA_STYLE);
-				valueText = 'No data';
-			} else {
-				setLayerBaseStyle(layer, {});
-				if (typeof metricValue === 'number' && Number.isFinite(metricValue)) {
-					valueText = formatMetricValue(metricValue, metric);
-				} else if (sample) {
-					valueText = 'No data';
-				}
-			}
-
-			const parts = [`<div><strong>${name}</strong></div>`, `<div>ID: ${displayId}</div>`];
-
-			if (metric.id !== 'none') {
-				parts.push(`<div>${metric.label}: ${valueText ?? 'No data'}</div>`);
-				if (sample?.sampleDate) {
-					parts.push(
-						`<div class="text-[0.7rem] opacity-80">Sample: ${formatSampleDate(sample.sampleDate)}</div>`
-					);
-				} else if (colorable) {
-					parts.push('<div class="text-[0.7rem] opacity-80">No recent sample</div>');
-				}
-			}
-
-			updatePaddockTooltip(layer, parts.join(''));
+	const createMap: Attachment<HTMLDivElement> = (node) => {
+		const instance = L.map(node, { zoomControl: false }).setView([-41.2, 146.4], 14);
+		L.control.zoom({ position: 'bottomright' }).addTo(instance);
+		const observer = new ResizeObserver(() => instance.invalidateSize());
+		observer.observe(node);
+		map = instance;
+		untrack(() => {
+			loadFarmData();
+			loadSoilTests();
+			loadTitleBoundaries();
 		});
+		return () => {
+			observer.disconnect();
+			clearTimeout(toastTimer);
+			tileCache.clear();
+			currentTiles = null;
+			// Leaflet 1.9 ends a zoom animation from an uncancelled 250ms timeout; leaving the page
+			// mid-zoom would run it on the removed map and throw. Clearing the flag makes it a no-op.
+			(instance as unknown as { _animatingZoom: boolean })._animatingZoom = false;
+			instance.remove();
+			map = null;
+		};
+	};
 
-		activeMetricPaddockCount = withValues;
-	}
-
-	function resetView() {
-		if (map && baseBounds && baseBounds.isValid()) {
-			map.fitBounds(baseBounds, { padding: [24, 24] });
-		}
-	}
-
-	function collapseNav() {
-		navOpen = false;
-		scheduleInvalidate();
-	}
-
-	function expandNav() {
-		navOpen = true;
-		scheduleInvalidate();
-	}
-
-	function toggleNav() {
-		if (navOpen) {
-			collapseNav();
-		} else {
-			expandNav();
-		}
-	}
-
-	function handleNavTransition(event: TransitionEvent) {
-		if (event.target === navPanel) {
-			scheduleInvalidate(16);
-		}
-	}
-
-	function selectBaseLayer(id: string) {
-		if (id === activeBaseLayer) return;
-		activeBaseLayer = id;
-		applyBaseLayer(id);
-	}
-
-	function chooseMetric(id: MetricId) {
-		if (id === activeMetric) return;
-		activeMetric = id;
-
-		// Clone current URL and update ?metric
-		const url = new URL($page.url);
-		if (id === defaultMetric) {
-			url.searchParams.delete('metric');
-		} else {
-			url.searchParams.set('metric', id);
-		}
-
-		goto(`${url.pathname}${url.search}`, {
-			keepFocus: true, // fixed casing
-			replaceState: true,
-			noScroll: true // fixed casing
+	$effect(() => {
+		const target = map;
+		const config = baseLayers.find((layer) => layer.id === activeBaseLayer);
+		if (!target || !config) return;
+		untrack(() => {
+			if (currentTiles) target.removeLayer(currentTiles);
+			let tiles = tileCache.get(config.id);
+			if (!tiles) {
+				tiles = L.tileLayer(config.url, config.options);
+				tileCache.set(config.id, tiles);
+			}
+			tiles.addTo(target);
+			currentTiles = tiles;
 		});
-	}
-
-	function retryLoad() {
-		loadFarmData();
-		loadSoilTests(true);
-	}
-
-	onMount(() => {
-		map = L.map(mapContainer, {
-			zoomControl: false
-		});
-		map.setView([-41.2, 146.4], 14);
-		L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-		applyBaseLayer(activeBaseLayer);
-		loadFarmData();
-		loadSoilTests();
-		loadTitleBoundaries();
-
-		resizeObserver = new ResizeObserver(() => {
-			map?.invalidateSize();
-		});
-		resizeObserver.observe(mapContainer);
-		scheduleInvalidate(80);
 	});
 
-	function dismissTitle() {
-		selectedTitle = null;
-	}
-
-	onDestroy(() => {
-		if (invalidateTimer) clearTimeout(invalidateTimer);
-		resizeObserver?.disconnect();
-		tileLayerCache.forEach((layer) => layer.remove());
-		tileLayerCache.clear();
-		map?.remove();
-		map = null;
+	$effect(() => {
+		if (map && paddockLayer) toggleLayer(map, paddockLayer, showBoundaries);
 	});
 
-	$: activeBase = baseLayerConfigs.find((layer) => layer.id === activeBaseLayer);
+	$effect(() => {
+		if (map && titleLayer) toggleLayer(map, titleLayer, showTitles);
+	});
 
-	$: if (map && paddockLayer) {
-		if (showBoundaries) {
-			if (!map.hasLayer(paddockLayer)) {
-				paddockLayer.addTo(map);
-			}
-		} else if (map.hasLayer(paddockLayer)) {
-			map.removeLayer(paddockLayer);
-		}
-	}
+	// Colour, highlight and label every paddock whenever the metric, data or selection changes.
+	$effect(() => {
+		for (const entry of entries) stylePaddock(entry, entry.id !== null && entry.id === selectedId);
+	});
 
-	$: if (!showBoundaries) {
-		showLabels = false;
-	}
-
-	$: if (map && titleLayer) {
-		if (showTitles) {
-			if (!map.hasLayer(titleLayer)) {
-				titleLayer.addTo(map);
-			}
-		} else if (map.hasLayer(titleLayer)) {
-			map.removeLayer(titleLayer);
-		}
-	}
-
-	// --- URL -> activeMetric sync (type-safe via metricsById) ---
-	let metricFromQuery: MetricId | null = null;
-
-	$: metricFromQuery = $page.url.searchParams.get('metric') as MetricId | null;
-
-	$: {
-		if (metricFromQuery && metricsById.has(metricFromQuery)) {
-			if (metricFromQuery !== activeMetric) {
-				activeMetric = metricFromQuery;
-			}
-		} else if (activeMetric !== defaultMetric) {
-			activeMetric = defaultMetric;
-		}
-	}
+	$effect(() => {
+		const target = map;
+		const fix = userFix;
+		if (!target || !fix) return;
+		const marker = L.layerGroup([
+			L.circle([fix.lat, fix.lon], {
+				radius: fix.accuracy,
+				color: '#78bdf0',
+				weight: 1,
+				fillOpacity: 0.15,
+				interactive: false
+			}),
+			L.circleMarker([fix.lat, fix.lon], {
+				radius: 7,
+				color: '#ffffff',
+				weight: 2,
+				fillColor: '#78bdf0',
+				fillOpacity: 1,
+				interactive: false
+			})
+		]).addTo(target);
+		return () => {
+			marker.remove();
+		};
+	});
 </script>
 
-<div
-	class="map-shell relative flex h-dvh min-h-[540px] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"
->
-	<aside
-		bind:this={navPanel}
-		class={`map-sidebar relative flex h-full shrink-0 overflow-visible transition-[width] duration-300 ease-in-out ${navOpen ? 'w-80 max-w-full' : 'w-0'}`}
-		on:transitionend={handleNavTransition}
-	>
-		<div
-			data-tooltip-boundary
-			class={`sidebar-panel flex h-full w-full flex-col gap-6 border-r border-white/10 bg-panel/95 text-sm text-muted transition-[padding,opacity] duration-300 ease-in-out ${navOpen ? 'pointer-events-auto overflow-x-visible overflow-y-auto px-6 py-6 opacity-100' : 'pointer-events-none overflow-hidden px-0 py-0 opacity-0'}`}
-			aria-hidden={!navOpen}
+<svelte:head>
+	<title>Farm map</title>
+</svelte:head>
+
+{#snippet legend(compact: boolean)}
+	<MetricLegend
+		{metric}
+		{stats}
+		{percents}
+		{details}
+		{colouredCount}
+		{scaleReady}
+		loading={soilLoading}
+		error={soilError}
+		onretry={loadSoilTests}
+		{compact}
+	/>
+{/snippet}
+
+{#snippet controls(labelToggle: boolean)}
+	<MapControls
+		{baseLayers}
+		{activeBaseLayer}
+		onbasechange={(id) => (activeBaseLayer = id)}
+		bind:showBoundaries
+		bind:showLabels
+		bind:showTitles
+		showLabelToggle={labelToggle}
+		titles={{ loading: titlesLoading, error: titlesError, count: titlesCount }}
+		onretrytitles={loadTitleBoundaries}
+		onreset={resetView}
+	/>
+{/snippet}
+
+<div class="map-shell relative flex bg-bg">
+	<h1 class="sr-only">Farm map</h1>
+
+	{#if desktop.current}
+		<aside
+			inert={!navOpen}
+			class={[
+				'relative h-full shrink-0 overflow-hidden border-r border-border bg-panel transition-[width] duration-300 ease-in-out motion-reduce:transition-none',
+				navOpen ? 'w-80' : 'w-0'
+			]}
 		>
-			<header class="flex items-start gap-4 text-white">
-				<a href="/" class="flex items-center gap-3">
-					<img
-						src="/img/logo.png"
-						alt="Greenhill Bros logo"
-						class="h-10 w-10 rounded-md border border-white/10 bg-white/10 p-1"
-					/>
-					<div class="leading-tight">
-						<p class="text-xs tracking-wider text-muted/70 uppercase">Greenhill Bros Farm</p>
-						<h1 class="text-lg font-semibold">Interactive map</h1>
-					</div>
-				</a>
-				<div class="ml-auto">
+			<div
+				data-tooltip-boundary
+				class="flex h-full w-80 flex-col gap-6 overflow-y-auto px-5 py-5 text-sm text-muted"
+			>
+				<div class="flex items-center gap-3">
+					<h2 class="flex-1 text-lg font-semibold text-text">Map controls</h2>
 					<button
-						class="rounded-md border border-border/80 bg-white/5 p-2 text-muted hover:bg-white/10 hover:text-white focus:ring-2 focus:ring-accent/40 focus:outline-none"
-						on:click={() => toggleNav()}
-						aria-label="Collapse sidebar"
+						type="button"
+						onclick={() => (navOpen = false)}
+						aria-label="Hide map controls"
+						class="inline-flex size-11 items-center justify-center rounded-lg border border-border text-muted hover:text-text focus-visible:outline-2 focus-visible:outline-accent"
 					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
-							fill="none"
 							viewBox="0 0 24 24"
-							stroke-width="1.5"
+							fill="none"
 							stroke="currentColor"
-							class="size-4"
+							stroke-width="1.5"
+							class="size-5"
+							aria-hidden="true"
 						>
 							<path
 								stroke-linecap="round"
@@ -589,355 +518,121 @@
 						</svg>
 					</button>
 				</div>
-			</header>
-
-			<nav id="map-controls" aria-label="Map controls" class="space-y-8">
-				<section class="space-y-3">
-					<div>
-						<h2 class="text-xs font-semibold tracking-wider text-muted/70 uppercase">Base map</h2>
-						<p class="mt-1 text-xs text-muted/60">
-							Choose the imagery used beneath the farm overlays.
-						</p>
-					</div>
-					<div class="flex flex-wrap gap-2">
-						{#each baseLayerConfigs as layer}
-							<button
-								type="button"
-								class={`inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${activeBaseLayer === layer.id ? 'border-accent/60 bg-accent/20 text-white shadow' : 'border-white/10 bg-white/5 text-muted hover:border-white/20 hover:text-white'}`}
-								aria-pressed={activeBaseLayer === layer.id}
-								on:click={() => selectBaseLayer(layer.id)}
-							>
-								{layer.label}
-							</button>
-						{/each}
-					</div>
-					{#if activeBase}
-						<p class="text-xs text-muted/70">{activeBase.description}</p>
-					{/if}
+				<PaddockSearch paddocks={searchOptions} onselect={(id) => selectPaddock(id, true)} />
+				<section class="space-y-3" aria-labelledby="metric-heading">
+					<h3 id="metric-heading" class="text-sm font-semibold text-text">Soil metric</h3>
+					<MetricChips {metrics} active={activeMetric} onchange={chooseMetric} layout="wrap" />
+					{@render legend(false)}
 				</section>
+				{@render controls(true)}
+				<p class="rounded-lg border border-border bg-white/5 px-4 py-3 text-xs">{statusLine}</p>
+			</div>
+		</aside>
+	{/if}
 
-				<section class="space-y-3">
-					<div>
-						<h2 class="text-xs font-semibold tracking-wider text-muted/70 uppercase">Overlays</h2>
-						<p class="mt-1 text-xs text-muted/60">
-							Switch between soil metrics as datasets become available.
-						</p>
-					</div>
-					<div class="flex flex-wrap gap-2">
-						{#each metricOptions as metric}
-							<button
-								type="button"
-								class={`rounded-md border px-3 py-2 text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${activeMetric === metric.id ? 'border-accent/60 bg-accent/20 text-white shadow' : 'border-white/10 bg-white/5 text-muted hover:border-white/20 hover:text-white'}`}
-								aria-pressed={activeMetric === metric.id}
-								on:click={() => chooseMetric(metric.id)}
-							>
-								{metric.label}
-							</button>
-						{/each}
-					</div>
-					<div class="space-y-2 text-xs text-muted/60">
-						{#if activeMetricObj.id === 'none'}
-							<p>Choose a dataset to colour paddocks using recent soil test data.</p>
-						{:else if soilDataLoading}
-							<p>Loading the latest soil test results…</p>
-						{:else if soilDataError}
-							<p class="text-red-300">{soilDataError}</p>
-							<button
-								type="button"
-								class="inline-flex items-center gap-1 rounded-md border border-red-300/40 bg-red-300/10 px-2 py-1 text-[11px] text-red-200 transition hover:border-red-300/60 hover:bg-red-300/20"
-								on:click={() => loadSoilTests(true)}
-							>
-								Retry
-							</button>
-						{:else if !metricScaleReady}
-							<p>We don't have a colour scale configured for {activeMetricObj.label} yet.</p>
-						{:else if activeMetricStats}
-							{@const stats = activeMetricStats!}
-							{@const perc = legendPercents}
-							{@const details = legendDetails}
-							{@const cmin =
-								typeof activeMetricObj.c_min === 'number' ? activeMetricObj.c_min : null}
-							{@const cmax =
-								typeof activeMetricObj.c_max === 'number' ? activeMetricObj.c_max : null}
-							{@const unitSuffix = activeMetricObj.unit ? ` ${activeMetricObj.unit}` : ''}
-							<p>
-								Colouring {activeMetricPaddockCount} paddock{activeMetricPaddockCount === 1
-									? ''
-									: 's'} using {activeMetricObj.label}.
-							</p>
-							<div
-								class="space-y-2 rounded-md border border-white/10 bg-white/5 p-3 text-[11px] text-muted/70"
-							>
-								<div class="text-center font-semibold">
-									Scale{unitSuffix ? ` (${activeMetricObj.unit})` : ''}
-								</div>
-								<div class="relative h-2 w-full rounded-full">
-									<div
-										class="pointer-events-none absolute inset-0 rounded-full"
-										style={`background: ${VIRIDIS_GRADIENT};`}
-									></div>
-									{#if perc.showOpt}
-										<button
-											type="button"
-											class="group absolute inset-y-[-6px] flex items-center justify-center bg-transparent p-0 focus:outline-none"
-											style={`left:${perc.optLoPct}%; width:${perc.optWidth}%`}
-											aria-label={`Optimal range ${formatLegendTick(details.opt.range?.[0])}${unitSuffix} to ${formatLegendTick(details.opt.range?.[1])}${unitSuffix}`}
-										>
-											<div
-												class="pointer-events-none absolute inset-0 rounded-full bg-white/30"
-											></div>
-											<div
-												use:keepTooltipInView
-												class="pointer-events-none absolute -top-24 left-1/2 hidden w-60 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block"
-												role="tooltip"
-											>
-												<div class="font-semibold">
-													Optimal {formatLegendTick(details.opt.range?.[0])}{unitSuffix} – {formatLegendTick(
-														details.opt.range?.[1]
-													)}{unitSuffix}
-												</div>
-												{#if details.opt.within.total > 0}
-													<div class="mt-1 text-[10px] text-slate-200/80">
-														{details.opt.within.count} of {details.opt.within.total} paddocks ({formatPercent(
-															details.opt.within.pct
-														)})
-													</div>
-												{:else}
-													<div class="mt-1 text-[10px] text-slate-200/80">
-														No sampled paddocks yet
-													</div>
-												{/if}
-											</div>
-										</button>
-									{/if}
-									<button
-										type="button"
-										class="group absolute -top-3 flex h-8 w-8 -translate-x-1/2 cursor-default items-end justify-center bg-transparent p-0 focus:outline-none"
-										style={`left:${perc.lowPct}%`}
-										aria-label={`Minimum value ${formatLegendTick(details.min.value)}${unitSuffix}`}
-									>
-										<div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div>
-										<div
-											use:keepTooltipInView
-											class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block"
-											role="tooltip"
-										>
-											<div class="font-semibold">
-												Min {formatLegendTick(details.min.value)}{unitSuffix}
-											</div>
-											<div class="mt-1 text-[10px] text-slate-200/80">
-												Paddocks: {formatFieldList(details.min.fields)}
-											</div>
-										</div>
-									</button>
-									<button
-										type="button"
-										class="group absolute -top-3 flex h-8 w-8 -translate-x-1/2 cursor-default items-end justify-center bg-transparent p-0 focus:outline-none"
-										style={`left:${perc.highPct}%`}
-										aria-label={`Maximum value ${formatLegendTick(details.max.value)}${unitSuffix}`}
-									>
-										<div class="pointer-events-none h-full w-[6px] rounded-full bg-white/85"></div>
-										<div
-											use:keepTooltipInView
-											class="pointer-events-none absolute -top-24 left-1/2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-950/95 px-3 py-2 text-[11px] text-slate-100 shadow-xl group-hover:block group-focus-visible:block"
-											role="tooltip"
-										>
-											<div class="font-semibold">
-												Max {formatLegendTick(details.max.value)}{unitSuffix}
-											</div>
-											<div class="mt-1 text-[10px] text-slate-200/80">
-												Paddocks: {formatFieldList(details.max.fields)}
-											</div>
-										</div>
-									</button>
-								</div>
-								<div class="flex justify-between text-[11px] text-muted/60">
-									<span>{formatLegendTick(cmin)}</span>
-									<span>{formatLegendTick(cmax)}</span>
-								</div>
-								<div class="flex justify-between text-[10px] text-muted/60">
-									<span
-										>Median: <span class="font-semibold"
-											>{formatLegendTick(stats.median)}{unitSuffix}</span
-										></span
-									>
-								</div>
-								{#if details.opt.range}
-									<div class="text-[10px] text-emerald-200/90">
-										{details.opt.within.count} of {details.opt.within.total} paddocks within optimal ({formatPercent(
-											details.opt.within.pct
-										)})
-									</div>
-								{/if}
-							</div>
-						{:else}
-							<p>No paddocks have recent samples for {activeMetricObj.label} yet.</p>
-						{/if}
-					</div>
-				</section>
-
-				<section class="space-y-3">
-					<div>
-						<h2 class="text-xs font-semibold tracking-wider text-muted/70 uppercase">Display</h2>
-						<p class="mt-1 text-xs text-muted/60">
-							Toggle contextual information on top of the base map.
-						</p>
-					</div>
-					<div class="space-y-2">
-						<label
-							class="flex items-center gap-3 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-muted transition focus-within:border-accent/60 hover:border-white/20 hover:text-white"
-						>
-							<input type="checkbox" class="accent-accent" bind:checked={showBoundaries} />
-							<span>Show field boundaries</span>
-						</label>
-						<label
-							class="flex items-center gap-3 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-muted transition focus-within:border-accent/60 hover:border-white/20 hover:text-white"
-						>
-							<input
-								type="checkbox"
-								class="accent-accent disabled:opacity-50"
-								bind:checked={showLabels}
-								disabled={!showBoundaries}
-							/>
-							<span>Show paddock labels</span>
-						</label>
-						<label
-							class="flex items-center gap-3 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-muted transition focus-within:border-accent/60 hover:border-white/20 hover:text-white"
-						>
-							<input type="checkbox" class="accent-accent" bind:checked={showTitles} />
-							<span>Show title boundaries</span>
-						</label>
-						{#if showTitles}
-							<div class="pl-1 text-xs text-muted/60">
-								{#if titlesLoading}
-									<p>Loading title boundaries…</p>
-								{:else if titlesError}
-									<p class="text-red-300">{titlesError}</p>
-									<button
-										type="button"
-										class="inline-flex items-center gap-1 rounded-md border border-red-300/40 bg-red-300/10 px-2 py-1 text-[11px] text-red-200 transition hover:border-red-300/60 hover:bg-red-300/20"
-										on:click={() => loadTitleBoundaries()}
-									>
-										Retry
-									</button>
-								{:else if titlesCount > 0}
-									<p>{titlesCount} title boundaries loaded. Click a boundary for details.</p>
-								{/if}
-							</div>
-						{/if}
-					</div>
-					<button
-						type="button"
-						class="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-muted transition hover:border-white/20 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-						on:click={resetView}
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							viewBox="0 0 20 20"
-							fill="currentColor"
-							class="h-4 w-4"
-						>
-							<path
-								fill-rule="evenodd"
-								d="M10 3.5a6.5 6.5 0 1 0 6.03 9h-1.7a4.75 4.75 0 1 1 0-4h1.7A6.5 6.5 0 0 0 10 3.5Zm.75.75V2a.75.75 0 0 0-1.5 0v2.25a.75.75 0 0 0 1.5 0ZM4.28 5.53a.75.75 0 0 0 0-1.06l-1.59-1.6a.75.75 0 1 0-1.06 1.07l1.59 1.59a.75.75 0 0 0 1.06 0Zm-1.59 9.6 1.59 1.59a.75.75 0 0 1-1.06 1.06l-1.59-1.58a.75.75 0 1 1 1.06-1.06ZM16.5 5.75a.75.75 0 0 1 1.5 0v2.25a.75.75 0 0 1-1.5 0V5.75Zm.53 8.47.8.8a.75.75 0 0 1-1.06 1.06l-.8-.8a.75.75 0 0 1 1.06-1.06Z"
-								clip-rule="evenodd"
-							/>
-						</svg>
-						Reset view
-					</button>
-				</section>
-
-				<section
-					class="rounded-md border border-white/10 bg-white/5 px-4 py-3 text-xs text-muted/70"
-				>
-					{#if isLoading}
-						<p>Loading paddock boundaries…</p>
-					{:else if loadError}
-						<p class="text-red-200">{loadError}</p>
-					{:else}
-						<p>
-							{#if paddockCount > 0}
-								Showing {paddockCount} mapped paddocks{titlesCount > 0
-									? ` and ${titlesCount} title boundaries`
-									: ''}.
-							{:else}
-								Farm boundaries ready to explore.
-							{/if}
-						</p>
-					{/if}
-				</section>
-			</nav>
-			<nav aria-label="Quick links" class="space-y-1 text-sm">
-				{#each quickLinks as link}
-					<a
-						href={link.href}
-						class="flex items-center justify-between rounded-md px-3 py-2 text-muted transition hover:bg-white/5 hover:text-white"
-					>
-						<span>{link.label}</span>
-						<span aria-hidden="true" class="text-xs text-muted/70">→</span>
-					</a>
-				{/each}
-			</nav>
-		</div>
-	</aside>
-
-	<main class="map-main relative min-w-0 flex-1 bg-bg">
+	<div class="relative min-w-0 flex-1">
 		<div
-			bind:this={mapContainer}
-			class="map-canvas absolute inset-0"
-			class:labels-hidden={!showLabels}
+			{@attach createMap}
+			class={['map-canvas absolute inset-0', labelsHidden && 'labels-hidden']}
 		></div>
 
-		{#if !navOpen}
-			<button
-				class={`absolute top-3 left-4 z-[1200] rounded-md border border-border/80 bg-panel/90 px-3 py-2 text-sm text-muted backdrop-blur transition hover:bg-panel hover:text-white focus:ring-2 focus:ring-accent/40 focus:outline-none ${
-					isStreetsBase
-						? 'border-white/50 bg-slate-950/95 text-slate-200 shadow-black/40'
-						: 'border-border/80 bg-panel/80 text-muted'
-				}`}
-				on:click={() => toggleNav()}
-			>
-				Open controls
-			</button>
+		{#if desktop.current}
+			{#if !navOpen}
+				<button
+					type="button"
+					onclick={() => (navOpen = true)}
+					class="absolute top-3 left-3 z-[1050] inline-flex min-h-11 items-center rounded-lg border border-border bg-panel/95 px-4 text-sm text-text shadow-lg hover:bg-panel"
+				>
+					Show map controls
+				</button>
+			{/if}
+			{#if metric.id !== 'none'}
+				<div
+					class={[
+						'pointer-events-none absolute left-3 z-[1040] max-w-xs rounded-xl border border-border bg-panel/95 px-4 py-3 text-sm shadow-lg',
+						navOpen ? 'top-3' : 'top-16'
+					]}
+				>
+					<p class="font-semibold text-text">{metric.label}</p>
+					<p class="mt-1 text-muted">{metric.description}</p>
+					<p class="mt-1 text-muted">
+						Optimal range {metric.range_optimal[0]} to {metric.range_optimal[1]}{metric.unit
+							? ` ${metric.unit}`
+							: ''}
+					</p>
+				</div>
+			{/if}
+		{:else}
+			<div class="absolute inset-x-0 top-0 z-[1050] flex items-center gap-2 px-3 pt-3">
+				<div class="min-w-0 flex-1 [scrollbar-width:none] overflow-x-auto">
+					<MetricChips {metrics} active={activeMetric} onchange={chooseMetric} layout="row" />
+				</div>
+				<button
+					type="button"
+					aria-label="Find a paddock"
+					onclick={() => (panel = { kind: 'search' })}
+					class="inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-panel/95 text-text shadow-lg"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+						class="size-5"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+						/>
+					</svg>
+				</button>
+				<button
+					type="button"
+					onclick={() => (panel = { kind: 'layers' })}
+					class="inline-flex min-h-11 shrink-0 items-center rounded-full border border-border bg-panel/95 px-4 text-sm text-text shadow-lg"
+				>
+					Layers
+				</button>
+			</div>
+			{#if metric.id !== 'none' && panel === null}
+				<div class="absolute right-16 bottom-3 left-3 z-[1050]">{@render legend(true)}</div>
+			{/if}
 		{/if}
 
-		<!-- Floating info panel: use activeMetricObj and fix class interpolation -->
-		{#if activeMetricObj.id !== defaultMetric}
-			<div
-				class={`pointer-events-none absolute ${navOpen ? 'top-3' : 'top-15'} left-4 z-[1100] max-w-xs rounded-xl border px-4 py-3 text-xs shadow-lg backdrop-blur ${
-					isStreetsBase
-						? 'border-white/50 bg-slate-950/95 text-slate-200 shadow-black/40'
-						: 'border-border/80 bg-panel/80 text-muted'
-				}`}
-			>
-				<div class="text-sm font-semibold text-white">{activeMetricObj.label}</div>
-				<p class={`mt-1 leading-relaxed ${isStreetsBase ? 'text-slate-100' : 'text-muted'}`}>
-					{activeMetricObj.description}
-				</p>
+		<div class="absolute right-2.5 bottom-24 z-[1050]">
+			<LocateButton onposition={handleFix} onerror={showToast} onstop={handleLocateStop} />
+		</div>
+
+		<div
+			role="status"
+			aria-live="polite"
+			class="pointer-events-none absolute inset-x-3 top-20 z-[1150] flex justify-center md:top-4"
+		>
+			{#if toast}
 				<p
-					class={`mt-1 leading-relaxed font-semibold ${isStreetsBase ? 'text-slate-200' : 'text-muted/70'}`}
+					class="rounded-lg border border-border bg-panel/95 px-4 py-3 text-sm text-text shadow-lg"
 				>
-					Optimal range: {activeMetricObj.range_optimal[0]}{activeMetricObj.unit} to {activeMetricObj
-						.range_optimal[1]}{activeMetricObj.unit}
+					{toast}
 				</p>
-			</div>
-		{/if}
+			{/if}
+		</div>
 
 		{#if loadError}
 			<div class="map-status">
-				<div class="space-y-3">
-					<h2 class="text-base font-semibold text-white">We couldn't load the farm map</h2>
-					<p class="text-sm text-muted">{loadError}</p>
-					<div class="flex justify-center">
-						<button
-							type="button"
-							class="inline-flex items-center gap-2 rounded-md border border-white/20 bg-white/10 px-4 py-2 text-sm text-white transition hover:border-white/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-							on:click={retryLoad}
-						>
-							Try again
-						</button>
-					</div>
-				</div>
+				<h2 class="text-lg font-semibold text-text">We couldn't load the farm map</h2>
+				<p class="mt-1 text-sm text-muted">{loadError}</p>
+				<button
+					type="button"
+					onclick={() => {
+						loadFarmData();
+						loadSoilTests();
+					}}
+					class="mt-3 inline-flex min-h-11 items-center rounded-lg border border-border bg-white/10 px-4 text-sm text-text hover:bg-white/20"
+				>
+					Try again
+				</button>
 			</div>
 		{:else if isLoading}
 			<div class="map-status" aria-live="polite">
@@ -945,158 +640,98 @@
 			</div>
 		{/if}
 
-		<a
-			href="/"
-			class={`map-home absolute top-4 right-4 z-[1000] inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
-				isStreetsBase
-					? 'border-white/60 bg-slate-950/95 text-white shadow-xl hover:border-white/80'
-					: 'border-white/10 bg-panel/95 text-white shadow-lg hover:border-white/30'
-			}`}
-			aria-label="Back to home"
-		>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				viewBox="0 0 24 24"
-				fill="currentColor"
-				class="h-5 w-5"
+		{#if panel?.kind === 'paddock' && selected}
+			<DetailSheet
+				title={selected.name}
+				subtitle={`Paddock ${selected.displayId}`}
+				onclose={closePanel}
 			>
-				<path d="M12 3.172 3 10.5V21h6v-6h6v6h6V10.5L12 3.172z" />
-			</svg>
-			<span class="hidden sm:inline">Home</span>
-		</a>
-
-		<!-- Selected title info panel -->
-		{#if selectedTitle}
-			{@const ownerNames = formatOwners(selectedTitle.owners)}
-			<div
-				class={`absolute right-4 bottom-6 z-[1100] w-80 max-w-[calc(100vw-2rem)] rounded-xl border shadow-lg backdrop-blur ${
-					isStreetsBase
-						? 'border-white/50 bg-slate-950/95 text-slate-200 shadow-black/40'
-						: 'border-border/80 bg-panel/95 text-muted'
-				}`}
+				<PaddockDetails
+					fieldId={panel.id}
+					areaHa={selected.areaHa}
+					sampleDate={selectedSample?.sampleDate ?? null}
+					sampleName={selectedSample?.sampleName ?? null}
+					rows={paddockSoilSummary(selectedSample, metrics)}
+					hasSample={selectedSample !== undefined}
+					{soilLoading}
+					{soilError}
+					onretry={loadSoilTests}
+				/>
+			</DetailSheet>
+		{:else if panel?.kind === 'title'}
+			<DetailSheet
+				title={panel.title.address || 'Untitled property'}
+				subtitle="Property title"
+				onclose={closePanel}
 			>
-				<div class="flex items-start gap-2 border-b border-white/10 px-4 py-3">
-					<div class="min-w-0 flex-1">
-						<h3 class="truncate text-sm font-semibold text-white">
-							{selectedTitle.address || 'Untitled property'}
-						</h3>
-						<p class="mt-0.5 text-xs text-muted/70">Property title details</p>
-					</div>
-					<button
-						type="button"
-						class="shrink-0 rounded-md p-1 text-muted transition hover:bg-white/10 hover:text-white"
-						on:click={dismissTitle}
-						aria-label="Close title details"
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							viewBox="0 0 20 20"
-							fill="currentColor"
-							class="h-4 w-4"
-						>
-							<path
-								d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
-							/>
-						</svg>
-					</button>
+				<TitleDetails title={panel.title} />
+			</DetailSheet>
+		{:else if panel?.kind === 'layers' && !desktop.current}
+			<DetailSheet title="Layers" onclose={closePanel}>
+				<div class="space-y-6">
+					<PaddockSearch paddocks={searchOptions} onselect={(id) => selectPaddock(id, true)} />
+					{@render controls(false)}
+					<p class="text-xs text-muted">{statusLine}</p>
 				</div>
-				<div class="space-y-2 px-4 py-3 text-xs">
-					<div class="flex justify-between gap-2">
-						<span class="text-muted/60">Title Ref</span>
-						<span class="text-right font-medium text-white">{selectedTitle.titleRef || '–'}</span>
-					</div>
-					<div class="flex justify-between gap-2">
-						<span class="text-muted/60">PID</span>
-						<span class="font-medium text-white">{selectedTitle.pid ?? '–'}</span>
-					</div>
-					<div class="flex justify-between gap-2">
-						<span class="text-muted/60">Owners</span>
-						<span class="text-right font-medium text-white">{ownerNames}</span>
-					</div>
-					<div class="flex justify-between gap-2">
-						<span class="text-muted/60">Ownership</span>
-						<span class="font-medium text-white">{selectedTitle.ownershipPct || '–'}</span>
-					</div>
-					<div class="flex justify-between gap-2">
-						<span class="text-muted/60">Volume / Folio</span>
-						<span class="font-medium text-white"
-							>{selectedTitle.volume || '–'} / {selectedTitle.folio ?? '–'}</span
-						>
-					</div>
-					{#if selectedTitle.pid}
-						<div class="flex justify-between gap-2">
-							<span class="text-muted/60">Registry</span>
-							<a
-								href="https://www.thelist.tas.gov.au/app/content/property/property-search?propertySearchCriteria.volume=&propertySearchCriteria.folio=&propertySearchCriteria.dealingNo=&propertySearchCriteria.surname=&propertySearchCriteria.givenName=&propertySearchCriteria.companyName=&propertySearchCriteria.propertyId={selectedTitle.pid}&addressString=&propertySearchCriteria.propertyName=&streetNumber=&propertySearchCriteria.streetName="
-								target="_blank"
-								rel="noopener noreferrer"
-								class="font-medium text-blue-400 underline transition hover:text-blue-300"
-							>
-								View on the LIST
-							</a>
-						</div>
-					{/if}
-				</div>
-			</div>
+			</DetailSheet>
+		{:else if panel?.kind === 'search' && !desktop.current}
+			<DetailSheet title="Find a paddock" onclose={closePanel}>
+				<PaddockSearch paddocks={searchOptions} onselect={(id) => selectPaddock(id, true)} />
+			</DetailSheet>
 		{/if}
-	</main>
+	</div>
 </div>
 
 <style>
+	.map-shell {
+		height: calc(100dvh - var(--shell-top) - var(--shell-bottom));
+		min-height: 420px;
+	}
+
 	.map-status {
 		position: absolute;
 		inset: auto 1.5rem 1.5rem 1.5rem;
 		max-width: 22rem;
 		margin: 0 auto;
 		border-radius: 0.75rem;
-		border: 1px solid rgba(255, 255, 255, 0.12);
-		background: rgba(15, 23, 34, 0.92);
+		border: 1px solid rgb(var(--border));
+		background: rgb(var(--panel) / 0.95);
 		padding: 1.5rem;
 		text-align: center;
-		backdrop-filter: blur(12px);
 		z-index: 900;
-		box-shadow: 0 18px 40px rgba(8, 11, 19, 0.55);
 	}
 
 	:global(.map-canvas.labels-hidden .leaflet-tooltip) {
 		display: none !important;
 	}
 
+	:global(.paddock-tooltip),
+	:global(.title-tooltip) {
+		color: #f9fafb;
+		border-radius: 0.5rem;
+		padding: 0.35rem 0.55rem;
+		box-shadow: 0 4px 12px rgba(15, 23, 42, 0.35);
+		font-size: 0.875rem;
+	}
+
 	:global(.paddock-tooltip) {
 		background-color: rgba(17, 24, 39, 0.94);
-		color: #f9fafb;
-		border-radius: 0.375rem;
-		padding: 0.35rem 0.55rem;
 		border: 1px solid rgba(255, 255, 255, 0.2);
-		box-shadow: 0 4px 12px rgba(15, 23, 42, 0.35);
-	}
-
-	:global(.paddock-tooltip strong) {
-		font-weight: 600;
-		display: block;
-		margin-bottom: 0.1rem;
-	}
-
-	:global(.paddock-tooltip div:last-child) {
-		font-size: 0.75rem;
-		opacity: 0.85;
 	}
 
 	:global(.title-tooltip) {
 		background-color: rgba(30, 15, 60, 0.94);
-		color: #f9fafb;
-		border-radius: 0.375rem;
-		padding: 0.35rem 0.55rem;
 		border: 1px solid rgba(250, 204, 21, 0.35);
-		box-shadow: 0 4px 12px rgba(15, 23, 42, 0.35);
 	}
 
+	:global(.paddock-tooltip strong),
 	:global(.title-tooltip strong) {
 		font-weight: 600;
 		display: block;
 		margin-bottom: 0.1rem;
 	}
 
+	:global(.paddock-tooltip div:last-child),
 	:global(.title-tooltip div:last-child) {
 		font-size: 0.75rem;
 		opacity: 0.85;

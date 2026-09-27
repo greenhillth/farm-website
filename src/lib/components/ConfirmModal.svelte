@@ -1,30 +1,41 @@
 <script lang="ts">
-	import { createEventDispatcher, tick } from 'svelte';
+	import type { Snippet } from 'svelte';
+	import type { Attachment } from 'svelte/attachments';
 
-	const randomId = () => Math.random().toString(36).slice(2);
+	type Props = {
+		open?: boolean;
+		title?: string;
+		confirmText?: string;
+		cancelText?: string;
+		loading?: boolean;
+		disableConfirm?: boolean;
+		onconfirm?: () => void;
+		oncancel?: () => void;
+		children?: Snippet;
+	};
 
-	export let open = false;
-	export let title = '';
-	export let confirmText = 'Confirm';
-	export let cancelText = 'Cancel';
-	export let loading = false;
-	export let disableConfirm = false;
+	let {
+		open = false,
+		title = '',
+		confirmText = 'Confirm',
+		cancelText = 'Cancel',
+		loading = false,
+		disableConfirm = false,
+		onconfirm,
+		oncancel,
+		children
+	}: Props = $props();
 
-	const dispatch = createEventDispatcher<{ confirm: void; cancel: void }>();
+	const titleId = $props.id();
 
-	let dialog: HTMLDivElement | null = null;
-	let titleId = `confirm-modal-${randomId()}`;
+	// The dialog is created each time `open` turns true, so this focuses it on every opening.
+	const focusOnMount: Attachment<HTMLElement> = (node) => {
+		node.focus();
+	};
 
-	$: if (open) {
-		titleId = `confirm-modal-${randomId()}`;
-		tick().then(() => {
-			dialog?.focus();
-		});
-	}
-
-	function handleBackdropClick() {
-		if (loading) return;
-		dispatch('cancel');
+	function handleBackdropClick(event: MouseEvent) {
+		if (event.target !== event.currentTarget || loading) return;
+		oncancel?.();
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -32,32 +43,32 @@
 		if (event.key === 'Escape') {
 			event.preventDefault();
 			event.stopPropagation();
-			dispatch('cancel');
+			oncancel?.();
 		}
 	}
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 {#if open}
-	<div class="confirm-backdrop" role="presentation" on:click|self={handleBackdropClick}>
+	<div class="confirm-backdrop" role="presentation" onclick={handleBackdropClick}>
 		<div
 			class="confirm-modal"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby={titleId}
 			tabindex="-1"
-			bind:this={dialog}
+			{@attach focusOnMount}
 		>
 			<h2 class="confirm-title" id={titleId}>{title}</h2>
 			<div class="confirm-body">
-				<slot />
+				{@render children?.()}
 			</div>
 			<div class="confirm-actions">
 				<button
 					type="button"
 					class="confirm-secondary"
-					on:click={() => dispatch('cancel')}
+					onclick={() => oncancel?.()}
 					disabled={loading}
 				>
 					{cancelText}
@@ -65,7 +76,7 @@
 				<button
 					type="button"
 					class="confirm-primary"
-					on:click={() => dispatch('confirm')}
+					onclick={() => onconfirm?.()}
 					disabled={loading || disableConfirm}
 				>
 					{#if loading}

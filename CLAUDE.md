@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Farm management frontend (soil-test map, soil-test upload/management, weather dashboard) built with **SvelteKit 2 + Svelte 5 + Tailwind 4 + Leaflet**, using `@sveltejs/adapter-node`. It is a frontend only. All data comes from the separate FastAPI backend (`../gbros-api`), reached through `/api`.
 
-`main` is the production branch and the only long-lived branch. Work goes on short-lived branches and into `main` by PR, and releases are `vX.Y.Z` tags on `main` (see Git workflow and Deployment). The old static-HTML version of the site is kept only as the tag `archive/static-site`. Don't port files or instructions from it.
+`main` is the production branch and `staging` is the integration branch. Work goes on short-lived branches, into `staging` by PR, and from `staging` into `main` by PR. Releases are `vX.Y.Z` tags on `main` (see Git workflow and Deployment). The old static-HTML version of the site is kept only as the tag `archive/static-site`. Don't port files or instructions from it.
 
 ## Commands
 
@@ -47,8 +47,7 @@ Backend API contracts that the frontend expects are written up in the root markd
 - `src/lib/config.ts`: API endpoints, map tile source, and `soilMetrics` (id, label, unit, optimal range, colour-scale min/max). The metric definitions drive the map legend and colouring.
 - `src/routes/map/`: Leaflet map with SSR turned off (`+page.ts` sets `ssr = false`, and Leaflet also needs `ssr.noExternal`/`optimizeDeps` in `vite.config.ts`). It fetches farm GeoJSON, title boundaries and the latest soil tests, then colours paddocks on a viridis scale. Pure helpers live in `map/helpers.ts`, and layer builders and styles in `src/lib/layers.ts`.
 - `src/routes/soiltests/`: large single page (about 2,100 lines) for listing, manual entry, CSV import with job-status polling, and bulk delete. Shared types, CSV header requirements and fetch helpers are in `src/lib/soil-tests/`. Import progress is broadcast as a `farm:csv-import-progress` DOM event (`progress.ts`).
-- `src/routes/weather/`: dashboard and per-metric detail view (`[metric]`). `src/lib/weather.ts` → `src/lib/providers/backend.ts` maps the backend's `/weather/current` reading onto the UI `Weather` shape and fills any missing fields from `getMockWeather()`. If the backend is unreachable it returns `connected: false, source: 'mock'`. `providers/ecowitt.ts` (direct Ecowitt API) is currently unused.
-- `src/lib/ui.ts` and `$` in `src/lib/utils.ts` are DOM-manipulation helpers left over from the pre-Svelte version.
+- `src/routes/weather/`: dashboard and per-metric detail view (`[metric]`). `src/lib/weather.ts` → `src/lib/providers/backend.ts` maps the backend's `/weather/current` reading onto the UI `Weather` shape and fills any missing fields from `getMockWeather()`. If the backend is unreachable it returns `connected: false, source: 'mock'`.
 
 ## Conventions
 
@@ -66,15 +65,20 @@ The human guide is `docs/git-workflow.md`. GitHub rulesets enforce the following
 
 - `main` accepts changes only through PRs. The checks `checks`, `container` and `deploy-tests` must pass, and merges must be merge commits. Nothing is pushed to `main` directly, and nothing force-pushes or deletes it.
 - Pushed `v*` tags can't be moved or deleted. A wrong release is fixed with the next version, never a re-tag.
-- There is no `development` branch. Don't recreate it.
+- `staging` can't be deleted, including by the automatic deletion of merged branches when it's promoted. Nothing else on `staging` is enforced, so still go through PRs and wait for green CI.
+- `staging` is the only other long-lived branch. Feature, fix, docs, chore and release branches merge into `staging` by PR, and `staging` merges into `main` by PR (merge commit). There is no `development` branch. Don't recreate it.
 
 Rules for agents:
 
+- Project skills automate the steps below: `/branch-start <prefix>/<name>` (worktree branch from `origin/staging`, `npm ci`), `/preflight` (what CI's `checks` job runs) and `/branch-cleanup` (removes merged worktrees and branches). The hooks in `.claude/settings.json` run Prettier on edited files and block or prompt for the "never" steps (force-push, pushing to `main`, tags, merges, deploys, `npm audit fix --force`, hand edits to `.env` and `package-lock.json`). A prompt from the guard means Tom decides. Don't work around it.
+
 - Do file-changing work in a worktree under `.claude/worktrees/`, never by switching branches in the main checkout. Tom's VS Code uses the main checkout and can switch its branch mid-task. Run `npm ci` in a new worktree first. If it fails with `Tsconfig not found .../.svelte-kit/tsconfig.json`, run `npx svelte-kit sync` in the main checkout. See `docs/branches-and-worktrees.md`.
-- Start every change on a new branch from an up-to-date `origin/main`. Prefixes: `feat/`, `fix/`, `docs/`, `chore/`, `release/vX.Y.Z`. One topic per branch and PR. Rename Claude's default `worktree-<name>` branch (`git branch -m`) before pushing.
+- Start every change on a new branch from an up-to-date `origin/staging`, and open its PR with `--base staging`. Claude's worktrees start on a `worktree-<name>` branch from `origin/main`, so first run `git fetch origin`, `git switch --no-track -c <prefix>/<name> origin/staging`, then `git branch -d worktree-<name>`. Prefixes: `feat/`, `fix/`, `docs/`, `chore/`, `release/vX.Y.Z`. One topic per branch and PR.
+- Exception: an urgent production fix that Tom asks to go straight to `main` branches from `origin/main` and is PR'd into `main`. Then open a PR from `main` into `staging` so `staging` keeps the fix.
+- Open the `staging` → `main` PR only when Tom asks for it.
 - Before pushing, run what CI runs for the files you touched: `npm run check`, `npm test`, `npx prettier --check .`, plus `npm run build` and `scripts/smoke-test.sh --local` for app changes. Don't push while any of them fails.
 - Pushing your own branch and opening a PR is fine when Tom has asked for the change. Merging a PR, pushing a tag and anything on the server need Tom's explicit go-ahead in the current conversation.
-- After a merge, clean up locally: switch to `main`, pull, `git branch -d <branch>`, `git fetch --prune`. GitHub deletes the merged remote branch.
+- Delete worktrees once their work is integrated. After a PR merges (GitHub deletes the remote branch): remove the worktree with `ExitWorktree` (`remove`) if this session created it, otherwise `git worktree remove .claude/worktrees/<name>` from the main checkout. That refuses if there are uncommitted changes; report them instead of forcing. Then run `git fetch --prune`, check that `git branch --merged origin/staging` (or `origin/main`) lists the branch, delete it with `git branch -D <branch>`, and finish with `git worktree prune`. (Plain `-d` compares against the main checkout's `main`, so it refuses for branches that are only in `staging`.) Don't leave finished worktrees or branches behind.
 
 ## Deployment
 

@@ -1,7 +1,19 @@
 import CONFIG from '$lib/config';
-import { getMockWeather, type Weather } from '$lib/weather';
+import {
+	ALWAYS_SAMPLE_FIELDS,
+	WEATHER_FIELDS,
+	dewPointC,
+	getMockWeather,
+	type Weather,
+	type WeatherField
+} from '$lib/weather';
 
-export type WeatherMeta = { data: Weather; connected: boolean; source: 'ecowitt' | 'mock' };
+export type WeatherMeta = {
+	data: Weather;
+	connected: boolean;
+	source: 'ecowitt' | 'mock';
+	mockFields: WeatherField[];
+};
 
 type WeatherReading = {
 	timestamp_utc: string;
@@ -42,51 +54,33 @@ function computeVPD_c_kPa(tempC: number, rh: number): number {
 	return Math.max(0, es - ea);
 }
 
-function mapReadingToWeather(r: WeatherReading): Weather {
+function mapReadingToWeather(r: WeatherReading): { weather: Weather; mockFields: WeatherField[] } {
 	const mock = getMockWeather();
-	const updatedAt = coerceUtcIsoString(r.timestamp_utc);
+	const mocked = new Set<WeatherField>(ALWAYS_SAMPLE_FIELDS);
+	// Use the reading when present; otherwise fall back and record every field that fallback feeds.
+	const pick = <T>(value: T | null | undefined, fallback: T, ...fields: WeatherField[]): T => {
+		if (value !== null && value !== undefined) return value;
+		for (const field of fields) mocked.add(field);
+		return fallback;
+	};
 
-	const tempC = r.temp_c ?? undefined;
-	const rh = r.humidity_pct ?? undefined;
-	const vpd = tempC != null && rh != null ? computeVPD_c_kPa(tempC, rh) : mock.outdoor.vpd;
+	const tempC = r.temp_c ?? null;
+	const rh = r.humidity_pct ?? null;
+	const both = tempC !== null && rh !== null;
 
-	// Simple dew point approximation (Magnus formula)
-	const dewPoint =
-		tempC != null && rh != null
-			? (() => {
-					const a = 17.27;
-					const b = 237.7;
-					const alpha = (a * tempC) / (b + tempC) + Math.log(rh / 100);
-					return (b * alpha) / (a - alpha);
-				})()
-			: mock.outdoor.dewPoint;
-
-	const windSpeed = r.wind_avg_ms ?? undefined;
-	const windGust = r.wind_gust_ms ?? undefined;
-	const windDir = r.wind_dir_deg ?? undefined;
-	const pressure = r.pressure_hpa ?? undefined;
-	const solar = r.solar_wm2 ?? undefined;
-
-	const hourlyRain = r.rain_1h_mm ?? undefined;
-	const dailyRain = r.rain_24h_mm ?? undefined;
-
-	return {
-		updatedAt,
+	const weather: Weather = {
+		updatedAt: coerceUtcIsoString(r.timestamp_utc),
 		outdoor: {
-			temp: tempC ?? mock.outdoor.temp,
+			temp: pick(tempC, mock.outdoor.temp, 'outdoor.temp'),
 			trend: 0,
-			feelsLike: tempC ?? mock.outdoor.feelsLike,
-			dewPoint,
-			humidity: rh ?? mock.outdoor.humidity,
-			vpd
+			feelsLike: pick(tempC, mock.outdoor.feelsLike, 'outdoor.feelsLike'),
+			dewPoint: both ? dewPointC(tempC, rh) : pick(null, mock.outdoor.dewPoint, 'outdoor.dewPoint'),
+			humidity: pick(rh, mock.outdoor.humidity, 'outdoor.humidity'),
+			vpd: both ? computeVPD_c_kPa(tempC, rh) : pick(null, mock.outdoor.vpd, 'outdoor.vpd')
 		},
-		indoor: {
-			temp: mock.indoor.temp,
-			trend: 0,
-			humidity: mock.indoor.humidity
-		},
+		indoor: { temp: mock.indoor.temp, trend: 0, humidity: mock.indoor.humidity },
 		solar: {
-			solar: solar ?? mock.solar.solar,
+			solar: pick(r.solar_wm2, mock.solar.solar, 'solar.solar'),
 			uvi: mock.solar.uvi,
 			sunrise: mock.solar.sunrise,
 			sunset: mock.solar.sunset,
@@ -94,42 +88,47 @@ function mapReadingToWeather(r: WeatherReading): Weather {
 		},
 		rain: {
 			rate: 0,
-			daily: dailyRain ?? mock.rain.daily,
+			daily: pick(r.rain_24h_mm, mock.rain.daily, 'rain.daily'),
 			event: mock.rain.event,
-			hourly: hourlyRain ?? mock.rain.hourly,
+			hourly: pick(r.rain_1h_mm, mock.rain.hourly, 'rain.hourly'),
 			weekly: mock.rain.weekly,
 			monthly: mock.rain.monthly,
 			yearly: mock.rain.yearly
 		},
 		wind: {
-			dir: windDir ?? mock.wind.dir,
-			speed: windSpeed ?? mock.wind.speed,
-			gust: windGust ?? mock.wind.gust,
+			dir: pick(r.wind_dir_deg, mock.wind.dir, 'wind.dir'),
+			speed: pick(r.wind_avg_ms, mock.wind.speed, 'wind.speed'),
+			gust: pick(r.wind_gust_ms, mock.wind.gust, 'wind.gust'),
 			timeSpeed: mock.wind.timeSpeed,
 			timeGust: mock.wind.timeGust
 		},
 		pressure: {
-			rel: pressure ?? mock.pressure.rel,
-			abs: pressure ?? mock.pressure.abs,
+			rel: pick(r.pressure_hpa, mock.pressure.rel, 'pressure.rel'),
+			abs: pick(r.pressure_hpa, mock.pressure.abs, 'pressure.abs'),
 			deltaRel: 0,
 			deltaAbs: 0
 		},
-		battery: {
-			status: mock.battery.status,
-			note: mock.battery.note
-		},
+		battery: { status: mock.battery.status, note: mock.battery.note },
 		series: mock.series
 	};
+
+	return { weather, mockFields: [...mocked] };
 }
 
-export async function fetchBackendWeatherMeta(): Promise<WeatherMeta> {
+export async function fetchBackendWeatherMeta(fetchFn: typeof fetch = fetch): Promise<WeatherMeta> {
 	try {
-		const res = await fetch(`${CONFIG.backend.currentWeather}`);
+		const res = await fetchFn(CONFIG.backend.currentWeather);
 		if (!res.ok) throw new Error(`backend /weather/current failed: ${res.status}`);
 		const reading = (await res.json()) as WeatherReading;
-		return { data: mapReadingToWeather(reading), connected: true, source: 'ecowitt' };
-	} catch (err) {
+		const { weather, mockFields } = mapReadingToWeather(reading);
+		return { data: weather, connected: true, source: 'ecowitt', mockFields };
+	} catch {
 		console.warn('[backend] Fetch failed; serving mock data');
-		return { data: getMockWeather(), connected: false, source: 'mock' };
+		return {
+			data: getMockWeather(),
+			connected: false,
+			source: 'mock',
+			mockFields: [...WEATHER_FIELDS]
+		};
 	}
 }

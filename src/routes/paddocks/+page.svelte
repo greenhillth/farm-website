@@ -1,17 +1,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { resolve } from '$app/paths';
 	import Panel from '$lib/components/Panel.svelte';
 	import CONFIG from '$lib/config';
+	import { geometryArea, geometryCentroid } from '$lib/geo';
 
 	type Paddock = {
 		id: string;
 		name: string;
-		crop?: string | null;
 		areaHectares: number | null;
 		centroid: { lat: number; lon: number } | null;
 	};
-
-	type Position = [number, number];
 
 	const areaFormatter = new Intl.NumberFormat(undefined, {
 		minimumFractionDigits: 2,
@@ -21,116 +20,6 @@
 		minimumFractionDigits: 5,
 		maximumFractionDigits: 5
 	});
-
-	const EARTH_RADIUS = 6378137;
-
-	const toRadians = (value: number) => (value * Math.PI) / 180;
-
-	const ensureClosed = (coords: Position[]): Position[] => {
-		if (coords.length === 0) return coords;
-		const [firstLon, firstLat] = coords[0];
-		const [lastLon, lastLat] = coords[coords.length - 1];
-		if (firstLon === lastLon && firstLat === lastLat) return coords;
-		return [...coords, coords[0]];
-	};
-
-	const ringArea = (coords: Position[]): number => {
-		const ring = ensureClosed(coords);
-		if (ring.length < 3) return 0;
-		let total = 0;
-		for (let i = 0; i < ring.length - 1; i += 1) {
-			const [lon1, lat1] = ring[i];
-			const [lon2, lat2] = ring[i + 1];
-			total += toRadians(lon2 - lon1) * (2 + Math.sin(toRadians(lat1)) + Math.sin(toRadians(lat2)));
-		}
-		return (total * EARTH_RADIUS * EARTH_RADIUS) / 2;
-	};
-
-	const polygonArea = (coords: Position[][]): number => {
-		if (!coords || coords.length === 0) return 0;
-		let area = Math.abs(ringArea(coords[0] ?? []));
-		for (let i = 1; i < coords.length; i += 1) {
-			area -= Math.abs(ringArea(coords[i] ?? []));
-		}
-		return Math.max(area, 0);
-	};
-
-	const geometryArea = (geometry: any): number => {
-		if (!geometry) return 0;
-		if (geometry.type === 'Polygon') {
-			return polygonArea(geometry.coordinates as Position[][]);
-		}
-		if (geometry.type === 'MultiPolygon') {
-			return (geometry.coordinates as Position[][][]).reduce(
-				(sum, polygon) => sum + polygonArea(polygon),
-				0
-			);
-		}
-		return 0;
-	};
-
-	const polygonCentroid = (coords: Position[][]): { lon: number; lat: number } | null => {
-		const outer = coords?.[0];
-		if (!outer || outer.length < 3) return null;
-		const ring = ensureClosed(outer);
-		let twiceArea = 0;
-		let cx = 0;
-		let cy = 0;
-		for (let i = 0; i < ring.length - 1; i += 1) {
-			const [x1, y1] = ring[i];
-			const [x2, y2] = ring[i + 1];
-			const cross = x1 * y2 - x2 * y1;
-			twiceArea += cross;
-			cx += (x1 + x2) * cross;
-			cy += (y1 + y2) * cross;
-		}
-		const area = twiceArea / 2;
-		if (!Number.isFinite(area) || Math.abs(area) < 1e-12) {
-			const unique = ring.slice(0, -1);
-			if (unique.length === 0) return null;
-			const sum = unique.reduce(
-				(acc, point) => ({ lon: acc.lon + point[0], lat: acc.lat + point[1] }),
-				{ lon: 0, lat: 0 }
-			);
-			return { lon: sum.lon / unique.length, lat: sum.lat / unique.length };
-		}
-		return { lon: cx / (6 * area), lat: cy / (6 * area) };
-	};
-
-	const geometryCentroid = (geometry: any): { lon: number; lat: number } | null => {
-		if (!geometry) return null;
-		if (geometry.type === 'Polygon') {
-			return polygonCentroid(geometry.coordinates as Position[][]);
-		}
-		if (geometry.type === 'MultiPolygon') {
-			let totalArea = 0;
-			let lonSum = 0;
-			let latSum = 0;
-			for (const polygon of geometry.coordinates as Position[][][]) {
-				const area = polygonArea(polygon);
-				const centroid = polygonCentroid(polygon);
-				if (!centroid) continue;
-				if (area > 0) {
-					lonSum += centroid.lon * area;
-					latSum += centroid.lat * area;
-					totalArea += area;
-				}
-			}
-			if (totalArea > 0) {
-				return { lon: lonSum / totalArea, lat: latSum / totalArea };
-			}
-			const centroids = (geometry.coordinates as Position[][][])
-				.map((polygon) => polygonCentroid(polygon))
-				.filter((value): value is { lon: number; lat: number } => Boolean(value));
-			if (centroids.length === 0) return null;
-			const sum = centroids.reduce(
-				(acc, point) => ({ lon: acc.lon + point.lon, lat: acc.lat + point.lat }),
-				{ lon: 0, lat: 0 }
-			);
-			return { lon: sum.lon / centroids.length, lat: sum.lat / centroids.length };
-		}
-		return null;
-	};
 
 	let paddocks: Paddock[] = [];
 	let q = '';
@@ -151,7 +40,6 @@
 					return {
 						id: String(props.fieldID || props.ADSFLDID || props.FIELDID || crypto.randomUUID()),
 						name: String(props.fieldName || props.FIELDNAME || 'Unnamed'),
-						crop: null,
 						areaHectares:
 							typeof areaSqM === 'number' && Number.isFinite(areaSqM) ? areaSqM / 10000 : null,
 						centroid: centroid ? { lat: centroid.lat, lon: centroid.lon } : null
@@ -167,16 +55,12 @@
 
 	$: searchTerm = q.trim().toLowerCase();
 	$: filtered = searchTerm
-		? paddocks.filter((p) => `${p.name} ${p.id} ${p.crop ?? ''}`.toLowerCase().includes(searchTerm))
+		? paddocks.filter((p) => `${p.name} ${p.id}`.toLowerCase().includes(searchTerm))
 		: paddocks;
 </script>
 
-<header class="container mx-auto flex items-center justify-between gap-4 px-4 py-4">
-	<a href="/" class="text-sm text-muted hover:text-white">&larr; Back to home</a>
-	<div class="text-xs text-muted">Paddock Manager</div>
-</header>
-
-<main class="container mx-auto space-y-5 px-4 pb-8">
+<div class="container mx-auto space-y-5 px-4 pb-8">
+	<h1 class="pt-6 text-xl font-semibold">Paddocks</h1>
 	<Panel title="Paddocks">
 		<div class="mb-3 flex items-center gap-3">
 			<input
@@ -184,7 +68,6 @@
 				bind:value={q}
 				class="w-full max-w-md rounded-md border border-border bg-white/5 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/40"
 			/>
-			<a href="/map" class="text-sm text-muted hover:text-white">Open map →</a>
 		</div>
 
 		{#if loading}
@@ -198,7 +81,6 @@
 						<tr>
 							<th class="py-2 pr-4">Name</th>
 							<th class="py-2 pr-4">ID</th>
-							<th class="py-2 pr-4">Crop</th>
 							<th class="py-2 pr-4 text-right">Size (ha)</th>
 							<th class="py-2 pr-4 text-right">Latitude</th>
 							<th class="py-2 text-right">Longitude</th>
@@ -213,7 +95,7 @@
 										{#if p.centroid}
 											<a
 												class="text-xs text-muted underline hover:text-white"
-												href={`/map?metric=OM#${encodeURIComponent(p.name)}`}
+												href={`${resolve('/map')}?paddock=${encodeURIComponent(p.id)}`}
 											>
 												View on map
 											</a>
@@ -221,7 +103,6 @@
 									</div>
 								</td>
 								<td class="py-2 pr-4">{p.id}</td>
-								<td class="py-2 pr-4">{p.crop ?? '-'}</td>
 								<td class="py-2 pr-4 text-right">
 									{#if typeof p.areaHectares === 'number'}
 										{areaFormatter.format(p.areaHectares)}
@@ -250,21 +131,4 @@
 			</div>
 		{/if}
 	</Panel>
-
-	<div class="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-		<Panel title="Recent Notes">
-			<ul class="list-disc space-y-1 pl-5 text-sm text-muted">
-				<li>South paddock: inspect fence line</li>
-				<li>North ridge: soil sampling next week</li>
-				<li>Creek paddock: spot spray blackberry regrowth</li>
-			</ul>
-		</Panel>
-
-		<Panel title="Upcoming Tasks">
-			<ul class="list-disc space-y-1 pl-5 text-sm text-muted">
-				<li>Fertilize OM trial plots (Friday)</li>
-				<li>Check troughs in Top Flat</li>
-			</ul>
-		</Panel>
-	</div>
-</main>
+</div>

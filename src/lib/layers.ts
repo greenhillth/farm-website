@@ -1,5 +1,6 @@
 import type { PathOptions } from 'leaflet';
 
+import { escapeHtml } from './html';
 import { linearGradientCSS } from './utils';
 
 // ─── Title-boundary related types ──────────────────────────────────────────
@@ -56,13 +57,13 @@ function titleFillColor(ownershipPct: string): string {
 	return TITLE_OWNERSHIP_COLORS[ownershipPct] ?? TITLE_DEFAULT_COLOR;
 }
 
-function buildTitleTooltipHtml(props: TitleFeatureProperties): string {
+export function buildTitleTooltipHtml(props: TitleFeatureProperties): string {
 	const ownerNames = formatOwners(props.owners);
 	const parts: string[] = [
-		`<div><strong>${props.address || 'Untitled property'}</strong></div>`,
-		`<div>Owners: ${ownerNames}</div>`,
-		`<div>Ownership: ${props.ownershipPct || '–'}</div>`,
-		`<div class="text-[0.7rem] opacity-80">Title: ${props.titleRef || '–'}</div>`
+		`<div><strong>${escapeHtml(props.address || 'Untitled property')}</strong></div>`,
+		`<div>Owners: ${escapeHtml(ownerNames)}</div>`,
+		`<div>Ownership: ${escapeHtml(props.ownershipPct || '–')}</div>`,
+		`<div class="text-[0.7rem] opacity-80">Title: ${escapeHtml(props.titleRef || '–')}</div>`
 	];
 	return parts.join('');
 }
@@ -220,6 +221,10 @@ export function buildMetricLayer(
 	return { layer, legend };
 }
 
+export function buildBaseTooltipHtml(name: unknown, id: unknown): string {
+	return `<div><strong>${escapeHtml(name)}</strong></div><div>ID: ${escapeHtml(id)}</div>`;
+}
+
 export function buildBaseLayer(geojson: any, L: typeof import('leaflet')) {
 	return L.geoJSON(geojson, {
 		style: () => ({ ...DEFAULT_PADDOCK_STYLE }),
@@ -233,7 +238,7 @@ export function buildBaseLayer(geojson: any, L: typeof import('leaflet')) {
 			const name = props.FIELDNAME ?? props.fieldName ?? props.FIELD_NAME ?? 'Unnamed paddock';
 			const id = props.ADSFLDID ?? props.fieldID ?? props.id ?? '–';
 
-			const tooltip = `<div><strong>${name}</strong></div><div>ID: ${id}</div>`;
+			const tooltip = buildBaseTooltipHtml(name, id);
 			if ('bindTooltip' in layer && typeof (layer as any).bindTooltip === 'function') {
 				(layer as any).bindTooltip(tooltip, {
 					sticky: true,
