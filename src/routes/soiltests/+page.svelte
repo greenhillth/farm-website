@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import Panel from '$lib/components/Panel.svelte';
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import CONFIG from '$lib/config';
@@ -46,7 +47,7 @@
 	let isEditMode = false;
 	let showDeleteConfirm = false;
 	let deletingTests = false;
-	let selectedIds: Set<SoilTest['id']> = new Set();
+	let selectedIds: SvelteSet<SoilTest['id']> = new SvelteSet();
 	let selectedCount = 0;
 	$: selectedCount = selectedIds.size;
 
@@ -85,7 +86,7 @@
 	});
 
 	function clearSelection() {
-		selectedIds = new Set();
+		selectedIds = new SvelteSet();
 	}
 
 	function enterEditMode() {
@@ -110,7 +111,7 @@
 	}
 
 	function handleSelectionChange(id: SoilTest['id'], checked: boolean) {
-		const next = new Set(selectedIds);
+		const next = new SvelteSet(selectedIds);
 		if (checked) {
 			next.add(id);
 		} else {
@@ -179,7 +180,7 @@
 				);
 			}
 
-			const failedSet = new Set<SoilTest['id']>(
+			const failedSet = new SvelteSet<SoilTest['id']>(
 				Array.isArray(result?.failedIds)
 					? ((result.failedIds as SoilTest['id'][] | undefined) ?? [])
 					: []
@@ -208,7 +209,7 @@
 					`Failed to delete ${failedSet.size} test record${failedSet.size === 1 ? '' : 's'}.`,
 					'warning'
 				);
-				selectedIds = new Set(failedSet);
+				selectedIds = new SvelteSet(failedSet);
 				showDeleteConfirm = false;
 				return;
 			}
