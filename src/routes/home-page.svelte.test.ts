@@ -77,6 +77,18 @@ describe('home page', () => {
 			.toBeVisible();
 	});
 
+	it('labels a tile when any value it shows is sample data', async () => {
+		renderHome({
+			weather: { ...live, mockFields: [...ALWAYS_SAMPLE_FIELDS, 'rain.hourly'] },
+			soil
+		});
+
+		expect(page.getByText('Sample data').elements()).toHaveLength(1);
+		await expect
+			.element(page.getByRole('link').filter({ hasText: 'Rain today' }).getByText('Sample data'))
+			.toBeVisible();
+	});
+
 	it('explains when weather or soil data is unavailable', async () => {
 		renderHome({ weather: null, soil: null });
 

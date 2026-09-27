@@ -15,6 +15,7 @@
 
 	const weather = $derived(data.weather);
 	const isSample = (field: WeatherField) => weather?.mockFields.includes(field) ?? false;
+	const anySample = (fields: WeatherField[]) => fields.some(isSample);
 	const spray = $derived(
 		weather ? sprayConditions(weather.weather, weather.mockFields, CONFIG.spray) : null
 	);
@@ -47,7 +48,7 @@
 					<span class="mt-2 text-sm text-muted">
 						Feels like {weather.weather.outdoor.feelsLike.toFixed(0)}°
 					</span>
-					{#if isSample('outdoor.temp')}{@render sampleChip()}{/if}
+					{#if anySample(['outdoor.temp', 'outdoor.feelsLike'])}{@render sampleChip()}{/if}
 				</a>
 				<a
 					href={resolve('/weather/wind')}
@@ -62,7 +63,7 @@
 						From the {compassPoint(weather.weather.wind.dir)}, gusting
 						{Math.round(weather.weather.wind.gust * 3.6)} km/h
 					</span>
-					{#if isSample('wind.speed')}{@render sampleChip()}{/if}
+					{#if anySample(['wind.speed', 'wind.gust', 'wind.dir'])}{@render sampleChip()}{/if}
 				</a>
 				<a
 					href={resolve('/weather/rain')}
@@ -76,7 +77,7 @@
 					<span class="mt-2 text-sm text-muted">
 						{weather.weather.rain.hourly.toFixed(1)} mm in the last hour
 					</span>
-					{#if isSample('rain.daily')}{@render sampleChip()}{/if}
+					{#if anySample(['rain.daily', 'rain.hourly'])}{@render sampleChip()}{/if}
 				</a>
 				{#if spray}
 					<a
