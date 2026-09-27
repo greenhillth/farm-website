@@ -107,6 +107,18 @@ describe('soil tests page on a desktop', () => {
 		await expect.element(page.getByRole('button', { name: 'Retry' })).toBeVisible();
 	});
 
+	it('drops a selected test from the delete count when a filter hides it', async () => {
+		stubFetch();
+		openAt('/soiltests?paddock=42');
+
+		await page.getByRole('button', { name: 'Delete tests' }).click();
+		await page.getByRole('checkbox').first().click();
+		await expect.element(page.getByText('1 test selected')).toBeVisible();
+
+		await page.getByLabelText('Paddock').selectOptions('7');
+		await expect.element(page.getByText('Select the tests to delete.')).toBeVisible();
+	});
+
 	it('gives the table selection checkbox a 44px tap target', async () => {
 		stubFetch();
 		openAt('/soiltests');

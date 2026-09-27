@@ -62,8 +62,14 @@
 	);
 
 	function setFilters(change: Partial<Filters>) {
+		// Page changes keep the selection; a q/paddock/year change can hide selected tests.
+		const filtersChanged = Object.keys(change).some((key) => key !== 'page');
 		filters = { ...filters, ...change, page: change.page ?? 1 };
 		replaceState(`${page.url.pathname}${filtersToSearch(filters)}`, page.state);
+		if (filtersChanged) {
+			const matchingIds = new Set(filterTests(tests, filters).map((test) => test.id));
+			selected = new Set([...selected].filter((id) => matchingIds.has(id)));
+		}
 	}
 
 	async function loadTests(): Promise<boolean> {
@@ -72,6 +78,8 @@
 			const result = await fetchSoilTests();
 			tests = result.tests;
 			paddocks = result.paddocks;
+			const existingIds = new Set(tests.map((test) => test.id));
+			selected = new Set([...selected].filter((id) => existingIds.has(id)));
 			return true;
 		} catch (err) {
 			console.error('Failed to load soil tests', err);
