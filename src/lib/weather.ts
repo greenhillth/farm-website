@@ -67,27 +67,21 @@ export const WEATHER_FIELDS = [
 
 export type WeatherField = (typeof WEATHER_FIELDS)[number];
 
-/** Fields the station doesn't report: the provider fills them from getMockWeather() or with 0. */
+/**
+ * Fields the station doesn't report and the app doesn't calculate yet: the provider fills
+ * them from getMockWeather() or with 0. Everything else is sample data only when a reading
+ * lacks it (e.g. readings stored before gbros-api#15).
+ */
 export const ALWAYS_SAMPLE_FIELDS: readonly WeatherField[] = [
 	'outdoor.trend',
-	'indoor.temp',
 	'indoor.trend',
-	'indoor.humidity',
-	'solar.uvi',
 	'solar.sunrise',
 	'solar.sunset',
 	'solar.moon',
-	'rain.rate',
-	'rain.event',
-	'rain.weekly',
-	'rain.monthly',
-	'rain.yearly',
 	'wind.timeSpeed',
 	'wind.timeGust',
 	'pressure.deltaRel',
 	'pressure.deltaAbs',
-	'battery.status',
-	'battery.note',
 	'series'
 ];
 
