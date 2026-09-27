@@ -133,6 +133,15 @@ describe('validateCsv', () => {
 		expect(result.duplicateSampleIds).toEqual(['1001', '1002']);
 	});
 
+	it('counts a duplicate for each paddock, even when two paddocks share a sample ID', () => {
+		const result = check(
+			[header, '1001,42,2024-05-01,A,5,6', '1001,7,2024-05-01,B,5,6'].join('\n'),
+			{ ...context, existingSamples: new Set([sampleKey(42, 1001), sampleKey(7, 1001)]) }
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.duplicateSampleIds).toHaveLength(2);
+	});
+
 	it('skips the paddock check when the paddock list is unavailable', () => {
 		const result = check([header, '1001,999,2024-05-01,A,5,6'].join('\n'), {
 			knownPaddockIds: new Set(),

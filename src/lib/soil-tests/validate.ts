@@ -63,13 +63,15 @@ export function validateCsv(parsed: ParsedCsv, context: CheckContext): CsvCheck 
 	const { headers, rows } = parsed;
 	const errors: Issue[] = [];
 	const warnings: Issue[] = [];
-	const duplicates = new Set<string>();
+	// Keyed on the fieldID:sampleID pair, not the sample ID alone, so two paddocks that
+	// happen to share a sample ID each count as their own duplicate.
+	const duplicates = new Map<string, string>();
 	const result = () => ({
 		rowCount: rows.length,
 		preview: { headers, rows: rows.slice(0, 5) },
 		errors,
 		warnings,
-		duplicateSampleIds: [...duplicates]
+		duplicateSampleIds: [...duplicates.values()]
 	});
 
 	const missing = CSV_REQUIRED_HEADERS.filter((name) => !headers.includes(name));
@@ -160,7 +162,7 @@ export function validateCsv(parsed: ParsedCsv, context: CheckContext): CsvCheck 
 				);
 			} else {
 				firstRowOf.set(key, row);
-				if (context.existingSamples.has(key)) duplicates.add(String(Number(sampleText)));
+				if (context.existingSamples.has(key)) duplicates.set(key, String(Number(sampleText)));
 			}
 		}
 	});
