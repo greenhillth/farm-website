@@ -139,6 +139,21 @@ describe('wellFilled', () => {
 			wellFilled<{ timestamp_utc: string; count?: number }>([{ timestamp_utc: 'raw' }])
 		).toHaveLength(1);
 	});
+
+	it('keeps a stretch recorded more sparsely, like history backfilled every 30 minutes', () => {
+		// Full days of minute readings, then backfilled days at 48 a day, then 5-minute days.
+		const counts = [1440, 1440, 1440, 1440, 48, 48, 48, 48, 48, 288, 288, 288, 288];
+		const rows = counts.map((count, i) => ({ timestamp_utc: String(i), count }));
+
+		expect(wellFilled(rows).map((row) => row.count)).toEqual(counts);
+	});
+
+	it('still drops a day cut short next to full days', () => {
+		const counts = [1440, 1440, 1440, 1440, 380];
+		const rows = counts.map((count, i) => ({ timestamp_utc: String(i), count }));
+
+		expect(wellFilled(rows).map((row) => row.count)).toEqual([1440, 1440, 1440, 1440]);
+	});
 });
 
 describe('rain chart', () => {
