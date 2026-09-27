@@ -68,4 +68,17 @@ describe('weather detail page', () => {
 			page.getByRole('table', { name: 'Recent readings' }).getByRole('row').elements()
 		).toHaveLength(3);
 	});
+
+	it('ignores inherited object properties for an unknown metric param', async () => {
+		expect(() => open('constructor')).not.toThrow();
+
+		await expect
+			.element(
+				page.getByText(
+					'The station doesn’t report constructor readings, so there’s nothing to chart.'
+				)
+			)
+			.toBeVisible();
+		expect(page.getByRole('img').elements()).toHaveLength(0);
+	});
 });

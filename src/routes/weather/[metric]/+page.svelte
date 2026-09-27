@@ -37,8 +37,13 @@
 		pressure_hpa: 'Pressure (hPa)'
 	};
 
-	const title = $derived(TITLES[data.metric] ?? data.metric);
-	const spec = $derived(CHARTS[data.metric]);
+	/** Only own properties: `data.metric` is a route param, and a plain-object lookup would
+	 *  otherwise resolve to inherited members like `constructor` or `toString`. */
+	const own = <T,>(table: Partial<Record<string, T>>, key: string): T | undefined =>
+		Object.hasOwn(table, key) ? table[key] : undefined;
+
+	const title = $derived(own(TITLES, data.metric) ?? data.metric);
+	const spec = $derived(own(CHARTS, data.metric));
 	const series = $derived(spec ? buildSeries(data.history, spec) : []);
 	const summaries = $derived(
 		series.flatMap((line) => {
@@ -48,7 +53,7 @@
 	);
 	const columns = $derived<(keyof WeatherHistoryRow)[]>([
 		'timestamp_utc',
-		...(FIELDS[data.metric] ?? [])
+		...(own(FIELDS, data.metric) ?? [])
 	]);
 	const rows = $derived(
 		[...data.history].sort(
