@@ -4,9 +4,9 @@ How to work on a feature or a bug fix from start to finish, by hand or with Clau
 
 ## Two ideas
 
-A **branch** is a name for a line of work. `main` is production. `feat/paddock-history` is one feature on its way there. Creating a branch is instant, and deleting one after it merges costs nothing.
+A **branch** is a name for a line of work. `main` is production. `staging` collects finished work until it's promoted to `main`. `feat/paddock-history` is one feature on its way into `staging`. Creating a branch is instant, and deleting one after it merges costs nothing.
 
-A **worktree** is an extra folder with a different branch checked out. All the folders share one repository: the same history, remote and branches. A commit made in one folder shows up in `git log` in the others straight away. The difference is that each folder has its own files, its own checked-out branch and its own `node_modules`.
+A **worktree** is an extra folder with a different branch checked out. It doesn't replace branches: every worktree has a branch in it. Working with plain branches in one folder is fine when nothing else is using that folder. All the folders share one repository: the same history, remote and branches. A commit made in one folder shows up in `git log` in the others straight away. The difference is that each folder has its own files, its own checked-out branch and its own `node_modules`.
 
 Without worktrees, one folder can only have one branch checked out. Switching means committing or stashing first. And anything else using that folder switches with you: your editor, a running dev server, an AI agent in the middle of a task. With worktrees, each piece of work gets its own folder and nothing moves under anyone.
 
@@ -17,10 +17,11 @@ This isn't hypothetical. On 2026-09-26, VS Code switched the main checkout to `m
 These match what trunk-based development teams and the Claude Code docs recommend:
 
 1. **One task, one branch, one folder.** Don't mix a feature and an unrelated fix on one branch, and never have two people or agents editing in the same folder at once.
-2. **Short-lived branches.** Aim to merge within a day or two. Long-running branches drift from `main` and end in painful merges. If a feature is big, split it into several PRs that each leave `main` working.
-3. **Always branch from the latest `main`.** `git fetch` first. For worktrees, create them from `origin/main`.
+2. **Short-lived branches.** Aim to merge within a day or two. Long-running branches drift from `staging` and end in painful merges. If a feature is big, split it into several PRs that each leave `staging` working.
+3. **Always branch from the latest `staging`.** `git fetch` first. For worktrees, create them from `origin/staging`. Only an urgent production fix starts from `origin/main` (see [Git workflow](git-workflow.md#when-to-do-what)).
 4. **Small PRs, merged often.** They're quicker to check, easier to revert, and CI catches problems while they're still small.
-5. **Clean up.** Delete merged branches and remove worktrees you're done with. A stale worktree keeps its branch checked out, and git won't check out the same branch in two folders.
+5. **Promote `staging` regularly.** Don't let it collect weeks of work. Promote it to `main` whenever it holds something worth shipping.
+6. **Clean up.** Once a branch has merged, delete it and remove its worktree. A stale worktree keeps its branch checked out, and git won't check out the same branch in two folders.
 
 ## Branch or worktree?
 
@@ -56,9 +57,9 @@ Claude Code puts its own worktrees under `.claude/worktrees/<name>/` inside the 
 cd ~/Projects/farm-website/farm-website
 git fetch origin
 
-# New branch in a new sibling folder, starting from the latest main.
-# --no-track stops the new branch tracking origin/main, so a stray `git push` can't aim at main.
-git worktree add --no-track -b feat/paddock-history ../farm-website-feat-paddock-history origin/main
+# New branch in a new sibling folder, starting from the latest staging.
+# --no-track stops the new branch tracking origin/staging, so a stray `git push` can't aim at staging.
+git worktree add --no-track -b feat/paddock-history ../farm-website-feat-paddock-history origin/staging
 
 # Existing branch (e.g. one you pushed from another machine)
 git worktree add ../farm-website-fix-csv-dates fix/csv-dates
@@ -88,14 +89,14 @@ Keep one VS Code window per folder. Don't switch branches in a window whose fold
 
    ```sh
    git fetch origin
-   git worktree add --no-track -b feat/paddock-history ../farm-website-feat-paddock-history origin/main
+   git worktree add --no-track -b feat/paddock-history ../farm-website-feat-paddock-history origin/staging
    cd ../farm-website-feat-paddock-history
    npm ci
    npx svelte-kit sync
    code .
    ```
 
-   If you're not running anything else in parallel, `git switch main && git pull && git switch -c feat/paddock-history` in the main folder is fine too.
+   If you're not running anything else in parallel, `git switch staging && git pull && git switch -c feat/paddock-history` in the main folder is fine too.
 
 2. **Build it in small commits.** Commit whenever a step works. Each commit message says what changed, in the imperative ("Show soil test history per paddock").
 3. **Test as you go.** Add or update tests in `*.test.ts` (logic) or `*.svelte.test.ts` (components). Check UI changes in the browser (`npm run dev`).
@@ -113,37 +114,37 @@ Keep one VS Code window per folder. Don't switch branches in a window whose fold
 
    ```sh
    git push -u origin feat/paddock-history
-   gh pr create --fill
+   gh pr create --fill --base staging
    ```
 
    Write in the PR description what changed and how you checked it.
 
-6. **Wait for CI, read your own diff on GitHub, merge.** The **Files changed** tab is a good last look.
-7. **Clean up.**
+6. **Wait for CI, read your own diff on GitHub, merge into `staging`.** The **Files changed** tab is a good last look.
+7. **Clean up.** Do this as soon as the PR merges, so finished worktrees don't pile up.
 
    ```sh
    cd ~/Projects/farm-website/farm-website
    git worktree remove ../farm-website-feat-paddock-history
-   git switch main
+   git switch staging
    git pull
    git branch -d feat/paddock-history
    git fetch --prune
    ```
 
-8. **Release when you want it live.** Merging doesn't deploy anything. See [Deploying](deploying.md).
+8. **Promote and release when you want it live.** Merging into `staging` doesn't deploy anything. When `staging` is ready, promote it to `main` and release (see [Deploying](deploying.md)).
 
 ## The flow for a bug fix, by hand
 
 The same as a feature, with two changes: **reproduce first** and **pin the bug with a test**.
 
-1. Create a worktree on `fix/<what-is-broken>` from `origin/main`.
+1. Create a worktree on `fix/<what-is-broken>` from `origin/staging`.
 2. Reproduce the bug: in the browser, or with a failing command. Write down the steps.
 3. Write a test that fails because of the bug. For logic, that's a `*.test.ts` next to the code. For example, `src/lib/soil-tests/utils.test.ts` pins two known date bugs with `it.fails`.
 4. Fix the code until the test passes. If the bug was pinned with `it.fails`, change it to a plain `it`.
 5. Run the checks, push, open a PR, merge, clean up: steps 4–7 above.
-6. Release a **patch** version (`1.3.0` → `1.3.1`).
+6. Promote `staging` and release a **patch** version (`1.3.0` → `1.3.1`).
 
-**Production is broken right now?** Roll back first, fix second. On the server, `/opt/farm-website/deploy.sh <previous tag>` puts the last good version back in seconds. Then do the fix above without rushing, and release the patch.
+**Production is broken right now?** Roll back first, fix second. On the server, `/opt/farm-website/deploy.sh <previous tag>` puts the last good version back in seconds. Then do the fix above without rushing, and release the patch. If `staging` holds work you don't want to ship yet, branch the fix from `origin/main` instead, PR it into `main`, release, then open a PR from `main` into `staging`.
 
 ## The flow with Claude Code
 
@@ -160,14 +161,14 @@ Claude Code creates `.claude/worktrees/paddock-history/` on a new branch called 
 
 Two things to tell Claude up front:
 
-- **The branch name you want on GitHub.** Claude's `worktree-<name>` branches don't follow this repo's prefixes. Say "rename the branch to `feat/paddock-history` before pushing" (Claude runs `git branch -m`). Or create the worktree yourself as in [Worktrees by hand](#worktrees-by-hand) and start `claude` inside it.
+- **The branch name you want on GitHub.** Claude's `worktree-<name>` branches start from `origin/main` and don't follow this repo's prefixes. CLAUDE.md tells Claude to move to a properly named branch from `origin/staging` before it starts. You can still name the branch in your brief: "use `feat/paddock-history`". Or create the worktree yourself as in [Worktrees by hand](#worktrees-by-hand) and start `claude` inside it.
 - **Setup.** A fresh worktree has no `node_modules`. Ask Claude to run `npm ci` first. The main checkout also needs `npx svelte-kit sync` run once for nested worktrees to build (see [Troubleshooting](#troubleshooting)).
 
 ### Briefing the task
 
 A good brief is specific and says how you'll judge it:
 
-> Add a per-paddock soil-test history panel to the map popup. Use `fetchSoilTests` from `src/lib/soil-tests/`. Done means: the popup lists every test for that paddock, newest first; there's a component test; `npm run check`, `npm test` and `npx prettier --check .` pass. Rename the branch to `feat/paddock-history`, push it and open a PR. Don't merge.
+> Add a per-paddock soil-test history panel to the map popup. Use `fetchSoilTests` from `src/lib/soil-tests/`. Done means: the popup lists every test for that paddock, newest first; there's a component test; `npm run check`, `npm test` and `npx prettier --check .` pass. Use the branch `feat/paddock-history`, push it and open a PR into `staging`. Don't merge.
 
 - **Bigger or unclear changes:** ask for a plan first (plan mode, Shift+Tab), agree on it, then let Claude build it.
 - **Bugs:** ask Claude to reproduce the bug and write a failing test before fixing it, as in the manual flow.
@@ -175,19 +176,19 @@ A good brief is specific and says how you'll judge it:
 
 ### Reviewing and merging
 
-1. Claude reports what it changed and the check results. Read the diff: `git -C .claude/worktrees/paddock-history diff origin/main`, or the PR's **Files changed** tab.
+1. Claude reports what it changed and the check results. Read the diff: `git -C .claude/worktrees/paddock-history diff origin/staging`, or the PR's **Files changed** tab.
 2. Ask for changes in the same session. Claude commits them and pushes again, and CI reruns.
 3. When CI is green and you're happy, merge the PR yourself, or tell Claude "merge it". CLAUDE.md requires your explicit go-ahead for merges.
-4. Exit the session. If the worktree has nothing unsaved, Claude Code offers to remove it. If it still has work, you choose keep or remove; kept worktrees are resumed with the `claude --worktree <name> --resume` command it prints.
-5. Tidy up the main checkout: `git switch main`, `git pull`, `git fetch --prune`.
+4. Once the PR has merged, delete the worktree. CLAUDE.md tells Claude to remove it and its local branch itself. If you exit the session first, Claude Code offers to remove it; choose remove. Keep a worktree only while its PR is still open. Kept worktrees are resumed with the `claude --worktree <name> --resume` command it prints.
+5. Tidy up: `git worktree list` should show no finished worktrees, then `git fetch --prune`.
 
 ### Several sessions in parallel
 
 Run separate tasks at the same time, each in its own terminal and its own worktree (`claude --worktree a`, `claude --worktree b`). `claude agents` shows them all on one screen. What makes it work:
 
-- **Only truly independent tasks.** Different pages or modules. If two tasks would edit the same file, run them one after the other, or first make a small PR with the shared part (a type, a config entry, a helper) and start both from `main` after it merges.
+- **Only truly independent tasks.** Different pages or modules. If two tasks would edit the same file, run them one after the other, or first make a small PR with the shared part (a type, a config entry, a helper) and start both from `staging` after it merges.
 - **Keep it to a handful.** Anthropic suggests 3–5 parallel agents at most; beyond that, reviewing becomes the bottleneck.
-- **Merge one PR at a time.** After each merge, the other branches are behind `main`. They only need updating if GitHub reports a conflict: ask that session to `git fetch origin` and `git merge origin/main`, rerun the checks and push.
+- **Merge one PR at a time into `staging`.** After each merge, the other branches are behind `staging`. They only need updating if GitHub reports a conflict: ask that session to `git fetch origin` and `git merge origin/staging`, rerun the checks and push. Promote `staging` to `main` once they're all in.
 - **Worktrees isolate files, not ideas.** They stop agents overwriting each other's edits, but not two designs that don't fit together. That's what planning first and reviewing each PR are for.
 
 Inside one session, Claude can also start subagents in their own temporary worktrees. Ask it to "use worktrees for your agents", or add `isolation: worktree` to a custom agent in `.claude/agents/`.
@@ -196,29 +197,32 @@ Inside one session, Claude can also start subagents in their own temporary workt
 
 A worktree gets only tracked files. If a task needs a git-ignored file such as a local `.env`, list it in a `.worktreeinclude` file at the repo root (same syntax as `.gitignore`), and Claude Code copies it into every worktree it creates. The frontend doesn't need one today.
 
-## Housekeeping
+## Cleaning up
 
-Once a week, or whenever things feel cluttered:
+Remove a worktree as soon as its PR has merged. Don't wait for a weekly tidy. Once a week, or whenever things feel cluttered, check for any that were missed:
 
 ```sh
-git worktree list            # anything you've finished with? `git worktree remove <path>`
-git fetch --prune            # drop remote branches GitHub has deleted
-git branch --merged main     # local branches already in main: `git branch -d <name>`
-git branch --no-merged main  # unmerged work: finish it, or delete with -D if abandoned
+git worktree list                      # anything finished? `git worktree remove <path>`
+git worktree prune                     # forget folders deleted by hand
+git fetch --prune                      # drop remote branches GitHub has deleted
+git branch --merged origin/staging     # local branches already in staging: delete them
+git branch --no-merged origin/staging  # unmerged work: finish it, or delete with -D if abandoned
 ```
+
+`git branch -d` only counts a branch as merged if it's in the branch you have checked out, so run it with `staging` checked out, or use `-D` once `git branch --merged origin/staging` has listed the branch.
 
 Claude Code also removes the worktrees it created for subagents and background sessions after a while, but only when they hold no unsaved work. Worktrees you made with `git worktree add` are yours to remove.
 
 ## Troubleshooting
 
-| Symptom                                                                                                  | Cause                                                                                                           | Fix                                                                                                                                                 |
-| -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fatal: '<branch>' is already checked out at '<path>'`                                                   | A branch can only be checked out in one folder                                                                  | Use that folder, or remove the worktree holding it.                                                                                                 |
-| `Tsconfig not found .../farm-website/.svelte-kit/tsconfig.json` in a worktree under `.claude/worktrees/` | Vite looks for a `tsconfig.json` up the folder tree and finds the main checkout's, which needs a generated file | Run `npx svelte-kit sync` once in the main checkout. Sibling worktrees don't have this problem.                                                     |
-| `Port 4001 is already in use`                                                                            | Another worktree's dev server                                                                                   | `npm run dev -- --port 4011`                                                                                                                        |
-| Imports fail or the wrong versions load in a worktree                                                    | No `node_modules` of its own (Node falls back to the main checkout's)                                           | `npm ci` in the worktree.                                                                                                                           |
-| `git worktree remove` refuses                                                                            | Uncommitted changes, or the worktree is locked by a running Claude session                                      | Commit or discard the changes; `--force` discards them. Stop the session, or `git worktree unlock <path>`.                                          |
-| A commit landed on the wrong branch                                                                      | Something switched the folder's branch while you worked                                                         | If not pushed: `git branch <right-branch> <commit>` to save it, then `git reset --keep origin/main` on the wrong branch. Use worktrees to avoid it. |
+| Symptom                                                                                                  | Cause                                                                                                           | Fix                                                                                                                                                           |
+| -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fatal: '<branch>' is already checked out at '<path>'`                                                   | A branch can only be checked out in one folder                                                                  | Use that folder, or remove the worktree holding it.                                                                                                           |
+| `Tsconfig not found .../farm-website/.svelte-kit/tsconfig.json` in a worktree under `.claude/worktrees/` | Vite looks for a `tsconfig.json` up the folder tree and finds the main checkout's, which needs a generated file | Run `npx svelte-kit sync` once in the main checkout. Sibling worktrees don't have this problem.                                                               |
+| `Port 4001 is already in use`                                                                            | Another worktree's dev server                                                                                   | `npm run dev -- --port 4011`                                                                                                                                  |
+| Imports fail or the wrong versions load in a worktree                                                    | No `node_modules` of its own (Node falls back to the main checkout's)                                           | `npm ci` in the worktree.                                                                                                                                     |
+| `git worktree remove` refuses                                                                            | Uncommitted changes, or the worktree is locked by a running Claude session                                      | Commit or discard the changes; `--force` discards them. Stop the session, or `git worktree unlock <path>`.                                                    |
+| A commit landed on the wrong branch                                                                      | Something switched the folder's branch while you worked                                                         | If not pushed: `git branch <right-branch> <commit>` to save it, then `git reset --keep origin/<wrong-branch>` on the wrong branch. Use worktrees to avoid it. |
 
 ## Sources
 
