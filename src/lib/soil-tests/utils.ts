@@ -1,4 +1,5 @@
 import CONFIG from '$lib/config';
+import { pickMetricValue } from '$lib/soil-status';
 
 import type {
 	FetchSoilTestsResult,
@@ -132,7 +133,8 @@ export async function fetchSoilTests(): Promise<FetchSoilTestsResult> {
 				sampleName: row.name_sample ?? null,
 				sampleDate,
 				client: row.client ?? null,
-				metrics
+				metrics,
+				organicMatter: pickMetricValue(row, 'OM') ?? undefined
 			} satisfies SoilTest;
 		})
 		.sort((a: SoilTest, b: SoilTest) => {

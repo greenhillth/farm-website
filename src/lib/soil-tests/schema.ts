@@ -39,6 +39,8 @@ export type SoilTest = {
 	sampleDate?: string | null;
 	client?: string | null;
 	metrics: Partial<Record<MetricKey, number>>;
+	/** Organic matter from OM or total carbon columns, for the phone card. */
+	organicMatter?: number;
 };
 
 export type RawSoilTestRow = Record<string, unknown> & {
