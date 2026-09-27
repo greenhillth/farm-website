@@ -106,6 +106,19 @@ describe('soil tests page on a desktop', () => {
 			.toBeVisible();
 		await expect.element(page.getByRole('button', { name: 'Retry' })).toBeVisible();
 	});
+
+	it('gives the table selection checkbox a 44px tap target', async () => {
+		stubFetch();
+		openAt('/soiltests');
+
+		await page.getByRole('button', { name: 'Delete tests' }).click();
+		const checkbox = page.getByRole('checkbox').first().element() as HTMLElement;
+		const label = checkbox.closest('label');
+		expect(label).not.toBeNull();
+		const rect = label!.getBoundingClientRect();
+		expect(rect.width).toBeGreaterThanOrEqual(44);
+		expect(rect.height).toBeGreaterThanOrEqual(44);
+	});
 });
 
 describe('soil tests page on a phone', () => {
@@ -120,5 +133,18 @@ describe('soil tests page on a phone', () => {
 		await expect.element(page.getByRole('article').first()).toBeVisible();
 		expect(page.getByRole('table').elements()).toHaveLength(0);
 		await expect.element(page.getByRole('article').first().getByText('Low')).toBeVisible();
+	});
+
+	it('gives the card selection checkbox a 44px tap target', async () => {
+		stubFetch();
+		openAt('/soiltests?paddock=42');
+
+		await page.getByRole('button', { name: 'Delete tests' }).click();
+		const checkbox = page.getByRole('checkbox').first().element() as HTMLElement;
+		const label = checkbox.closest('label');
+		expect(label).not.toBeNull();
+		const rect = label!.getBoundingClientRect();
+		expect(rect.width).toBeGreaterThanOrEqual(44);
+		expect(rect.height).toBeGreaterThanOrEqual(44);
 	});
 });

@@ -87,13 +87,15 @@
 				>
 					{#if editing}
 						<td class="px-3">
-							<input
-								type="checkbox"
-								class="size-5 accent-danger"
-								checked={selected.has(test.id)}
-								onchange={(event) => ontoggle(test.id, event.currentTarget.checked)}
-								aria-label="Select {test.sampleName ?? 'test'} from {formatDate(test.sampleDate)}"
-							/>
+							<label class="inline-flex size-11 items-center justify-center">
+								<input
+									type="checkbox"
+									class="size-5 accent-danger"
+									checked={selected.has(test.id)}
+									onchange={(event) => ontoggle(test.id, event.currentTarget.checked)}
+									aria-label="Select {test.sampleName ?? 'test'} from {formatDate(test.sampleDate)}"
+								/>
+							</label>
 						</td>
 					{/if}
 					<td class="px-3 py-2">

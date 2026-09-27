@@ -49,13 +49,15 @@
 >
 	<header class="flex items-start gap-3">
 		{#if editing}
-			<input
-				type="checkbox"
-				class="mt-1 size-5 accent-danger"
-				checked={selected}
-				onchange={(event) => ontoggle(test.id, event.currentTarget.checked)}
-				aria-label="Select {test.sampleName ?? 'test'} from {formatDate(test.sampleDate)}"
-			/>
+			<label class="inline-flex size-11 items-center justify-center">
+				<input
+					type="checkbox"
+					class="size-5 accent-danger"
+					checked={selected}
+					onchange={(event) => ontoggle(test.id, event.currentTarget.checked)}
+					aria-label="Select {test.sampleName ?? 'test'} from {formatDate(test.sampleDate)}"
+				/>
+			</label>
 		{/if}
 		<div class="min-w-0 flex-1">
 			<h2 class="text-lg font-semibold">{test.paddockName}</h2>
