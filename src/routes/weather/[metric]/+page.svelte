@@ -144,7 +144,7 @@
 					<thead class="sticky top-0 bg-panel">
 						<tr>
 							{#each columns as column (column)}
-								<th class="px-3 py-2 font-semibold">{HEADINGS[column] ?? column}</th>
+								<th scope="col" class="px-3 py-2 font-semibold">{HEADINGS[column] ?? column}</th>
 							{/each}
 						</tr>
 					</thead>

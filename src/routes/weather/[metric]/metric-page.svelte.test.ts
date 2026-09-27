@@ -73,8 +73,8 @@ describe('weather detail page', () => {
 		open('wind');
 
 		const table = page.getByRole('table', { name: 'Recent readings' });
-		await expect.element(table.getByText('Wind (km/h)')).toBeVisible();
-		await expect.element(table.getByText('Gust (km/h)')).toBeVisible();
+		await expect.element(table.getByRole('columnheader', { name: 'Wind (km/h)' })).toBeVisible();
+		await expect.element(table.getByRole('columnheader', { name: 'Gust (km/h)' })).toBeVisible();
 		// Newest first: 2 m/s and 4 m/s at 03:00, then 5 m/s and 8 m/s at 02:00.
 		const cells = table
 			.getByRole('row')
