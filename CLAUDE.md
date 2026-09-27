@@ -70,6 +70,8 @@ The human guide is `docs/git-workflow.md`. GitHub rulesets enforce the following
 
 Rules for agents:
 
+- Project skills automate the steps below: `/branch-start <prefix>/<name>` (worktree branch from `origin/staging`, `npm ci`), `/preflight` (what CI's `checks` job runs) and `/branch-cleanup` (removes merged worktrees and branches). The hooks in `.claude/settings.json` run Prettier on edited files and block or prompt for the "never" steps (force-push, pushing to `main`, tags, merges, deploys, `npm audit fix --force`, hand edits to `.env` and `package-lock.json`). A prompt from the guard means Tom decides. Don't work around it.
+
 - Do file-changing work in a worktree under `.claude/worktrees/`, never by switching branches in the main checkout. Tom's VS Code uses the main checkout and can switch its branch mid-task. Run `npm ci` in a new worktree first. If it fails with `Tsconfig not found .../.svelte-kit/tsconfig.json`, run `npx svelte-kit sync` in the main checkout. See `docs/branches-and-worktrees.md`.
 - Start every change on a new branch from an up-to-date `origin/staging`, and open its PR with `--base staging`. Claude's worktrees start on a `worktree-<name>` branch from `origin/main`, so first run `git fetch origin`, `git switch --no-track -c <prefix>/<name> origin/staging`, then `git branch -d worktree-<name>`. Prefixes: `feat/`, `fix/`, `docs/`, `chore/`, `release/vX.Y.Z`. One topic per branch and PR.
 - Exception: an urgent production fix that Tom asks to go straight to `main` branches from `origin/main` and is PR'd into `main`. Then open a PR from `main` into `staging` so `staging` keeps the fix.
