@@ -31,7 +31,7 @@
 	tabindex="-1"
 	{onkeydown}
 	{@attach focusIn}
-	class="detail-sheet absolute inset-x-0 bottom-0 z-[1100] flex max-h-[70%] flex-col rounded-t-2xl border border-border bg-panel/95 text-text shadow-2xl backdrop-blur outline-none md:inset-x-auto md:right-4 md:bottom-6 md:max-h-[calc(100%-3rem)] md:w-96 md:rounded-2xl"
+	class="detail-sheet absolute inset-x-0 bottom-0 z-[1100] flex max-h-[70%] flex-col rounded-t-2xl border border-border bg-panel/95 text-text shadow-2xl backdrop-blur outline-none md:inset-x-auto md:right-20 md:bottom-6 md:max-h-[calc(100%-3rem)] md:w-96 md:rounded-2xl"
 >
 	<header class="flex items-start gap-3 border-b border-border py-2 pr-2 pl-4">
 		<div class="min-w-0 flex-1 py-1">

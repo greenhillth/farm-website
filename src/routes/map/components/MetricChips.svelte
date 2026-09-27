@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Attachment } from 'svelte/attachments';
 	import type { MetricId, MetricOption } from '$lib/config';
 
 	type Props = {
@@ -9,6 +10,11 @@
 	};
 
 	let { metrics, active, onchange, layout }: Props = $props();
+
+	// In the scrolling row, a metric picked off-screen (or from ?metric=) would otherwise look unselected.
+	const reveal: Attachment<HTMLElement> = (node) => {
+		node.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+	};
 </script>
 
 <div
@@ -21,6 +27,7 @@
 		<button
 			type="button"
 			aria-pressed={pressed}
+			{@attach pressed && layout === 'row' ? reveal : null}
 			onclick={() => {
 				if (!pressed) onchange(metric.id);
 			}}
