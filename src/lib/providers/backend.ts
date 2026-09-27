@@ -1,4 +1,5 @@
 import CONFIG from '$lib/config';
+import { moonPhase, sunTimes } from '$lib/sun';
 import {
 	ALWAYS_SAMPLE_FIELDS,
 	WEATHER_FIELDS,
@@ -83,6 +84,24 @@ function batteryOf(
 	return { status: level > 0 ? 'LOW' : 'NORMAL', note: 'Outdoor sensor array' };
 }
 
+const clock = new Intl.DateTimeFormat('en-AU', {
+	timeZone: CONFIG.farm.timeZone,
+	hour: '2-digit',
+	minute: '2-digit',
+	hourCycle: 'h23'
+});
+
+/** Today's sunrise and sunset at the farm, and the moon phase: calculated, not reported. */
+function sky(now: Date): { sunrise: string; sunset: string; moon: string } {
+	const { lat, lon, timeZone } = CONFIG.farm;
+	const { sunrise, sunset } = sunTimes(now, lat, lon, timeZone);
+	return {
+		sunrise: sunrise ? clock.format(sunrise) : '-',
+		sunset: sunset ? clock.format(sunset) : '-',
+		moon: moonPhase(now)
+	};
+}
+
 function mapReadingToWeather(r: WeatherReading): { weather: Weather; mockFields: WeatherField[] } {
 	const mock = getMockWeather();
 	const mocked = new Set<WeatherField>(ALWAYS_SAMPLE_FIELDS);
@@ -121,9 +140,7 @@ function mapReadingToWeather(r: WeatherReading): { weather: Weather; mockFields:
 		solar: {
 			solar: pick(r.solar_wm2, mock.solar.solar, 'solar.solar'),
 			uvi: pick(r.uvi, mock.solar.uvi, 'solar.uvi'),
-			sunrise: mock.solar.sunrise,
-			sunset: mock.solar.sunset,
-			moon: mock.solar.moon
+			...sky(new Date())
 		},
 		rain: {
 			rate: pick(r.rain_rate_mm_hr, mock.rain.rate, 'rain.rate'),

@@ -28,6 +28,8 @@ const CONFIG = {
 		maxZoom: 20
 	},
 	/** Spraying thresholds from common Australian label guidance. Speeds in km/h, Delta T in °C. */
+	/** The farm, for sunrise and sunset: the centre of its map bounds (northern Tasmania). */
+	farm: { lat: -41.1895, lon: 146.4645, timeZone: 'Australia/Hobart' },
 	spray: {
 		windMinKmh: 3,
 		windGoodMaxKmh: 15,
