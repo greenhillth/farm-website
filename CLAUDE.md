@@ -47,7 +47,7 @@ Backend API contracts that the frontend expects are written up in the root markd
 - `src/lib/config.ts`: API endpoints, map tile source, and `soilMetrics` (id, label, unit, optimal range, colour-scale min/max). The metric definitions drive the map legend and colouring.
 - `src/routes/map/`: Leaflet map with SSR turned off (`+page.ts` sets `ssr = false`, and Leaflet also needs `ssr.noExternal`/`optimizeDeps` in `vite.config.ts`). It fetches farm GeoJSON, title boundaries and the latest soil tests, then colours paddocks on a viridis scale. Pure helpers live in `map/helpers.ts`, and layer builders and styles in `src/lib/layers.ts`.
 - `src/routes/soiltests/`: large single page (about 2,100 lines) for listing, manual entry, CSV import with job-status polling, and bulk delete. Shared types, CSV header requirements and fetch helpers are in `src/lib/soil-tests/`. Import progress is broadcast as a `farm:csv-import-progress` DOM event (`progress.ts`).
-- `src/routes/weather/`: dashboard and per-metric detail view (`[metric]`). `src/lib/weather.ts` → `src/lib/providers/backend.ts` maps the backend's `/weather/current` reading onto the UI `Weather` shape and fills any missing fields from `getMockWeather()`. If the backend is unreachable it returns `connected: false, source: 'mock'`.
+- `src/routes/weather/`: dashboard and per-metric detail view (`[metric]`). `src/lib/weather.ts` → `src/lib/providers/backend.ts` maps the backend's `/weather/current` reading onto the UI `Weather` shape and fills any missing fields from `getMockWeather()`. If the backend is unreachable it returns `connected: false, source: 'mock'`. Charts are `WeatherChartPanel` (metric and timespan selectors) over `WeatherChart`. The 24-hour view uses the page load's raw `/weather/history`; longer spans fetch `/weather/series`, whose bucket per span (`TIMESPANS` in `chart.ts`) is a whole division of a day so it doesn't alias with the day/night cycle.
 
 ## Conventions
 
@@ -84,7 +84,7 @@ Rules for agents:
 
 A beginner walkthrough of CI, releases and deploying is in `docs/deploying.md`.
 
-Production runs the Docker image `ghcr.io/greenhillth/farm-website:<tag>` on the on-site Ubuntu server behind cloudflared. The runbook is `deploy/README.md`.
+Production runs the Docker image `ghcr.io/greenhillth/farm-website:<tag>` on the on-site Ubuntu server, behind cloudflared and nginx. The runbook is `deploy/README.md`, and its "How it fits together" section shows the request path. On that server nginx sends browser `/api/` requests straight to gbros-api, so the catch-all `/api` proxy (layer 2 above) only handles requests that reach the container directly.
 
 - Releases are `vX.Y.Z` tags on `main` whose `package.json` `version` matches (`scripts/check-release.sh`). The `release` workflow pushes the image and creates a GitHub Release. Merging to `main` never deploys.
 - Tom deploys on the server with `/opt/farm-website/deploy.sh vX.Y.Z`, which health-checks and rolls back automatically. `deploy/test/run-tests.sh` tests it locally (needs Docker).

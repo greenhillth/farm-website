@@ -27,6 +27,22 @@ type WeatherReading = {
 	rain_1h_mm?: number | null;
 	rain_24h_mm?: number | null;
 	solar_wm2?: number | null;
+	// Stored since gbros-api#15; null on readings from before it was deployed.
+	feels_like_c?: number | null;
+	dew_point_c?: number | null;
+	vpd_kpa?: number | null;
+	indoor_temp_c?: number | null;
+	indoor_humidity_pct?: number | null;
+	pressure_abs_hpa?: number | null;
+	rain_rate_mm_hr?: number | null;
+	rain_daily_mm?: number | null;
+	rain_event_mm?: number | null;
+	rain_weekly_mm?: number | null;
+	rain_monthly_mm?: number | null;
+	rain_yearly_mm?: number | null;
+	uvi?: number | null;
+	/** 0 is normal, 1 is low. */
+	battery_sensor_array?: number | null;
 };
 
 function coerceUtcIsoString(value?: string): string {
@@ -54,6 +70,19 @@ function computeVPD_c_kPa(tempC: number, rh: number): number {
 	return Math.max(0, es - ea);
 }
 
+function batteryOf(
+	level: number | null | undefined,
+	fallback: Weather['battery'],
+	mocked: Set<WeatherField>
+): Weather['battery'] {
+	if (level === null || level === undefined) {
+		mocked.add('battery.status');
+		mocked.add('battery.note');
+		return fallback;
+	}
+	return { status: level > 0 ? 'LOW' : 'NORMAL', note: 'Outdoor sensor array' };
+}
+
 function mapReadingToWeather(r: WeatherReading): { weather: Weather; mockFields: WeatherField[] } {
 	const mock = getMockWeather();
 	const mocked = new Set<WeatherField>(ALWAYS_SAMPLE_FIELDS);
@@ -70,30 +99,41 @@ function mapReadingToWeather(r: WeatherReading): { weather: Weather; mockFields:
 
 	const weather: Weather = {
 		updatedAt: coerceUtcIsoString(r.timestamp_utc),
+		// The station's own feels-like, dew point and VPD; before gbros-api#15 they weren't
+		// stored, so fall back to the temperature and to computing them.
 		outdoor: {
 			temp: pick(tempC, mock.outdoor.temp, 'outdoor.temp'),
 			trend: 0,
-			feelsLike: pick(tempC, mock.outdoor.feelsLike, 'outdoor.feelsLike'),
-			dewPoint: both ? dewPointC(tempC, rh) : pick(null, mock.outdoor.dewPoint, 'outdoor.dewPoint'),
+			feelsLike: pick(r.feels_like_c ?? tempC, mock.outdoor.feelsLike, 'outdoor.feelsLike'),
+			dewPoint:
+				r.dew_point_c ??
+				(both ? dewPointC(tempC, rh) : pick(null, mock.outdoor.dewPoint, 'outdoor.dewPoint')),
 			humidity: pick(rh, mock.outdoor.humidity, 'outdoor.humidity'),
-			vpd: both ? computeVPD_c_kPa(tempC, rh) : pick(null, mock.outdoor.vpd, 'outdoor.vpd')
+			vpd:
+				r.vpd_kpa ??
+				(both ? computeVPD_c_kPa(tempC, rh) : pick(null, mock.outdoor.vpd, 'outdoor.vpd'))
 		},
-		indoor: { temp: mock.indoor.temp, trend: 0, humidity: mock.indoor.humidity },
+		indoor: {
+			temp: pick(r.indoor_temp_c, mock.indoor.temp, 'indoor.temp'),
+			trend: 0,
+			humidity: pick(r.indoor_humidity_pct, mock.indoor.humidity, 'indoor.humidity')
+		},
 		solar: {
 			solar: pick(r.solar_wm2, mock.solar.solar, 'solar.solar'),
-			uvi: mock.solar.uvi,
+			uvi: pick(r.uvi, mock.solar.uvi, 'solar.uvi'),
 			sunrise: mock.solar.sunrise,
 			sunset: mock.solar.sunset,
 			moon: mock.solar.moon
 		},
 		rain: {
-			rate: 0,
-			daily: pick(r.rain_24h_mm, mock.rain.daily, 'rain.daily'),
-			event: mock.rain.event,
+			rate: pick(r.rain_rate_mm_hr, mock.rain.rate, 'rain.rate'),
+			// Before gbros-api#15, rain since midnight was stored as rain_24h_mm.
+			daily: pick(r.rain_daily_mm ?? r.rain_24h_mm, mock.rain.daily, 'rain.daily'),
+			event: pick(r.rain_event_mm, mock.rain.event, 'rain.event'),
 			hourly: pick(r.rain_1h_mm, mock.rain.hourly, 'rain.hourly'),
-			weekly: mock.rain.weekly,
-			monthly: mock.rain.monthly,
-			yearly: mock.rain.yearly
+			weekly: pick(r.rain_weekly_mm, mock.rain.weekly, 'rain.weekly'),
+			monthly: pick(r.rain_monthly_mm, mock.rain.monthly, 'rain.monthly'),
+			yearly: pick(r.rain_yearly_mm, mock.rain.yearly, 'rain.yearly')
 		},
 		wind: {
 			dir: pick(r.wind_dir_deg, mock.wind.dir, 'wind.dir'),
@@ -104,11 +144,11 @@ function mapReadingToWeather(r: WeatherReading): { weather: Weather; mockFields:
 		},
 		pressure: {
 			rel: pick(r.pressure_hpa, mock.pressure.rel, 'pressure.rel'),
-			abs: pick(r.pressure_hpa, mock.pressure.abs, 'pressure.abs'),
+			abs: pick(r.pressure_abs_hpa ?? r.pressure_hpa, mock.pressure.abs, 'pressure.abs'),
 			deltaRel: 0,
 			deltaAbs: 0
 		},
-		battery: { status: mock.battery.status, note: mock.battery.note },
+		battery: batteryOf(r.battery_sensor_array, mock.battery, mocked),
 		series: mock.series
 	};
 

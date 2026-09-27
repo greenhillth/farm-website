@@ -9,9 +9,8 @@
 	import { compassPoint } from '$lib/home-items';
 	import { isFreshReading, sprayConditions } from '$lib/spray';
 	import { fetchWeather, type WeatherField, type WeatherResult } from '$lib/weather';
-	import { CHARTS, buildSeries } from './chart';
 	import OfflineBanner from './components/OfflineBanner.svelte';
-	import WeatherChart from './components/WeatherChart.svelte';
+	import WeatherChartPanel from './components/WeatherChartPanel.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -37,7 +36,6 @@
 	const status = $derived(
 		!current.connected ? 'Offline' : isFreshReading(w, CONFIG.spray, now) ? 'Live' : 'Stale'
 	);
-	const outdoorSeries = $derived(buildSeries(data.history, CHARTS.outdoor!));
 	const ageSeconds = $derived(
 		Math.max(0, Math.round((now - new Date(w.updatedAt).getTime()) / 1000))
 	);
@@ -226,13 +224,7 @@
 		</a>
 	</div>
 
-	<Panel title="Outdoor, last 24 hours">
-		<WeatherChart
-			title="Outdoor temperature and dew point, last 24 hours"
-			series={outdoorSeries}
-			unit="°C"
-			from={data.range.from * 1000}
-			to={data.range.to * 1000}
-		/>
+	<Panel title="History">
+		<WeatherChartPanel history={data.history} range={data.range} />
 	</Panel>
 </div>
