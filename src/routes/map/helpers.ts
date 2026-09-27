@@ -1,6 +1,7 @@
 import type { PathOptions, TileLayerOptions } from 'leaflet';
 
 import type { MetricId, MetricOption } from '$lib/config';
+import { escapeHtml } from '$lib/html';
 import { DEFAULT_PADDOCK_STYLE } from '$lib/layers';
 
 export type QuickLink = { href: string; label: string };
@@ -274,6 +275,40 @@ export function formatSampleDate(value: string | null): string {
 		month: 'short',
 		day: 'numeric'
 	});
+}
+
+export type PaddockTooltipInput = {
+	name: string;
+	displayId: string;
+	metric: MetricOption;
+	valueText: string | null;
+	sampleDate: string | null;
+	colorable: boolean;
+};
+
+export function buildPaddockTooltipHtml({
+	name,
+	displayId,
+	metric,
+	valueText,
+	sampleDate,
+	colorable
+}: PaddockTooltipInput): string {
+	const parts = [
+		`<div><strong>${escapeHtml(name)}</strong></div>`,
+		`<div>ID: ${escapeHtml(displayId)}</div>`
+	];
+	if (metric.id !== 'none') {
+		parts.push(`<div>${escapeHtml(metric.label)}: ${escapeHtml(valueText ?? 'No data')}</div>`);
+		if (sampleDate) {
+			parts.push(
+				`<div class="text-[0.7rem] opacity-80">Sample: ${escapeHtml(formatSampleDate(sampleDate))}</div>`
+			);
+		} else if (colorable) {
+			parts.push('<div class="text-[0.7rem] opacity-80">No recent sample</div>');
+		}
+	}
+	return parts.join('');
 }
 
 export function formatPercent(value: number | null | undefined): string {

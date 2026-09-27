@@ -27,9 +27,9 @@
 		parseDateMs,
 		setLayerBaseStyle,
 		updatePaddockTooltip,
+		buildPaddockTooltipHtml,
 		formatLegendTick,
 		formatMetricValue,
-		formatSampleDate,
 		formatPercent,
 		formatFieldList,
 		viridisColor,
@@ -389,20 +389,17 @@
 				}
 			}
 
-			const parts = [`<div><strong>${name}</strong></div>`, `<div>ID: ${displayId}</div>`];
-
-			if (metric.id !== 'none') {
-				parts.push(`<div>${metric.label}: ${valueText ?? 'No data'}</div>`);
-				if (sample?.sampleDate) {
-					parts.push(
-						`<div class="text-[0.7rem] opacity-80">Sample: ${formatSampleDate(sample.sampleDate)}</div>`
-					);
-				} else if (colorable) {
-					parts.push('<div class="text-[0.7rem] opacity-80">No recent sample</div>');
-				}
-			}
-
-			updatePaddockTooltip(layer, parts.join(''));
+			updatePaddockTooltip(
+				layer,
+				buildPaddockTooltipHtml({
+					name,
+					displayId,
+					metric,
+					valueText,
+					sampleDate: sample?.sampleDate ?? null,
+					colorable
+				})
+			);
 		});
 
 		activeMetricPaddockCount = withValues;
