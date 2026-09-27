@@ -47,8 +47,7 @@ Backend API contracts that the frontend expects are written up in the root markd
 - `src/lib/config.ts`: API endpoints, map tile source, and `soilMetrics` (id, label, unit, optimal range, colour-scale min/max). The metric definitions drive the map legend and colouring.
 - `src/routes/map/`: Leaflet map with SSR turned off (`+page.ts` sets `ssr = false`, and Leaflet also needs `ssr.noExternal`/`optimizeDeps` in `vite.config.ts`). It fetches farm GeoJSON, title boundaries and the latest soil tests, then colours paddocks on a viridis scale. Pure helpers live in `map/helpers.ts`, and layer builders and styles in `src/lib/layers.ts`.
 - `src/routes/soiltests/`: large single page (about 2,100 lines) for listing, manual entry, CSV import with job-status polling, and bulk delete. Shared types, CSV header requirements and fetch helpers are in `src/lib/soil-tests/`. Import progress is broadcast as a `farm:csv-import-progress` DOM event (`progress.ts`).
-- `src/routes/weather/`: dashboard and per-metric detail view (`[metric]`). `src/lib/weather.ts` → `src/lib/providers/backend.ts` maps the backend's `/weather/current` reading onto the UI `Weather` shape and fills any missing fields from `getMockWeather()`. If the backend is unreachable it returns `connected: false, source: 'mock'`. `providers/ecowitt.ts` (direct Ecowitt API) is currently unused.
-- `src/lib/ui.ts` and `$` in `src/lib/utils.ts` are DOM-manipulation helpers left over from the pre-Svelte version.
+- `src/routes/weather/`: dashboard and per-metric detail view (`[metric]`). `src/lib/weather.ts` → `src/lib/providers/backend.ts` maps the backend's `/weather/current` reading onto the UI `Weather` shape and fills any missing fields from `getMockWeather()`. If the backend is unreachable it returns `connected: false, source: 'mock'`.
 
 ## Conventions
 
