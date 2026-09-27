@@ -4,6 +4,21 @@ This is the reference. New to GitHub Actions or releasing? Start with [docs/depl
 
 Production runs the image `ghcr.io/greenhillth/farm-website:<tag>` on the on-site Ubuntu server, published on `127.0.0.1:$HOST_PORT` and exposed through cloudflared at https://farm.greenhill.net.au. Everything lives in `/opt/farm-website`: `compose.yml`, `.env`, `deploy.sh` and `deploy.log`.
 
+## How it fits together on the server
+
+```
+browser → Cloudflare Access (Microsoft Entra) → cloudflared tunnel
+  → nginx 10.0.0.100:4000 (/etc/nginx/conf.d/cloudflared.conf)
+      /      → 127.0.0.1:3000  this container (HOST_PORT=3000)
+      /api/  → 127.0.0.1:8000  gbros-api, directly
+```
+
+- **nginx sits in front.** cloudflared targets nginx on :4000, not this container. The container's port is set in nginx's `upstream sveltekit_app`. The server's LAN IP `10.0.0.100` is reserved as static on the router, because the tunnel route uses it.
+- **Browser `/api/` requests skip this container.** nginx sends them straight to gbros-api. So for uploads the limits that apply are nginx's `client_max_body_size 50m` and the API's own 10 MB, not `BODY_SIZE_LIMIT`. `ORIGIN` still matters for anything SvelteKit handles itself.
+- **Server-side fetches** in load functions use `BACKEND_ORIGIN=http://gbros-api:8000` over the `farmstack` network.
+- gbros-api's runbook is its `CLAUDE.md` (Deployment) and `scripts/deploy.sh`.
+- **Before 2026-09-27** the site ran from a hand-built checkout: the `farm-website.service` systemd unit ran `node build/index.js` on :4173 from `/home/tom/projects/farm-website`. To go back to it, set `upstream sveltekit_app` to `127.0.0.1:4173`, then `sudo nginx -t && sudo systemctl reload nginx`. That only works while the unit is still enabled. Once `v1.0.0` has run cleanly for a few days, retire it with `sudo systemctl disable --now farm-website`. Nothing is deleted.
+
 ## Releasing a new version
 
 Releases are `vX.Y.Z` tags on `main`. Merging to `main` never deploys.

@@ -84,7 +84,7 @@ Rules for agents:
 
 A beginner walkthrough of CI, releases and deploying is in `docs/deploying.md`.
 
-Production runs the Docker image `ghcr.io/greenhillth/farm-website:<tag>` on the on-site Ubuntu server behind cloudflared. The runbook is `deploy/README.md`.
+Production runs the Docker image `ghcr.io/greenhillth/farm-website:<tag>` on the on-site Ubuntu server, behind cloudflared and nginx. The runbook is `deploy/README.md`, and its "How it fits together" section shows the request path. On that server nginx sends browser `/api/` requests straight to gbros-api, so the catch-all `/api` proxy (layer 2 above) only handles requests that reach the container directly.
 
 - Releases are `vX.Y.Z` tags on `main` whose `package.json` `version` matches (`scripts/check-release.sh`). The `release` workflow pushes the image and creates a GitHub Release. Merging to `main` never deploys.
 - Tom deploys on the server with `/opt/farm-website/deploy.sh vX.Y.Z`, which health-checks and rolls back automatically. `deploy/test/run-tests.sh` tests it locally (needs Docker).
