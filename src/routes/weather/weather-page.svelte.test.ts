@@ -6,6 +6,7 @@ import {
 	ALWAYS_SAMPLE_FIELDS,
 	WEATHER_FIELDS,
 	getMockWeather,
+	type Weather,
 	type WeatherField
 } from '$lib/weather';
 import WeatherPage from './+page.svelte';
@@ -15,9 +16,13 @@ vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
 const to = Math.floor(Date.now() / 1000);
 const range = { from: to - 86400, to };
 
-function renderWith(source: 'ecowitt' | 'mock', mockFields: WeatherField[]) {
+function renderWith(
+	source: 'ecowitt' | 'mock',
+	mockFields: WeatherField[],
+	w: Weather = getMockWeather()
+) {
 	const data = {
-		w: getMockWeather(),
+		w,
 		connected: source === 'ecowitt',
 		source,
 		mockFields,
@@ -60,5 +65,17 @@ describe('weather page', () => {
 		renderWith('ecowitt', [...ALWAYS_SAMPLE_FIELDS]);
 
 		await expect.element(page.getByText('No readings in the last 24 hours.')).toBeVisible();
+	});
+
+	it('calls a live but old reading stale and won’t judge spraying on it', async () => {
+		const old = {
+			...getMockWeather(),
+			updatedAt: new Date(Date.now() - 2 * 3600_000).toISOString()
+		};
+		renderWith('ecowitt', [...ALWAYS_SAMPLE_FIELDS], old);
+
+		await expect.element(page.getByText('Stale', { exact: true })).toBeVisible();
+		expect(page.getByText('Live', { exact: true }).elements()).toHaveLength(0);
+		await expect.element(page.getByText('Can’t tell', { exact: true })).toBeVisible();
 	});
 });

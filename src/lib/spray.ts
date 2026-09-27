@@ -8,6 +8,7 @@ export type SprayThresholds = {
 	deltaTGoodMin: number;
 	deltaTGoodMax: number;
 	deltaTMarginalMax: number;
+	maxReadingAgeMinutes: number;
 };
 export type SprayVerdict = 'good' | 'marginal' | 'not-suitable' | 'unknown';
 export type SprayResult = { verdict: SprayVerdict; reasons: string[]; summary: string };
@@ -80,15 +81,38 @@ function unknown(reason: string): SprayResult {
 	return { verdict: 'unknown', reasons: [reason], summary: reason };
 }
 
+/** Minutes since the reading was taken, or null when it has no usable time. */
+export function readingAgeMinutes(weather: Weather, now = Date.now()): number | null {
+	const taken = Date.parse(weather.updatedAt);
+	return Number.isFinite(taken) ? (now - taken) / 60_000 : null;
+}
+
+/** Whether the reading is recent enough to act on. */
+export function isFreshReading(weather: Weather, t: SprayThresholds, now = Date.now()): boolean {
+	const age = readingAgeMinutes(weather, now);
+	return age !== null && age <= t.maxReadingAgeMinutes;
+}
+
+function ageText(minutes: number): string {
+	const whole = Math.round(minutes);
+	return whole < 60 ? `${whole} min` : `${Math.round(minutes / 60)} h`;
+}
+
 /** The worst of the wind, gust, rain and Delta T checks. Speeds arrive in m/s. */
 export function sprayConditions(
 	weather: Weather,
 	mockFields: readonly WeatherField[],
-	thresholds: SprayThresholds
+	thresholds: SprayThresholds,
+	now = Date.now()
 ): SprayResult {
 	const missing = INPUTS.filter(([field]) => mockFields.includes(field)).map(([, label]) => label);
 	if (missing.length > 0) {
 		return unknown(`Can’t tell — the station isn’t reporting ${orList(missing)}.`);
+	}
+	const age = readingAgeMinutes(weather, now);
+	if (age === null) return unknown('Can’t tell — the reading has no time.');
+	if (age > thresholds.maxReadingAgeMinutes) {
+		return unknown(`Can’t tell — the last reading is ${ageText(age)} old.`);
 	}
 	const dt = deltaT(weather.outdoor.temp, weather.outdoor.humidity);
 	if (dt === null) return unknown('Can’t tell — the humidity reading is out of range.');

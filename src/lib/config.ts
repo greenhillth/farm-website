@@ -34,7 +34,9 @@ const CONFIG = {
 		gustMarginalKmh: 20,
 		deltaTGoodMin: 2,
 		deltaTGoodMax: 8,
-		deltaTMarginalMax: 10
+		deltaTMarginalMax: 10,
+		/** Older readings get no verdict: the backend returns its newest row however old it is. */
+		maxReadingAgeMinutes: 20
 	},
 	soilMetrics: [
 		{

@@ -22,6 +22,8 @@ function weatherWith(
 
 // 20 °C and 60 % humidity give Delta T 4.99; 2.5 m/s is 9 km/h, 4 m/s is 14.4 km/h.
 const calm = weatherWith({ temp: 20, humidity: 60 }, { speed: 2.5, gust: 4 });
+const fresh = Date.parse(calm.updatedAt);
+const MINUTE = 60_000;
 
 describe('deltaT', () => {
 	it('matches published reference values', () => {
@@ -69,7 +71,7 @@ describe('deltaTCheck', () => {
 
 describe('sprayConditions', () => {
 	it('is good with a reason per input on a calm, dry day', () => {
-		expect(sprayConditions(calm, [], t)).toEqual({
+		expect(sprayConditions(calm, [], t, fresh)).toEqual({
 			verdict: 'good',
 			reasons: ['Wind 9 km/h', 'Gusts 14 km/h', 'No rain in the last hour', 'Delta T 5.0 °C'],
 			summary: 'Wind 9 km/h'
@@ -80,7 +82,8 @@ describe('sprayConditions', () => {
 		const result = sprayConditions(
 			weatherWith({ temp: 20, humidity: 60 }, { speed: 2.5, gust: 6 }),
 			[],
-			t
+			t,
+			fresh
 		);
 		expect(result.verdict).toBe('marginal');
 		expect(result.summary).toBe('Gusting 22 km/h');
@@ -90,19 +93,20 @@ describe('sprayConditions', () => {
 		const result = sprayConditions(
 			weatherWith({ temp: 20, humidity: 60 }, { speed: 2.5, gust: 6 }, 0.4),
 			[],
-			t
+			t,
+			fresh
 		);
 		expect(result.verdict).toBe('not-suitable');
 		expect(result.summary).toBe('Rain in the last hour (0.4 mm)');
 	});
 
 	it(`can’t tell when an input is sample data, and names it`, () => {
-		expect(sprayConditions(calm, ['wind.speed'], t)).toEqual({
+		expect(sprayConditions(calm, ['wind.speed'], t, fresh)).toEqual({
 			verdict: 'unknown',
 			reasons: [`Can’t tell — the station isn’t reporting wind speed.`],
 			summary: `Can’t tell — the station isn’t reporting wind speed.`
 		});
-		expect(sprayConditions(calm, ['outdoor.temp', 'outdoor.humidity'], t).reasons).toEqual([
+		expect(sprayConditions(calm, ['outdoor.temp', 'outdoor.humidity'], t, fresh).reasons).toEqual([
 			`Can’t tell — the station isn’t reporting temperature or humidity.`
 		]);
 	});
@@ -111,9 +115,37 @@ describe('sprayConditions', () => {
 		const result = sprayConditions(
 			weatherWith({ temp: 20, humidity: 0 }, { speed: 2.5, gust: 4 }),
 			[],
-			t
+			t,
+			fresh
 		);
 		expect(result.verdict).toBe('unknown');
 		expect(result.reasons).toEqual([`Can’t tell — the humidity reading is out of range.`]);
+	});
+
+	it('still judges a reading that is exactly the age limit', () => {
+		expect(sprayConditions(calm, [], t, fresh + 20 * MINUTE).verdict).toBe('good');
+	});
+
+	it(`can’t tell when the reading is too old, and says how old`, () => {
+		expect(sprayConditions(calm, [], t, fresh + 21 * MINUTE)).toEqual({
+			verdict: 'unknown',
+			reasons: [`Can’t tell — the last reading is 21 min old.`],
+			summary: `Can’t tell — the last reading is 21 min old.`
+		});
+		expect(sprayConditions(calm, [], t, fresh + 180 * MINUTE).summary).toBe(
+			`Can’t tell — the last reading is 3 h old.`
+		);
+	});
+
+	it(`can’t tell when the reading has no time`, () => {
+		expect(sprayConditions({ ...calm, updatedAt: 'not a date' }, [], t, fresh).summary).toBe(
+			`Can’t tell — the reading has no time.`
+		);
+	});
+
+	it('still names missing inputs before the age', () => {
+		expect(sprayConditions(calm, ['wind.speed'], t, fresh + 180 * MINUTE).summary).toBe(
+			`Can’t tell — the station isn’t reporting wind speed.`
+		);
 	});
 });

@@ -7,7 +7,7 @@
 	import SprayPanel from '$lib/components/SprayPanel.svelte';
 	import CONFIG from '$lib/config';
 	import { compassPoint } from '$lib/home-items';
-	import { sprayConditions } from '$lib/spray';
+	import { isFreshReading, sprayConditions } from '$lib/spray';
 	import { fetchWeather, type WeatherField, type WeatherResult } from '$lib/weather';
 	import { CHARTS, buildSeries } from './chart';
 	import OfflineBanner from './components/OfflineBanner.svelte';
@@ -29,7 +29,10 @@
 		}
 	);
 	const w = $derived(current.weather);
-	const spray = $derived(sprayConditions(w, current.mockFields, CONFIG.spray));
+	const spray = $derived(sprayConditions(w, current.mockFields, CONFIG.spray, now));
+	const status = $derived(
+		!current.connected ? 'Offline' : isFreshReading(w, CONFIG.spray, now) ? 'Live' : 'Stale'
+	);
 	const outdoorSeries = $derived(buildSeries(data.history, CHARTS.outdoor!));
 	const ageSeconds = $derived(
 		Math.max(0, Math.round((now - new Date(w.updatedAt).getTime()) / 1000))
@@ -89,11 +92,11 @@
 			<span
 				class={[
 					'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold',
-					current.connected ? 'border-accent/50 text-accent' : 'border-warn/60 text-warn'
+					status === 'Live' ? 'border-accent/50 text-accent' : 'border-warn/60 text-warn'
 				]}
 			>
 				<span class="size-1.5 rounded-full bg-current" aria-hidden="true"></span>
-				{current.connected ? 'Live' : 'Offline'}
+				{status}
 			</span>
 		</div>
 	</div>
