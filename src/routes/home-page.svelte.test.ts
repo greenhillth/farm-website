@@ -2,12 +2,23 @@ import { page } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 
-import { getMockWeather } from '$lib/weather';
+import { ALWAYS_SAMPLE_FIELDS, WEATHER_FIELDS, getMockWeather } from '$lib/weather';
 import HomePage from './+page.svelte';
 
 vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
 
-const live = { weather: getMockWeather(), connected: true, source: 'ecowitt' as const };
+const live = {
+	weather: getMockWeather(),
+	connected: true,
+	source: 'ecowitt' as const,
+	mockFields: [...ALWAYS_SAMPLE_FIELDS]
+};
+const offline = {
+	...live,
+	connected: false,
+	source: 'mock' as const,
+	mockFields: [...WEATHER_FIELDS]
+};
 const soil = {
 	paddocksTested: 12,
 	latestSampleDate: '2024-05-01',
@@ -30,9 +41,40 @@ describe('home page', () => {
 	});
 
 	it('labels every weather tile when the station is offline', async () => {
-		renderHome({ weather: { ...live, connected: false, source: 'mock' }, soil });
+		renderHome({ weather: offline, soil });
 
 		expect(page.getByText('Sample data').elements()).toHaveLength(3);
+	});
+
+	it('says whether it’s a good time to spray, with the reason', async () => {
+		renderHome({ weather: live, soil });
+
+		const tile = page.getByRole('link').filter({ hasText: 'Spraying now' });
+		// Mock wind is 8.6 m/s = 31 km/h.
+		await expect.element(tile.getByText('Not suitable')).toBeVisible();
+		await expect.element(tile.getByText('Wind 31 km/h: too strong')).toBeVisible();
+	});
+
+	it('can’t judge spraying from sample data', async () => {
+		renderHome({ weather: offline, soil });
+
+		await expect
+			.element(
+				page
+					.getByRole('link')
+					.filter({ hasText: 'Spraying now' })
+					.getByText('Can’t tell', { exact: true })
+			)
+			.toBeVisible();
+	});
+
+	it('labels only the tile whose reading is sample data', async () => {
+		renderHome({ weather: { ...live, mockFields: [...ALWAYS_SAMPLE_FIELDS, 'rain.daily'] }, soil });
+
+		expect(page.getByText('Sample data').elements()).toHaveLength(1);
+		await expect
+			.element(page.getByRole('link').filter({ hasText: 'Rain today' }).getByText('Sample data'))
+			.toBeVisible();
 	});
 
 	it('explains when weather or soil data is unavailable', async () => {
