@@ -156,6 +156,10 @@
 	}
 
 	async function closeUpload() {
+		// Closing a finished import (X, Escape, backdrop) is the same as pressing Close.
+		if (job.stage === 'complete') {
+			return importDone({ inserted: job.inserted, skipped: job.skipped });
+		}
 		if (job.running) await job.cancel();
 		else job.reset();
 		uploadMode = null;
