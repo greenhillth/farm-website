@@ -1,5 +1,5 @@
 import { page } from 'vitest/browser';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 
 import {
@@ -13,23 +13,34 @@ import WeatherPage from './+page.svelte';
 
 vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
 
+const { fetchWeather } = vi.hoisted(() => ({ fetchWeather: vi.fn() }));
+vi.mock('$lib/weather', async (importOriginal) => ({
+	...(await importOriginal<typeof import('$lib/weather')>()),
+	fetchWeather
+}));
+
 const to = Math.floor(Date.now() / 1000);
 const range = { from: to - 86400, to };
+
+function pageData(
+	source: 'ecowitt' | 'mock',
+	mockFields: WeatherField[],
+	w: Weather = getMockWeather()
+) {
+	return { w, connected: source === 'ecowitt', source, mockFields, history: [], range };
+}
 
 function renderWith(
 	source: 'ecowitt' | 'mock',
 	mockFields: WeatherField[],
 	w: Weather = getMockWeather()
 ) {
-	const data = {
-		w,
-		connected: source === 'ecowitt',
-		source,
-		mockFields,
-		history: [],
-		range
-	};
-	render(WeatherPage, { data, params: {} } as never);
+	return render(WeatherPage, { data: pageData(source, mockFields, w), params: {} } as never);
+}
+
+function withTemp(temp: number): Weather {
+	const w = getMockWeather();
+	return { ...w, outdoor: { ...w.outdoor, temp } };
 }
 
 const panel = (title: string) =>
@@ -77,5 +88,52 @@ describe('weather page', () => {
 		await expect.element(page.getByText('Stale', { exact: true })).toBeVisible();
 		expect(page.getByText('Live', { exact: true }).elements()).toHaveLength(0);
 		await expect.element(page.getByText('Can’t tell', { exact: true })).toBeVisible();
+	});
+});
+
+describe('weather page refresh', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+		fetchWeather.mockReset();
+	});
+
+	it('says how old a live reading is but not sample data', async () => {
+		renderWith('ecowitt', [...ALWAYS_SAMPLE_FIELDS]);
+		await expect.element(page.getByText(/^Updated /)).toBeVisible();
+	});
+
+	it('doesn’t claim sample data was just updated', async () => {
+		renderWith('mock', [...WEATHER_FIELDS]);
+		await expect.element(page.getByText('Offline', { exact: true })).toBeVisible();
+		expect(page.getByText(/^Updated /).elements()).toHaveLength(0);
+	});
+
+	it('skips a refresh while the last one is still loading', async () => {
+		vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+		fetchWeather.mockReturnValue(new Promise(() => {}));
+		renderWith('ecowitt', [...ALWAYS_SAMPLE_FIELDS]);
+
+		await vi.advanceTimersByTimeAsync(45_000);
+		expect(fetchWeather).toHaveBeenCalledTimes(1);
+	});
+
+	it('shows the new load’s reading instead of an older refresh', async () => {
+		vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+		fetchWeather.mockResolvedValue({
+			weather: withTemp(31.4),
+			connected: true,
+			source: 'ecowitt',
+			mockFields: [...ALWAYS_SAMPLE_FIELDS]
+		});
+		const screen = await renderWith('ecowitt', [...ALWAYS_SAMPLE_FIELDS]);
+
+		await vi.advanceTimersByTimeAsync(15_000);
+		await expect.element(page.getByText(/^31\.4/)).toBeVisible();
+
+		await screen.rerender({
+			data: pageData('ecowitt', [...ALWAYS_SAMPLE_FIELDS], withTemp(5.6))
+		} as never);
+		await expect.element(page.getByText(/^5\.6/)).toBeVisible();
+		expect(page.getByText(/^31\.4/).elements()).toHaveLength(0);
 	});
 });
