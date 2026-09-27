@@ -43,9 +43,9 @@ describe('validateCsv', () => {
 	it('names each missing required header and stops there', () => {
 		const result = check('fieldID,P\n42,50');
 		expect(messages(result.errors)).toEqual([
-			'The file has no "id_sample" column.',
-			'The file has no "name_sample" column.',
-			'The file has no "sample_date" column.'
+			'The file has no “id_sample” column.',
+			'The file has no “name_sample” column.',
+			'The file has no “sample_date” column.'
 		]);
 	});
 
@@ -64,16 +64,16 @@ describe('validateCsv', () => {
 		);
 
 		expect(result.errors).toEqual([
-			{ row: 3, column: 'fieldID', message: 'Row 3: fieldID "4.5" isn\'t a whole number.' },
-			{ row: 3, column: 'id_sample', message: 'Row 3: id_sample "x1" isn\'t a whole number.' },
+			{ row: 3, column: 'fieldID', message: 'Row 3: fieldID “4.5” isn’t a whole number.' },
+			{ row: 3, column: 'id_sample', message: 'Row 3: id_sample “x1” isn’t a whole number.' },
 			{ row: 3, column: 'name_sample', message: 'Row 3: name_sample is empty.' },
 			{
 				row: 3,
 				column: 'sample_date',
-				message: 'Row 3: sample_date "01/05/2024" isn\'t a date. Use YYYY-MM-DD.'
+				message: 'Row 3: sample_date “01/05/2024” isn’t a date. Use YYYY-MM-DD.'
 			},
-			{ row: 4, column: 'fieldID', message: "Row 4: paddock 999 isn't on the farm map." },
-			{ row: 4, column: 'P', message: 'Row 4: P "abc" isn\'t a number.' }
+			{ row: 4, column: 'fieldID', message: 'Row 4: paddock 999 isn’t on the farm map.' },
+			{ row: 4, column: 'P', message: 'Row 4: P “abc” isn’t a number.' }
 		]);
 	});
 

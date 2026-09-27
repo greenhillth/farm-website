@@ -66,7 +66,7 @@ export function validateCsv(parsed: ParsedCsv, context: CheckContext): CsvCheck 
 
 	const missing = CSV_REQUIRED_HEADERS.filter((name) => !headers.includes(name));
 	for (const name of missing) {
-		errors.push({ row: null, column: name, message: `The file has no "${name}" column.` });
+		errors.push({ row: null, column: name, message: `The file has no “${name}” column.` });
 	}
 	if (missing.length > 0) return result();
 	if (rows.length === 0) {
@@ -103,18 +103,18 @@ export function validateCsv(parsed: ParsedCsv, context: CheckContext): CsvCheck 
 		if (!fieldOk) {
 			fail(
 				'fieldID',
-				fieldText ? `fieldID "${fieldText}" isn't a whole number.` : 'fieldID is empty.'
+				fieldText ? `fieldID “${fieldText}” isn’t a whole number.` : 'fieldID is empty.'
 			);
 		} else if (
 			context.knownPaddockIds.size > 0 &&
 			!context.knownPaddockIds.has(Number(fieldText))
 		) {
-			fail('fieldID', `paddock ${Number(fieldText)} isn't on the farm map.`);
+			fail('fieldID', `paddock ${Number(fieldText)} isn’t on the farm map.`);
 		}
 		if (!sampleOk) {
 			fail(
 				'id_sample',
-				sampleText ? `id_sample "${sampleText}" isn't a whole number.` : 'id_sample is empty.'
+				sampleText ? `id_sample “${sampleText}” isn’t a whole number.` : 'id_sample is empty.'
 			);
 		}
 		if (cell('name_sample') === '') fail('name_sample', 'name_sample is empty.');
@@ -123,7 +123,7 @@ export function validateCsv(parsed: ParsedCsv, context: CheckContext): CsvCheck 
 		if (!isImportableDate(date)) {
 			fail(
 				'sample_date',
-				date ? `sample_date "${date}" isn't a date. Use YYYY-MM-DD.` : 'sample_date is empty.'
+				date ? `sample_date “${date}” isn’t a date. Use YYYY-MM-DD.` : 'sample_date is empty.'
 			);
 		}
 
@@ -132,7 +132,7 @@ export function validateCsv(parsed: ParsedCsv, context: CheckContext): CsvCheck 
 			const raw = (cells[cellIndex] ?? '').trim();
 			if (EMPTY_METRIC.has(raw.toLowerCase())) continue;
 			if (NUMBER_PREFIX.test(raw.replaceAll(',', ''))) hasResult = true;
-			else fail(name, `${name} "${raw}" isn't a number.`);
+			else fail(name, `${name} “${raw}” isn’t a number.`);
 		}
 		if (!hasResult) {
 			warnings.push({
