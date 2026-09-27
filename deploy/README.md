@@ -39,6 +39,8 @@ It pulls the image, switches to it, and waits up to 60s for the container to be 
 
 The server needs Docker Engine 25 or newer with the Compose plugin (check with `docker version` and `docker compose version`); the image's healthcheck uses `--start-interval`, which older engines reject.
 
+The container joins gbros-api's Docker network `farmstack` and reaches the API as `http://gbros-api:8000`. gbros-api's `scripts/deploy.sh` creates that network, so deploy the API first (`docker network ls` should list `farmstack`).
+
 ```sh
 sudo mkdir -p /opt/farm-website && sudo chown "$USER" /opt/farm-website
 cd /opt/farm-website
@@ -54,21 +56,23 @@ To update `compose.yml` or `deploy.sh` later, rerun the `curl` loop with the new
 
 ## `.env`
 
-| Key               | Value                                                                                        |
-| ----------------- | -------------------------------------------------------------------------------------------- |
-| `IMAGE_TAG`       | Managed by `deploy.sh`; don't edit                                                           |
-| `HOST_PORT`       | Port cloudflared forwards to; bound on 127.0.0.1 only                                        |
-| `ORIGIN`          | `https://farm.greenhill.net.au`. Must be the public URL, or uploads fail with 403            |
-| `BACKEND_ORIGIN`  | `http://host.docker.internal:8000`: gbros-api's published port, as a bare origin (no `/api`) |
-| `BODY_SIZE_LIMIT` | `25M`. Max request body, which caps CSV upload size                                          |
+| Key               | Value                                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------------------- |
+| `IMAGE_TAG`       | Managed by `deploy.sh`; don't edit                                                                      |
+| `HOST_PORT`       | Port the container is published on, 127.0.0.1 only. Production: `3000`, behind nginx on :4000           |
+| `ORIGIN`          | `https://farm.greenhill.net.au`. Must be the public URL, or uploads fail with 403                       |
+| `BACKEND_ORIGIN`  | `http://gbros-api:8000`: gbros-api's container on the `farmstack` network, as a bare origin (no `/api`) |
+| `BODY_SIZE_LIMIT` | `25M`. Max request body, which caps CSV upload size                                                     |
+| `BACKEND_NETWORK` | Optional. The external network to join; defaults to `farmstack`                                         |
 
 ## Troubleshooting
 
-| Symptom                                               | Fix                                                                                                                                                                                                    |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `pull failed` with `denied` / `unauthorized`          | The GHCR package is private. Make it public (GitHub → Packages → farm-website → Package settings → Change visibility), or `docker login ghcr.io -u greenhillth` with a token that has `read:packages`. |
-| `did not become healthy`, and it rolled back          | Read the logs `deploy.sh` printed, or `docker compose logs web`. Try the image locally with `scripts/smoke-test.sh --image ghcr.io/greenhillth/farm-website:<tag>`.                                    |
-| CSV upload returns **403**                            | `ORIGIN` in `.env` doesn't match the URL in the browser.                                                                                                                                               |
-| CSV upload returns **413**                            | The file is bigger than `BODY_SIZE_LIMIT`.                                                                                                                                                             |
-| API calls return **502**                              | The backend isn't reachable. Check it's running (`docker ps`) and test from the container: `docker compose exec web wget -qO- http://host.docker.internal:8000/api/health`.                            |
-| `HOST_PORT must be set` / `port is already allocated` | Set `HOST_PORT` in `.env`, or stop whatever holds that port (`sudo ss -ltnp \| grep :<port>`).                                                                                                         |
+| Symptom                                                          | Fix                                                                                                                                                                                                    |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pull failed` with `denied` / `unauthorized`                     | The GHCR package is private. Make it public (GitHub → Packages → farm-website → Package settings → Change visibility), or `docker login ghcr.io -u greenhillth` with a token that has `read:packages`. |
+| `did not become healthy`, and it rolled back                     | Read the logs `deploy.sh` printed, or `docker compose logs web`. Try the image locally with `scripts/smoke-test.sh --image ghcr.io/greenhillth/farm-website:<tag>`.                                    |
+| CSV upload returns **403**                                       | `ORIGIN` in `.env` doesn't match the URL in the browser.                                                                                                                                               |
+| CSV upload returns **413**                                       | The file is bigger than `BODY_SIZE_LIMIT`.                                                                                                                                                             |
+| API calls return **502**                                         | The backend isn't reachable. Check it's running (`docker ps`) and test from the container: `docker compose exec web wget -qO- http://gbros-api:8000/api/health`.                                       |
+| `network farmstack declared as external, but could not be found` | gbros-api hasn't been deployed on this server yet. Run its `scripts/deploy.sh` (or `docker network create farmstack`), then deploy again.                                                              |
+| `HOST_PORT must be set` / `port is already allocated`            | Set `HOST_PORT` in `.env`, or stop whatever holds that port (`sudo ss -ltnp \| grep :<port>`).                                                                                                         |
