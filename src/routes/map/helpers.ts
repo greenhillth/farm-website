@@ -3,6 +3,16 @@ import type { PathOptions, TileLayerOptions } from 'leaflet';
 import type { MetricId, MetricOption } from '$lib/config';
 import { escapeHtml } from '$lib/html';
 import { DEFAULT_PADDOCK_STYLE } from '$lib/layers';
+import { extractFieldId, normaliseFieldId, type SoilTestRecord } from '$lib/soil-status';
+
+export {
+	extractFieldId,
+	normaliseFieldId,
+	parseDateMs,
+	pickMetricValue,
+	toNumber,
+	type SoilTestRecord
+} from '$lib/soil-status';
 
 export type QuickLink = { href: string; label: string };
 
@@ -20,8 +30,6 @@ export type BaseLayerConfig = {
 	url: string;
 	options: TileLayerOptions;
 };
-
-export type SoilTestRecord = Record<string, unknown>;
 
 export type NormalisedSoilSample = {
 	fieldId: number;
@@ -90,71 +98,6 @@ export const NO_DATA_STYLE = {
 	color: '#2f3748',
 	weight: 1
 };
-
-const METRIC_VALUE_KEYS: Record<MetricId, string[]> = {
-	none: [],
-	OM: ['OM', 'om', 'OrganicMatter', 'organic_matter', 'total_C', 'Total_C'],
-	P: ['P', 'p', 'Phosphorus'],
-	K: ['K', 'k', 'Potassium'],
-	M: ['Mg', 'mg', 'Magnesium', 'magnesium'],
-	Ca: ['Ca', 'ca', 'Calcium', 'calcium'],
-	pH: ['ph_water', 'pH', 'ph', 'ph_H2O', 'ph_h2o']
-};
-
-const FIELD_ID_KEYS = [
-	'fieldID',
-	'fieldId',
-	'FIELDID',
-	'FIELD_ID',
-	'ADSFLDID',
-	'adsfldid',
-	'field_id',
-	'id_field',
-	'paddockId',
-	'paddock_id'
-];
-
-export function normaliseFieldId(value: unknown): number | null {
-	if (value === null || value === undefined) return null;
-	const text = String(value).trim();
-	if (text === '') return null;
-	const num = Number(text);
-	return Number.isInteger(num) ? num : null;
-}
-
-export function extractFieldId(record: SoilTestRecord): number | null {
-	for (const key of FIELD_ID_KEYS) {
-		if (key in record) {
-			const candidate = normaliseFieldId(record[key]);
-			if (candidate !== null) return candidate;
-		}
-	}
-	return null;
-}
-
-export function toNumber(value: unknown): number | null {
-	if (value === null || value === undefined) return null;
-	const candidate = typeof value === 'string' ? value.trim() : value;
-	if (candidate === '') return null;
-	const num = Number(candidate);
-	return Number.isFinite(num) ? num : null;
-}
-
-export function pickMetricValue(record: SoilTestRecord, metricId: MetricId): number | null {
-	const keys = METRIC_VALUE_KEYS[metricId] ?? [];
-	for (const key of keys) {
-		if (!(key in record)) continue;
-		const candidate = toNumber(record[key]);
-		if (candidate !== null) return candidate;
-	}
-	return null;
-}
-
-export function parseDateMs(value: unknown): number | null {
-	if (!value) return null;
-	const timestamp = Date.parse(String(value));
-	return Number.isNaN(timestamp) ? null : timestamp;
-}
 
 export function hexToRgb(hex: string): [number, number, number] {
 	const clean = hex.replace('#', '');
