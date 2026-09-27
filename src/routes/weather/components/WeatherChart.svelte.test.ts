@@ -38,4 +38,25 @@ describe('WeatherChart.svelte', () => {
 		await expect.element(page.getByText('No readings in the last 24 hours.')).toBeVisible();
 		expect(page.getByRole('img').elements()).toHaveLength(0);
 	});
+
+	it('renders a flat series without duplicate gridline keys', async () => {
+		render(WeatherChart, {
+			title: 'Pressure, last 24 hours',
+			series: [
+				{
+					label: 'Pressure',
+					colour: '#c4b5fd',
+					points: [
+						{ t: from + 3600_000, v: 1012 },
+						{ t: from + 7200_000, v: 1012 }
+					]
+				}
+			],
+			unit: 'hPa',
+			from,
+			to
+		});
+
+		await expect.element(page.getByRole('img', { name: 'Pressure, last 24 hours' })).toBeVisible();
+	});
 });

@@ -8,13 +8,14 @@
 	let { title, series, unit, from, to }: Props = $props();
 
 	const wide = new MediaQuery('min-width: 48rem');
-	const width = $derived(wide.current ? 800 : 360);
+	let measured = $state(0);
+	const width = $derived(measured || 360);
 	const height = $derived(wide.current ? 260 : 300);
 	const pad = { left: 40, right: 12, top: 12, bottom: 28 };
 
 	const values = $derived(series.flatMap((line) => line.points.map((point) => point.v)));
 	const min = $derived(values.length ? Math.floor(Math.min(...values)) : 0);
-	const max = $derived(values.length ? Math.ceil(Math.max(...values)) : 1);
+	const max = $derived(Math.max(min + 1, values.length ? Math.ceil(Math.max(...values)) : 1));
 	const span = $derived(max - min || 1);
 	const ticks = $derived(hourTicks(from, to));
 	const rows = $derived(hourlyRows(series));
@@ -37,40 +38,48 @@
 			</li>
 		{/each}
 	</ul>
-	<svg viewBox="0 0 {width} {height}" class="w-full" role="img" aria-label={title}>
-		{#each [min, (min + max) / 2, max] as value (value)}
-			<line
-				x1={pad.left}
-				x2={width - pad.right}
-				y1={y(value)}
-				y2={y(value)}
-				stroke="rgb(var(--border))"
-			/>
-			<text
-				x={pad.left - 6}
-				y={y(value) + 4}
-				text-anchor="end"
-				font-size="12"
-				fill="rgb(var(--muted))"
-			>
-				{Math.round(value)}
-			</text>
-		{/each}
-		{#each ticks as tick (tick)}
-			<text x={x(tick)} y={height - 8} text-anchor="middle" font-size="12" fill="rgb(var(--muted))">
-				{timeFormat.format(tick)}
-			</text>
-		{/each}
-		{#each series as line (line.label)}
-			<polyline
-				fill="none"
-				stroke={line.colour}
-				stroke-width="2"
-				stroke-linejoin="round"
-				points={line.points.map((point) => `${x(point.t)},${y(point.v)}`).join(' ')}
-			/>
-		{/each}
-	</svg>
+	<div bind:clientWidth={measured}>
+		<svg viewBox="0 0 {width} {height}" {height} class="block w-full" role="img" aria-label={title}>
+			{#each [min, (min + max) / 2, max] as value, i (i)}
+				<line
+					x1={pad.left}
+					x2={width - pad.right}
+					y1={y(value)}
+					y2={y(value)}
+					stroke="rgb(var(--border))"
+				/>
+				<text
+					x={pad.left - 6}
+					y={y(value) + 4}
+					text-anchor="end"
+					font-size="12"
+					fill="rgb(var(--muted))"
+				>
+					{Math.round(value)}
+				</text>
+			{/each}
+			{#each ticks as tick (tick)}
+				<text
+					x={x(tick)}
+					y={height - 8}
+					text-anchor="middle"
+					font-size="12"
+					fill="rgb(var(--muted))"
+				>
+					{timeFormat.format(tick)}
+				</text>
+			{/each}
+			{#each series as line (line.label)}
+				<polyline
+					fill="none"
+					stroke={line.colour}
+					stroke-width="2"
+					stroke-linejoin="round"
+					points={line.points.map((point) => `${x(point.t)},${y(point.v)}`).join(' ')}
+				/>
+			{/each}
+		</svg>
+	</div>
 	<table class="sr-only">
 		<caption>{title}, hourly, in {unit}</caption>
 		<thead>
