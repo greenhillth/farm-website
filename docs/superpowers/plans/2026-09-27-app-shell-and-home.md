@@ -1650,7 +1650,7 @@ Expected: FAIL (the current page imports `homeItems`, which no longer exists).
 </svelte:head>
 
 {#snippet sampleChip()}
-	<span class="bg-warn/15 text-warn mt-2 self-start rounded-full px-2 py-0.5 text-xs">
+	<span class="mt-2 self-start rounded-full bg-warn/15 px-2 py-0.5 text-xs text-warn">
 		Sample data
 	</span>
 {/snippet}
