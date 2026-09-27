@@ -13,11 +13,11 @@ import WeatherPage from './+page.svelte';
 
 vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
 
-const { fetchWeather } = vi.hoisted(() => ({ fetchWeather: vi.fn() }));
-vi.mock('$lib/weather', async (importOriginal) => ({
-	...(await importOriginal<typeof import('$lib/weather')>()),
-	fetchWeather
-}));
+// The page polls `fetchWeather`, which reads through the backend provider. Mock the provider:
+// `$lib/weather` and `$lib/providers/backend` import each other, and mocking `$lib/weather`
+// with `importOriginal` deadlocks the browser test on that cycle.
+const { fetchBackendWeatherMeta } = vi.hoisted(() => ({ fetchBackendWeatherMeta: vi.fn() }));
+vi.mock('$lib/providers/backend', () => ({ fetchBackendWeatherMeta }));
 
 const to = Math.floor(Date.now() / 1000);
 const range = { from: to - 86400, to };
@@ -94,7 +94,7 @@ describe('weather page', () => {
 describe('weather page refresh', () => {
 	afterEach(() => {
 		vi.useRealTimers();
-		fetchWeather.mockReset();
+		fetchBackendWeatherMeta.mockReset();
 	});
 
 	it('says how old a live reading is but not sample data', async () => {
@@ -110,17 +110,17 @@ describe('weather page refresh', () => {
 
 	it('skips a refresh while the last one is still loading', async () => {
 		vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
-		fetchWeather.mockReturnValue(new Promise(() => {}));
+		fetchBackendWeatherMeta.mockReturnValue(new Promise(() => {}));
 		renderWith('ecowitt', [...ALWAYS_SAMPLE_FIELDS]);
 
 		await vi.advanceTimersByTimeAsync(45_000);
-		expect(fetchWeather).toHaveBeenCalledTimes(1);
+		expect(fetchBackendWeatherMeta).toHaveBeenCalledTimes(1);
 	});
 
 	it('shows the new load’s reading instead of an older refresh', async () => {
 		vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
-		fetchWeather.mockResolvedValue({
-			weather: withTemp(31.4),
+		fetchBackendWeatherMeta.mockResolvedValue({
+			data: withTemp(31.4),
 			connected: true,
 			source: 'ecowitt',
 			mockFields: [...ALWAYS_SAMPLE_FIELDS]
@@ -131,9 +131,9 @@ describe('weather page refresh', () => {
 		await expect.element(page.getByText(/^31\.4/)).toBeVisible();
 
 		await screen.rerender({
-			data: pageData('ecowitt', [...ALWAYS_SAMPLE_FIELDS], withTemp(5.6))
+			data: pageData('ecowitt', [...ALWAYS_SAMPLE_FIELDS], withTemp(7.3))
 		} as never);
-		await expect.element(page.getByText(/^5\.6/)).toBeVisible();
+		await expect.element(page.getByText(/^7\.3/)).toBeVisible();
 		expect(page.getByText(/^31\.4/).elements()).toHaveLength(0);
 	});
 });

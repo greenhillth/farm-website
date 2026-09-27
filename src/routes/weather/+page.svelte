@@ -16,8 +16,12 @@
 
 	let { data }: PageProps = $props();
 
-	// The load's reading until the first 15-second refresh replaces it.
-	let fresh = $state.raw<WeatherResult | null>(null);
+	// The load's reading until the first 15-second refresh replaces it. Reset when the load
+	// data changes so an older refresh can't hide a newer load.
+	let fresh = $derived.by<WeatherResult | null>(() => {
+		void data;
+		return null;
+	});
 	let now = $state(Date.now());
 
 	const current = $derived(
@@ -50,8 +54,15 @@
 
 	onMount(() => {
 		const tick = setInterval(() => (now = Date.now()), 1000);
+		let inFlight = false;
 		const poll = setInterval(async () => {
-			fresh = await fetchWeather();
+			if (inFlight) return;
+			inFlight = true;
+			try {
+				fresh = await fetchWeather();
+			} finally {
+				inFlight = false;
+			}
 		}, 15_000);
 		return () => {
 			clearInterval(tick);
@@ -88,7 +99,9 @@
 	<div class="flex flex-wrap items-center justify-between gap-3 pt-6">
 		<h1 class="text-xl font-semibold">Weather</h1>
 		<div class="flex items-center gap-3 text-sm">
-			<span class="text-muted">Updated {age(ageSeconds)}</span>
+			{#if current.source !== 'mock'}
+				<span class="text-muted">Updated {age(ageSeconds)}</span>
+			{/if}
 			<span
 				class={[
 					'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold',
