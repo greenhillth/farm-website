@@ -274,7 +274,7 @@
 					{/each}
 				</ul>
 				<div
-					class="mt-3 overflow-x-auto rounded-md border border-border/30 bg-panel/70 px-3 py-2 font-mono text-[11px] text-muted"
+					class="mt-3 overflow-x-auto rounded-md border border-border/30 bg-panel/70 px-3 py-2 font-mono text-xs text-muted"
 				>
 					fieldID,name_sample,sample_id,sample_date,client,P,K,Ca,Mg,S,Na,ph_water
 					<br />
