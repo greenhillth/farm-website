@@ -36,6 +36,15 @@ describe('AppShell.svelte on a phone', () => {
 			.not.toHaveAttribute('aria-current');
 	});
 
+	it('shows inactive tabs in a different colour from the current one', async () => {
+		render(AppShell, { pathname: '/weather', logoSrc, children });
+
+		const nav = page.getByRole('navigation', { name: 'Main' });
+		const colour = (name: string) =>
+			getComputedStyle(nav.getByRole('link', { name }).element()).color;
+		expect(colour('Map')).not.toBe(colour('Weather'));
+	});
+
 	it('pads the page so the tab bar never covers the end of it', async () => {
 		render(AppShell, { pathname: '/', logoSrc, children });
 

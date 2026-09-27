@@ -63,9 +63,12 @@ body {
 	color: rgb(var(--text));
 	background: rgb(var(--bg));
 }
-a {
-	color: rgb(var(--accent));
-	text-decoration: none;
+/* In the base layer so Tailwind colour utilities on links (text-muted, text-text…) win. */
+@layer base {
+	a {
+		color: rgb(var(--accent));
+		text-decoration: none;
+	}
 }
 label.field {
 	display: grid;
