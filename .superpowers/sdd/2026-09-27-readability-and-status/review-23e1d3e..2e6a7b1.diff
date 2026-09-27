@@ -1,0 +1,85 @@
+# Review package: 23e1d3e..2e6a7b1
+
+## Commits
+2e6a7b1 Ignore inherited keys when looking up a weather metric
+
+## Files changed
+ src/routes/weather/[metric]/+page.svelte               | 11 ++++++++---
+ src/routes/weather/[metric]/metric-page.svelte.test.ts | 13 +++++++++++++
+ 2 files changed, 21 insertions(+), 3 deletions(-)
+
+## Diff
+diff --git a/src/routes/weather/[metric]/+page.svelte b/src/routes/weather/[metric]/+page.svelte
+index f8a7355..8856b12 100644
+--- a/src/routes/weather/[metric]/+page.svelte
++++ b/src/routes/weather/[metric]/+page.svelte
+@@ -30,32 +30,37 @@
+ 		humidity_pct: 'Humidity (%)',
+ 		solar_wm2: 'Solar (W/m²)',
+ 		rain_1h_mm: 'Rain, past hour (mm)',
+ 		rain_24h_mm: 'Rain, past day (mm)',
+ 		wind_avg_ms: 'Wind (m/s)',
+ 		wind_gust_ms: 'Gust (m/s)',
+ 		wind_dir_deg: 'Direction (°)',
+ 		pressure_hpa: 'Pressure (hPa)'
+ 	};
+ 
+-	const title = $derived(TITLES[data.metric] ?? data.metric);
+-	const spec = $derived(CHARTS[data.metric]);
++	/** Only own properties: `data.metric` is a route param, and a plain-object lookup would
++	 *  otherwise resolve to inherited members like `constructor` or `toString`. */
++	const own = <T,>(table: Partial<Record<string, T>>, key: string): T | undefined =>
++		Object.hasOwn(table, key) ? table[key] : undefined;
++
++	const title = $derived(own(TITLES, data.metric) ?? data.metric);
++	const spec = $derived(own(CHARTS, data.metric));
+ 	const series = $derived(spec ? buildSeries(data.history, spec) : []);
+ 	const summaries = $derived(
+ 		series.flatMap((line) => {
+ 			const range = extremes(line.points);
+ 			return range ? [{ label: line.label, ...range }] : [];
+ 		})
+ 	);
+ 	const columns = $derived<(keyof WeatherHistoryRow)[]>([
+ 		'timestamp_utc',
+-		...(FIELDS[data.metric] ?? [])
++		...(own(FIELDS, data.metric) ?? [])
+ 	]);
+ 	const rows = $derived(
+ 		[...data.history].sort(
+ 			(a, b) => (parseUtcMs(b.timestamp_utc) ?? 0) - (parseUtcMs(a.timestamp_utc) ?? 0)
+ 		)
+ 	);
+ 	const hours = $derived(Math.max(1, Math.round((data.range.to - data.range.from) / 3600)));
+ 	const timeFormat = new Intl.DateTimeFormat('en-AU', {
+ 		weekday: 'short',
+ 		hour: 'numeric',
+diff --git a/src/routes/weather/[metric]/metric-page.svelte.test.ts b/src/routes/weather/[metric]/metric-page.svelte.test.ts
+index a2cd527..f1afb41 100644
+--- a/src/routes/weather/[metric]/metric-page.svelte.test.ts
++++ b/src/routes/weather/[metric]/metric-page.svelte.test.ts
+@@ -61,11 +61,24 @@ describe('weather detail page', () => {
+ 	});
+ 
+ 	it('lists the recent readings', async () => {
+ 		open('outdoor');
+ 
+ 		await expect.element(page.getByRole('heading', { name: 'Recent readings' })).toBeVisible();
+ 		expect(
+ 			page.getByRole('table', { name: 'Recent readings' }).getByRole('row').elements()
+ 		).toHaveLength(3);
+ 	});
++
++	it('ignores inherited object properties for an unknown metric param', async () => {
++		expect(() => open('constructor')).not.toThrow();
++
++		await expect
++			.element(
++				page.getByText(
++					'The station doesn’t report constructor readings, so there’s nothing to chart.'
++				)
++			)
++			.toBeVisible();
++		expect(page.getByRole('img').elements()).toHaveLength(0);
++	});
+ });

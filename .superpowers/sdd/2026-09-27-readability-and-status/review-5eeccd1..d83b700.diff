@@ -1,0 +1,2612 @@
+# Review package: 5eeccd1..d83b700
+
+## Commits
+d83b700 Add a Spraying tile to the home strip and mark sample readings per tile
+2e6a7b1 Ignore inherited keys when looking up a weather metric
+23e1d3e Rebuild the weather detail page with per-metric charts from real history
+945a1e2 Rebuild the weather dashboard on runes with sample-data marks and spraying first
+72f28fe Keep chart gridline keys unique and axis text at 12px
+a7de6e9 Chart weather from the station's real 24-hour history
+d608c32 Add the sample data chip, spray panel and offline banner
+ab08441 Use typographic apostrophes in spraying copy
+302841a Work out spraying conditions from wind, gusts, rain and Delta T
+8b9e6aa Report which weather values are sample data
+945c81c Set 16px body text and the direction type scale; drop static-site CSS
+
+## Files changed
+ src/app-css.test.ts                                |  23 ++
+ src/app.css                                        |  89 +----
+ src/lib/components/SampleDataChip.svelte           |   6 +
+ src/lib/components/SprayPanel.svelte               |  20 ++
+ src/lib/components/SprayPanel.svelte.test.ts       |  33 ++
+ src/lib/config.ts                                  |  10 +
+ src/lib/node-builtins.d.ts                         |   1 +
+ src/lib/providers/backend.test.ts                  |  51 +++
+ src/lib/providers/backend.ts                       | 107 +++---
+ src/lib/spray.test.ts                              | 119 +++++++
+ src/lib/spray.ts                                   | 115 ++++++
+ src/lib/weather.ts                                 |  83 ++++-
+ src/routes/+page.svelte                            |  35 +-
+ src/routes/home-page.svelte.test.ts                |  48 ++-
+ src/routes/manual/+page.svelte                     |   2 +-
+ src/routes/weather/+page.svelte                    | 393 +++++++++------------
+ src/routes/weather/+page.ts                        |  18 +-
+ src/routes/weather/[metric]/+page.svelte           | 222 ++++++------
+ src/routes/weather/[metric]/+page.ts               |  15 +-
+ .../weather/[metric]/metric-page.svelte.test.ts    |  84 +++++
+ src/routes/weather/chart.test.ts                   |  88 +++++
+ src/routes/weather/chart.ts                        | 117 ++++++
+ src/routes/weather/components/OfflineBanner.svelte |  12 +
+ .../components/OfflineBanner.svelte.test.ts        |  22 ++
+ src/routes/weather/components/WeatherChart.svelte  | 104 ++++++
+ .../weather/components/WeatherChart.svelte.test.ts |  62 ++++
+ src/routes/weather/weather-page.svelte.test.ts     |  64 ++++
+ 27 files changed, 1451 insertions(+), 492 deletions(-)
+
+## Diff
+diff --git a/src/app-css.test.ts b/src/app-css.test.ts
+new file mode 100644
+index 0000000..145afba
+--- /dev/null
++++ b/src/app-css.test.ts
+@@ -0,0 +1,23 @@
++import { readFileSync } from 'node:fs';
++import { describe, expect, it } from 'vitest';
++
++// Read from disk: Vitest's CSS handling turns `?raw` imports of CSS into an empty string.
++const css = readFileSync(new URL('./app.css', import.meta.url), 'utf8');
++
++describe('app.css', () => {
++	it('sets 16px body text with a 1.5 line height', () => {
++		expect(css).toMatch(/font:\s*16px\/1\.5/);
++	});
++
++	it('uses the direction document’s type scale', () => {
++		expect(css).toContain('--text-lg: 1.25rem;');
++		expect(css).toContain('--text-xl: 1.5625rem;');
++		expect(css).toContain('--text-2xl: 1.9375rem;');
++	});
++
++	it('has no rules left from the static site', () => {
++		for (const selector of ['#app', '#sidebar', '#main', '#map', '.legend', 'label.field']) {
++			expect(css).not.toContain(selector);
++		}
++	});
++});
+diff --git a/src/app.css b/src/app.css
+index 4b11bfa..7f3e88e 100644
+--- a/src/app.css
++++ b/src/app.css
+@@ -6,137 +6,82 @@
+ 	--color-panel: rgb(var(--panel));
+ 	--color-text: rgb(var(--text));
+ 	--color-muted: rgb(var(--muted));
+ 	--color-accent: rgb(var(--accent));
+ 	--color-border: rgb(var(--border));
+ 	--color-status-low: rgb(var(--status-low));
+ 	--color-status-high: rgb(var(--status-high));
+ 	--color-warn: rgb(var(--warn));
+ 	--color-danger: rgb(var(--danger));
+ 	--font-sans: 'Atkinson Hyperlegible Next Variable', system-ui, sans-serif;
++
++	/* Type scale from the UI direction document (ratio 1.25); xs, sm and base keep Tailwind's sizes. */
++	--text-lg: 1.25rem;
++	--text-lg--line-height: 1.4;
++	--text-xl: 1.5625rem;
++	--text-xl--line-height: 1.3;
++	--text-2xl: 1.9375rem;
++	--text-2xl--line-height: 1.25;
+ }
+ 
+-/* Keep Leaflet typography consistent if you use it */
++/* Keep Leaflet typography consistent with the page. */
+ .leaflet-container {
+ 	font: inherit;
+ }
+ 
+-/* === Your base.css → variables & resets === */
+-/* (exact values kept) */
+ :root {
+ 	--bg: 11 17 23; /* #0b1117 */
+ 	--panel: 15 23 34; /* #0f1722 */
+ 	--text: 230 237 243; /* #e6edf3 */
+ 	--muted: 159 179 200; /* #9fb3c8 */
+ 	--accent: 114 228 156; /* #72e49c */
+ 	--border: 31 42 55; /* #1f2a37 */
+ 	--status-low: 242 179 91; /* #f2b35b */
+ 	--status-high: 120 189 240; /* #78bdf0 */
+ 	--warn: 242 179 91; /* #f2b35b */
+ 	--danger: 248 113 113; /* #f87171 */
+ 	/* Space the app shell takes; full-height pages subtract these. */
+ 	--shell-top: 0px;
+ 	--shell-bottom: calc(4rem + env(safe-area-inset-bottom));
+ }
++
+ @media (min-width: 48rem) {
+ 	:root {
+ 		--shell-top: 3.5rem;
+ 		--shell-bottom: 0px;
+ 	}
+ }
++
+ * {
+ 	box-sizing: border-box;
+ }
++
+ html,
+-body,
+-#app {
++body {
+ 	height: 100%;
+ 	margin: 0;
+ }
++
+ body {
+ 	font:
+-		14px/1.4 'Atkinson Hyperlegible Next Variable',
++		16px/1.5 'Atkinson Hyperlegible Next Variable',
+ 		system-ui,
+ 		-apple-system,
+ 		Segoe UI,
+ 		Roboto,
+ 		sans-serif;
+ 	color: rgb(var(--text));
+ 	background: rgb(var(--bg));
+ }
++
+ /* In the base layer so Tailwind colour utilities on links (text-muted, text-text…) win. */
+ @layer base {
+ 	a {
+ 		color: rgb(var(--accent));
+ 		text-decoration: none;
+ 	}
+ }
+-label.field {
+-	display: grid;
+-	gap: 6px;
+-	margin: 12px 0;
+-}
++
+ select,
+ input[type='checkbox'] {
+ 	accent-color: rgb(var(--accent));
+ }
+-.legend {
+-	margin-top: 16px;
+-}
+-.legend .ramp {
+-	height: 12px;
+-	border: 1px solid rgb(var(--border));
+-}
+-.legend .ticks {
+-	display: flex;
+-	justify-content: space-between;
+-	font-size: 12px;
+-	color: rgb(var(--muted));
+-	margin-top: 6px;
+-}
+-/* (source: base.css) */ /* :contentReference[oaicite:4]{index=4} */
+-
+-/* === Your layout.css → sidebar + map layout === */
+-#app {
+-	display: grid;
+-	grid-template-columns: 320px 1fr;
+-	height: 100%;
+-}
+-#sidebar {
+-	background: rgb(var(--panel));
+-	border-right: 1px solid rgb(var(--border));
+-	padding: 16px 14px;
+-	overflow: auto;
+-}
+-#sidebar .brand {
+-	display: flex;
+-	align-items: center;
+-	gap: 10px;
+-	margin-bottom: 12px;
+-}
+-#sidebar .brand img {
+-	width: 28px;
+-	height: 28px;
+-}
+-#main {
+-	position: relative;
+-}
+-#map {
+-	position: absolute;
+-	inset: 0;
+-}
+-@media (max-width: 900px) {
+-	#app {
+-		grid-template-columns: 1fr;
+-	}
+-	#sidebar {
+-		grid-row: 1;
+-	}
+-	#main {
+-		grid-row: 2;
+-		height: 60vh;
+-	}
+-}
+-/* (source: layout.css) */ /* :contentReference[oaicite:5]{index=5} */
+-
+-/* We intentionally do NOT paste site.css (it’s Tailwind’s compiled utilities). Tailwind rebuilds it. */
+-/* (reference: site.css) */ /* :contentReference[oaicite:6]{index=6} */
+diff --git a/src/lib/components/SampleDataChip.svelte b/src/lib/components/SampleDataChip.svelte
+new file mode 100644
+index 0000000..ab9058d
+--- /dev/null
++++ b/src/lib/components/SampleDataChip.svelte
+@@ -0,0 +1,6 @@
++<span
++	class="inline-flex items-center gap-1.5 rounded-full bg-warn/15 px-2 py-0.5 text-xs font-semibold text-warn"
++>
++	<span class="size-1.5 rounded-full bg-current" aria-hidden="true"></span>
++	Sample data
++</span>
+diff --git a/src/lib/components/SprayPanel.svelte b/src/lib/components/SprayPanel.svelte
+new file mode 100644
+index 0000000..1bcf9a1
+--- /dev/null
++++ b/src/lib/components/SprayPanel.svelte
+@@ -0,0 +1,20 @@
++<script lang="ts">
++	import { SPRAY_LABELS, SPRAY_TONES, type SprayResult } from '$lib/spray';
++	import Panel from './Panel.svelte';
++
++	type Props = { result: SprayResult };
++
++	let { result }: Props = $props();
++</script>
++
++<Panel title="Spraying now">
++	<p class={['flex items-center gap-2 text-2xl font-semibold', SPRAY_TONES[result.verdict]]}>
++		<span class="size-3 shrink-0 rounded-full bg-current" aria-hidden="true"></span>
++		{SPRAY_LABELS[result.verdict]}
++	</p>
++	<ul class="mt-3 space-y-1">
++		{#each result.reasons as reason (reason)}
++			<li>{reason}</li>
++		{/each}
++	</ul>
++</Panel>
+diff --git a/src/lib/components/SprayPanel.svelte.test.ts b/src/lib/components/SprayPanel.svelte.test.ts
+new file mode 100644
+index 0000000..0254ff9
+--- /dev/null
++++ b/src/lib/components/SprayPanel.svelte.test.ts
+@@ -0,0 +1,33 @@
++import { page } from 'vitest/browser';
++import { describe, expect, it } from 'vitest';
++import { render } from 'vitest-browser-svelte';
++
++import SprayPanel from './SprayPanel.svelte';
++
++describe('SprayPanel.svelte', () => {
++	it.each([
++		['good', 'Good'],
++		['marginal', 'Marginal'],
++		['not-suitable', 'Not suitable']
++	] as const)('shows %s as a word with its reasons', async (verdict, label) => {
++		render(SprayPanel, {
++			result: {
++				verdict,
++				reasons: ['Wind 9 km/h', 'No rain in the last hour'],
++				summary: 'Wind 9 km/h'
++			}
++		});
++
++		await expect.element(page.getByRole('heading', { name: 'Spraying now' })).toBeVisible();
++		await expect.element(page.getByText(label, { exact: true })).toBeVisible();
++		await expect.element(page.getByText('No rain in the last hour')).toBeVisible();
++	});
++
++	it('explains why it can’t tell', async () => {
++		const reason = 'Can’t tell — the station isn’t reporting wind speed.';
++		render(SprayPanel, { result: { verdict: 'unknown', reasons: [reason], summary: reason } });
++
++		await expect.element(page.getByText('Can’t tell', { exact: true })).toBeVisible();
++		await expect.element(page.getByText(reason)).toBeVisible();
++	});
++});
+diff --git a/src/lib/config.ts b/src/lib/config.ts
+index 2e3636d..385d115 100644
+--- a/src/lib/config.ts
++++ b/src/lib/config.ts
+@@ -19,20 +19,30 @@ const CONFIG = {
+ 				status: (jobId: string) => `${apiBase}/soil-tests/import/${jobId}/status`,
+ 				cancel: (jobId: string) => `${apiBase}/soil-tests/import/${jobId}`
+ 			}
+ 		}
+ 	},
+ 	map: {
+ 		url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+ 		attribution: 'Imagery © Esri, Maxar, Earthstar Geographics, and the GIS community',
+ 		maxZoom: 20
+ 	},
++	/** Spraying thresholds from common Australian label guidance. Speeds in km/h, Delta T in °C. */
++	spray: {
++		windMinKmh: 3,
++		windGoodMaxKmh: 15,
++		windMarginalMaxKmh: 20,
++		gustMarginalKmh: 20,
++		deltaTGoodMin: 2,
++		deltaTGoodMax: 8,
++		deltaTMarginalMax: 10
++	},
+ 	soilMetrics: [
+ 		{
+ 			id: 'none',
+ 			label: 'None',
+ 			description: null,
+ 			range_optimal: [null, null],
+ 			c_min: null,
+ 			c_max: null
+ 		},
+ 		{
+diff --git a/src/lib/node-builtins.d.ts b/src/lib/node-builtins.d.ts
+index b2935da..3f58b7c 100644
+--- a/src/lib/node-builtins.d.ts
++++ b/src/lib/node-builtins.d.ts
+@@ -1,12 +1,13 @@
+ // @types/node is not a project dependency: this frontend app's src otherwise never
+ // touches Node builtins. home-items.test.ts (a node-run vitest test) needs typed
+ // `node:fs` and `node:url` imports to check static/ files on disk, so the minimal
+ // surface it uses is declared here as an ambient module instead of adding a
+ // devDependency outside the plan that introduced the test.
+ declare module 'node:fs' {
+ 	export function existsSync(path: string): boolean;
+ 	export function statSync(path: string): { size: number };
++	export function readFileSync(path: string | URL, encoding: 'utf8'): string;
+ }
+ declare module 'node:url' {
+ 	export function fileURLToPath(url: URL | string): string;
+ }
+diff --git a/src/lib/providers/backend.test.ts b/src/lib/providers/backend.test.ts
+new file mode 100644
+index 0000000..e600219
+--- /dev/null
++++ b/src/lib/providers/backend.test.ts
+@@ -0,0 +1,51 @@
++import { describe, expect, it, vi } from 'vitest';
++
++import { ALWAYS_SAMPLE_FIELDS, WEATHER_FIELDS } from '$lib/weather';
++import { fetchBackendWeatherMeta } from './backend';
++
++const full = {
++	timestamp_utc: '2026-09-26 01:00:00',
++	temp_c: 14.2,
++	humidity_pct: 70,
++	pressure_hpa: 1012,
++	wind_avg_ms: 3,
++	wind_gust_ms: 5,
++	wind_dir_deg: 200,
++	rain_1h_mm: 0,
++	rain_24h_mm: 1.2,
++	solar_wm2: 300
++};
++const returning = (body: unknown, status = 200) =>
++	vi.fn(async () => Response.json(body, { status })) as unknown as typeof fetch;
++const sorted = (fields: readonly string[]) => [...fields].sort();
++
++describe('fetchBackendWeatherMeta mockFields', () => {
++	it('lists only the fields the station never reports when a reading is complete', async () => {
++		const result = await fetchBackendWeatherMeta(returning(full));
++
++		expect(result.source).toBe('ecowitt');
++		expect(sorted(result.mockFields)).toEqual(sorted(ALWAYS_SAMPLE_FIELDS));
++		expect(result.data.outdoor.temp).toBe(14.2);
++	});
++
++	it('adds humidity and everything derived from it when humidity is missing', async () => {
++		const result = await fetchBackendWeatherMeta(returning({ ...full, humidity_pct: null }));
++
++		expect(result.mockFields).toEqual(
++			expect.arrayContaining(['outdoor.humidity', 'outdoor.dewPoint', 'outdoor.vpd'])
++		);
++		expect(result.mockFields).not.toContain('outdoor.temp');
++	});
++
++	it('lists every field when the backend is unreachable or fails', async () => {
++		const failing = vi.fn(async () => {
++			throw new Error('ECONNREFUSED');
++		}) as unknown as typeof fetch;
++
++		for (const fetchFn of [failing, returning({ detail: 'down' }, 502)]) {
++			const result = await fetchBackendWeatherMeta(fetchFn);
++			expect(result.source).toBe('mock');
++			expect(sorted(result.mockFields)).toEqual(sorted(WEATHER_FIELDS));
++		}
++	});
++});
+diff --git a/src/lib/providers/backend.ts b/src/lib/providers/backend.ts
+index 4e4817f..8d68662 100644
+--- a/src/lib/providers/backend.ts
++++ b/src/lib/providers/backend.ts
+@@ -1,14 +1,26 @@
+ import CONFIG from '$lib/config';
+-import { getMockWeather, type Weather } from '$lib/weather';
++import {
++	ALWAYS_SAMPLE_FIELDS,
++	WEATHER_FIELDS,
++	dewPointC,
++	getMockWeather,
++	type Weather,
++	type WeatherField
++} from '$lib/weather';
+ 
+-export type WeatherMeta = { data: Weather; connected: boolean; source: 'ecowitt' | 'mock' };
++export type WeatherMeta = {
++	data: Weather;
++	connected: boolean;
++	source: 'ecowitt' | 'mock';
++	mockFields: WeatherField[];
++};
+ 
+ type WeatherReading = {
+ 	timestamp_utc: string;
+ 	tz?: string;
+ 	temp_c?: number | null;
+ 	humidity_pct?: number | null;
+ 	pressure_hpa?: number | null;
+ 	wind_avg_ms?: number | null;
+ 	wind_gust_ms?: number | null;
+ 	wind_dir_deg?: number | null;
+@@ -35,101 +47,88 @@ function coerceUtcIsoString(value?: string): string {
+ 	const fallback = new Date(trimmed);
+ 	return Number.isNaN(fallback.getTime()) ? new Date().toISOString() : fallback.toISOString();
+ }
+ 
+ function computeVPD_c_kPa(tempC: number, rh: number): number {
+ 	const es = 0.6108 * Math.exp((17.27 * tempC) / (tempC + 237.3));
+ 	const ea = (rh / 100) * es;
+ 	return Math.max(0, es - ea);
+ }
+ 
+-function mapReadingToWeather(r: WeatherReading): Weather {
++function mapReadingToWeather(r: WeatherReading): { weather: Weather; mockFields: WeatherField[] } {
+ 	const mock = getMockWeather();
+-	const updatedAt = coerceUtcIsoString(r.timestamp_utc);
+-
+-	const tempC = r.temp_c ?? undefined;
+-	const rh = r.humidity_pct ?? undefined;
+-	const vpd = tempC != null && rh != null ? computeVPD_c_kPa(tempC, rh) : mock.outdoor.vpd;
+-
+-	// Simple dew point approximation (Magnus formula)
+-	const dewPoint =
+-		tempC != null && rh != null
+-			? (() => {
+-					const a = 17.27;
+-					const b = 237.7;
+-					const alpha = (a * tempC) / (b + tempC) + Math.log(rh / 100);
+-					return (b * alpha) / (a - alpha);
+-				})()
+-			: mock.outdoor.dewPoint;
+-
+-	const windSpeed = r.wind_avg_ms ?? undefined;
+-	const windGust = r.wind_gust_ms ?? undefined;
+-	const windDir = r.wind_dir_deg ?? undefined;
+-	const pressure = r.pressure_hpa ?? undefined;
+-	const solar = r.solar_wm2 ?? undefined;
++	const mocked = new Set<WeatherField>(ALWAYS_SAMPLE_FIELDS);
++	// Use the reading when present; otherwise fall back and record every field that fallback feeds.
++	const pick = <T>(value: T | null | undefined, fallback: T, ...fields: WeatherField[]): T => {
++		if (value !== null && value !== undefined) return value;
++		for (const field of fields) mocked.add(field);
++		return fallback;
++	};
+ 
+-	const hourlyRain = r.rain_1h_mm ?? undefined;
+-	const dailyRain = r.rain_24h_mm ?? undefined;
++	const tempC = r.temp_c ?? null;
++	const rh = r.humidity_pct ?? null;
++	const both = tempC !== null && rh !== null;
+ 
+-	return {
+-		updatedAt,
++	const weather: Weather = {
++		updatedAt: coerceUtcIsoString(r.timestamp_utc),
+ 		outdoor: {
+-			temp: tempC ?? mock.outdoor.temp,
++			temp: pick(tempC, mock.outdoor.temp, 'outdoor.temp'),
+ 			trend: 0,
+-			feelsLike: tempC ?? mock.outdoor.feelsLike,
+-			dewPoint,
+-			humidity: rh ?? mock.outdoor.humidity,
+-			vpd
+-		},
+-		indoor: {
+-			temp: mock.indoor.temp,
+-			trend: 0,
+-			humidity: mock.indoor.humidity
++			feelsLike: pick(tempC, mock.outdoor.feelsLike, 'outdoor.feelsLike'),
++			dewPoint: both ? dewPointC(tempC, rh) : pick(null, mock.outdoor.dewPoint, 'outdoor.dewPoint'),
++			humidity: pick(rh, mock.outdoor.humidity, 'outdoor.humidity'),
++			vpd: both ? computeVPD_c_kPa(tempC, rh) : pick(null, mock.outdoor.vpd, 'outdoor.vpd')
+ 		},
++		indoor: { temp: mock.indoor.temp, trend: 0, humidity: mock.indoor.humidity },
+ 		solar: {
+-			solar: solar ?? mock.solar.solar,
++			solar: pick(r.solar_wm2, mock.solar.solar, 'solar.solar'),
+ 			uvi: mock.solar.uvi,
+ 			sunrise: mock.solar.sunrise,
+ 			sunset: mock.solar.sunset,
+ 			moon: mock.solar.moon
+ 		},
+ 		rain: {
+ 			rate: 0,
+-			daily: dailyRain ?? mock.rain.daily,
++			daily: pick(r.rain_24h_mm, mock.rain.daily, 'rain.daily'),
+ 			event: mock.rain.event,
+-			hourly: hourlyRain ?? mock.rain.hourly,
++			hourly: pick(r.rain_1h_mm, mock.rain.hourly, 'rain.hourly'),
+ 			weekly: mock.rain.weekly,
+ 			monthly: mock.rain.monthly,
+ 			yearly: mock.rain.yearly
+ 		},
+ 		wind: {
+-			dir: windDir ?? mock.wind.dir,
+-			speed: windSpeed ?? mock.wind.speed,
+-			gust: windGust ?? mock.wind.gust,
++			dir: pick(r.wind_dir_deg, mock.wind.dir, 'wind.dir'),
++			speed: pick(r.wind_avg_ms, mock.wind.speed, 'wind.speed'),
++			gust: pick(r.wind_gust_ms, mock.wind.gust, 'wind.gust'),
+ 			timeSpeed: mock.wind.timeSpeed,
+ 			timeGust: mock.wind.timeGust
+ 		},
+ 		pressure: {
+-			rel: pressure ?? mock.pressure.rel,
+-			abs: pressure ?? mock.pressure.abs,
++			rel: pick(r.pressure_hpa, mock.pressure.rel, 'pressure.rel'),
++			abs: pick(r.pressure_hpa, mock.pressure.abs, 'pressure.abs'),
+ 			deltaRel: 0,
+ 			deltaAbs: 0
+ 		},
+-		battery: {
+-			status: mock.battery.status,
+-			note: mock.battery.note
+-		},
++		battery: { status: mock.battery.status, note: mock.battery.note },
+ 		series: mock.series
+ 	};
++
++	return { weather, mockFields: [...mocked] };
+ }
+ 
+ export async function fetchBackendWeatherMeta(fetchFn: typeof fetch = fetch): Promise<WeatherMeta> {
+ 	try {
+ 		const res = await fetchFn(CONFIG.backend.currentWeather);
+ 		if (!res.ok) throw new Error(`backend /weather/current failed: ${res.status}`);
+ 		const reading = (await res.json()) as WeatherReading;
+-		return { data: mapReadingToWeather(reading), connected: true, source: 'ecowitt' };
+-	} catch (err) {
++		const { weather, mockFields } = mapReadingToWeather(reading);
++		return { data: weather, connected: true, source: 'ecowitt', mockFields };
++	} catch {
+ 		console.warn('[backend] Fetch failed; serving mock data');
+-		return { data: getMockWeather(), connected: false, source: 'mock' };
++		return {
++			data: getMockWeather(),
++			connected: false,
++			source: 'mock',
++			mockFields: [...WEATHER_FIELDS]
++		};
+ 	}
+ }
+diff --git a/src/lib/spray.test.ts b/src/lib/spray.test.ts
+new file mode 100644
+index 0000000..d6e7752
+--- /dev/null
++++ b/src/lib/spray.test.ts
+@@ -0,0 +1,119 @@
++import { describe, expect, it } from 'vitest';
++
++import CONFIG from '$lib/config';
++import { deltaT, deltaTCheck, sprayConditions, windCheck } from './spray';
++import { getMockWeather, type Weather } from './weather';
++
++const t = CONFIG.spray;
++
++function weatherWith(
++	outdoor: Partial<Weather['outdoor']>,
++	wind: Partial<Weather['wind']>,
++	hourlyRain = 0
++) {
++	const base = getMockWeather();
++	return {
++		...base,
++		outdoor: { ...base.outdoor, ...outdoor },
++		wind: { ...base.wind, ...wind },
++		rain: { ...base.rain, hourly: hourlyRain }
++	};
++}
++
++// 20 °C and 60 % humidity give Delta T 4.99; 2.5 m/s is 9 km/h, 4 m/s is 14.4 km/h.
++const calm = weatherWith({ temp: 20, humidity: 60 }, { speed: 2.5, gust: 4 });
++
++describe('deltaT', () => {
++	it('matches published reference values', () => {
++		expect(deltaT(25, 50)).toBeCloseTo(7.0, 1);
++		expect(deltaT(20, 90)).toBeCloseTo(1.23, 1);
++		expect(deltaT(30, 20)).toBeCloseTo(14.1, 1);
++	});
++
++	it('is unknown for humidity of 0 or out of range', () => {
++		expect(deltaT(20, 0)).toBeNull();
++		expect(deltaT(20, 101)).toBeNull();
++		expect(deltaT(Number.NaN, 50)).toBeNull();
++	});
++});
++
++describe('windCheck', () => {
++	it.each([
++		[2.9, 'not-suitable'],
++		[3, 'good'],
++		[15, 'good'],
++		[15.1, 'marginal'],
++		[20, 'marginal'],
++		[20.1, 'not-suitable']
++	] as const)('%s km/h is %s', (kmh, level) => {
++		expect(windCheck(kmh, t).level).toBe(level);
++	});
++
++	it('explains still air as an inversion risk', () => {
++		expect(windCheck(1, t).reason).toBe('Wind 1 km/h: too still, spray may drift in an inversion');
++	});
++});
++
++describe('deltaTCheck', () => {
++	it.each([
++		[1.9, 'not-suitable'],
++		[2, 'good'],
++		[8, 'good'],
++		[8.1, 'marginal'],
++		[10, 'marginal'],
++		[10.1, 'not-suitable']
++	] as const)('Delta T %s is %s', (dt, level) => {
++		expect(deltaTCheck(dt, t).level).toBe(level);
++	});
++});
++
++describe('sprayConditions', () => {
++	it('is good with a reason per input on a calm, dry day', () => {
++		expect(sprayConditions(calm, [], t)).toEqual({
++			verdict: 'good',
++			reasons: ['Wind 9 km/h', 'Gusts 14 km/h', 'No rain in the last hour', 'Delta T 5.0 °C'],
++			summary: 'Wind 9 km/h'
++		});
++	});
++
++	it('makes strong gusts marginal', () => {
++		const result = sprayConditions(
++			weatherWith({ temp: 20, humidity: 60 }, { speed: 2.5, gust: 6 }),
++			[],
++			t
++		);
++		expect(result.verdict).toBe('marginal');
++		expect(result.summary).toBe('Gusting 22 km/h');
++	});
++
++	it('takes the worst check: any rain in the last hour is not suitable', () => {
++		const result = sprayConditions(
++			weatherWith({ temp: 20, humidity: 60 }, { speed: 2.5, gust: 6 }, 0.4),
++			[],
++			t
++		);
++		expect(result.verdict).toBe('not-suitable');
++		expect(result.summary).toBe('Rain in the last hour (0.4 mm)');
++	});
++
++	it(`can’t tell when an input is sample data, and names it`, () => {
++		expect(sprayConditions(calm, ['wind.speed'], t)).toEqual({
++			verdict: 'unknown',
++			reasons: [`Can’t tell — the station isn’t reporting wind speed.`],
++			summary: `Can’t tell — the station isn’t reporting wind speed.`
++		});
++		expect(sprayConditions(calm, ['outdoor.temp', 'outdoor.humidity'], t).reasons).toEqual([
++			`Can’t tell — the station isn’t reporting temperature or humidity.`
++		]);
++	});
++
++	it(`can’t tell when humidity is out of range`, () => {
++		const result = sprayConditions(
++			weatherWith({ temp: 20, humidity: 0 }, { speed: 2.5, gust: 4 }),
++			[],
++			t
++		);
++		expect(result.verdict).toBe('unknown');
++		expect(result.reasons).toEqual([`Can’t tell — the humidity reading is out of range.`]);
++	});
++});
+diff --git a/src/lib/spray.ts b/src/lib/spray.ts
+new file mode 100644
+index 0000000..91bbd2d
+--- /dev/null
++++ b/src/lib/spray.ts
+@@ -0,0 +1,115 @@
++import type { Weather, WeatherField } from './weather';
++
++export type SprayThresholds = {
++	windMinKmh: number;
++	windGoodMaxKmh: number;
++	windMarginalMaxKmh: number;
++	gustMarginalKmh: number;
++	deltaTGoodMin: number;
++	deltaTGoodMax: number;
++	deltaTMarginalMax: number;
++};
++export type SprayVerdict = 'good' | 'marginal' | 'not-suitable' | 'unknown';
++export type SprayResult = { verdict: SprayVerdict; reasons: string[]; summary: string };
++type Level = Exclude<SprayVerdict, 'unknown'>;
++type Check = { level: Level; reason: string };
++
++export const SPRAY_LABELS: Record<SprayVerdict, string> = {
++	good: 'Good',
++	marginal: 'Marginal',
++	'not-suitable': 'Not suitable',
++	unknown: 'Can’t tell'
++};
++
++export const SPRAY_TONES: Record<SprayVerdict, string> = {
++	good: 'text-accent',
++	marginal: 'text-warn',
++	'not-suitable': 'text-danger',
++	unknown: 'text-muted'
++};
++
++const RANK: Record<Level, number> = { good: 0, marginal: 1, 'not-suitable': 2 };
++
++/** Dry bulb minus wet bulb, with the wet bulb from Stull (2011). */
++export function deltaT(tempC: number, rhPct: number): number | null {
++	if (!Number.isFinite(tempC) || !Number.isFinite(rhPct) || rhPct <= 0 || rhPct > 100) return null;
++	const wetBulb =
++		tempC * Math.atan(0.151977 * Math.sqrt(rhPct + 8.313659)) +
++		Math.atan(tempC + rhPct) -
++		Math.atan(rhPct - 1.676331) +
++		0.00391838 * rhPct ** 1.5 * Math.atan(0.023101 * rhPct) -
++		4.686035;
++	return tempC - wetBulb;
++}
++
++export function windCheck(kmh: number, t: SprayThresholds): Check {
++	const text = `Wind ${Math.round(kmh)} km/h`;
++	if (kmh < t.windMinKmh) {
++		return { level: 'not-suitable', reason: `${text}: too still, spray may drift in an inversion` };
++	}
++	if (kmh <= t.windGoodMaxKmh) return { level: 'good', reason: text };
++	if (kmh <= t.windMarginalMaxKmh)
++		return { level: 'marginal', reason: `${text}: on the strong side` };
++	return { level: 'not-suitable', reason: `${text}: too strong` };
++}
++
++export function deltaTCheck(dt: number, t: SprayThresholds): Check {
++	const text = `Delta T ${dt.toFixed(1)} °C`;
++	if (dt < t.deltaTGoodMin) {
++		return { level: 'not-suitable', reason: `${text}: too humid, droplets may not dry` };
++	}
++	if (dt <= t.deltaTGoodMax) return { level: 'good', reason: text };
++	if (dt <= t.deltaTMarginalMax)
++		return { level: 'marginal', reason: `${text}: droplets drying fast` };
++	return { level: 'not-suitable', reason: `${text}: too dry, droplets evaporate` };
++}
++
++const INPUTS: [WeatherField, string][] = [
++	['wind.speed', 'wind speed'],
++	['wind.gust', 'gusts'],
++	['rain.hourly', 'rain'],
++	['outdoor.temp', 'temperature'],
++	['outdoor.humidity', 'humidity']
++];
++
++function orList(words: string[]): string {
++	return words.length < 2 ? words.join('') : `${words.slice(0, -1).join(', ')} or ${words.at(-1)}`;
++}
++
++function unknown(reason: string): SprayResult {
++	return { verdict: 'unknown', reasons: [reason], summary: reason };
++}
++
++/** The worst of the wind, gust, rain and Delta T checks. Speeds arrive in m/s. */
++export function sprayConditions(
++	weather: Weather,
++	mockFields: readonly WeatherField[],
++	thresholds: SprayThresholds
++): SprayResult {
++	const missing = INPUTS.filter(([field]) => mockFields.includes(field)).map(([, label]) => label);
++	if (missing.length > 0) {
++		return unknown(`Can’t tell — the station isn’t reporting ${orList(missing)}.`);
++	}
++	const dt = deltaT(weather.outdoor.temp, weather.outdoor.humidity);
++	if (dt === null) return unknown('Can’t tell — the humidity reading is out of range.');
++
++	const gustKmh = weather.wind.gust * 3.6;
++	const rain = weather.rain.hourly;
++	const checks: Check[] = [
++		windCheck(weather.wind.speed * 3.6, thresholds),
++		gustKmh > thresholds.gustMarginalKmh
++			? { level: 'marginal', reason: `Gusting ${Math.round(gustKmh)} km/h` }
++			: { level: 'good', reason: `Gusts ${Math.round(gustKmh)} km/h` },
++		rain > 0
++			? { level: 'not-suitable', reason: `Rain in the last hour (${rain.toFixed(1)} mm)` }
++			: { level: 'good', reason: 'No rain in the last hour' },
++		deltaTCheck(dt, thresholds)
++	];
++
++	const worst = checks.reduce((a, b) => (RANK[b.level] > RANK[a.level] ? b : a));
++	return {
++		verdict: worst.level,
++		reasons: checks.map((check) => check.reason),
++		summary: worst.reason
++	};
++}
+diff --git a/src/lib/weather.ts b/src/lib/weather.ts
+index 480e35d..eca9145 100644
+--- a/src/lib/weather.ts
++++ b/src/lib/weather.ts
+@@ -21,20 +21,91 @@ export type Weather = {
+ 		weekly: number;
+ 		monthly: number;
+ 		yearly: number;
+ 	};
+ 	wind: { dir: number; speed: number; gust: number; timeSpeed?: string; timeGust?: string };
+ 	pressure: { rel: number; abs: number; deltaRel: number; deltaAbs: number };
+ 	battery: { status: 'NORMAL' | 'LOW' | 'CRITICAL'; note?: string };
+ 	series: { t: number; temp: number; feels: number; dew: number }[];
+ };
+ 
++/** Every value on the weather pages, as a dotted path into `Weather`. */
++export const WEATHER_FIELDS = [
++	'outdoor.temp',
++	'outdoor.trend',
++	'outdoor.feelsLike',
++	'outdoor.dewPoint',
++	'outdoor.humidity',
++	'outdoor.vpd',
++	'indoor.temp',
++	'indoor.trend',
++	'indoor.humidity',
++	'solar.solar',
++	'solar.uvi',
++	'solar.sunrise',
++	'solar.sunset',
++	'solar.moon',
++	'rain.rate',
++	'rain.daily',
++	'rain.event',
++	'rain.hourly',
++	'rain.weekly',
++	'rain.monthly',
++	'rain.yearly',
++	'wind.dir',
++	'wind.speed',
++	'wind.gust',
++	'wind.timeSpeed',
++	'wind.timeGust',
++	'pressure.rel',
++	'pressure.abs',
++	'pressure.deltaRel',
++	'pressure.deltaAbs',
++	'battery.status',
++	'battery.note',
++	'series'
++] as const;
++
++export type WeatherField = (typeof WEATHER_FIELDS)[number];
++
++/** Fields the station doesn't report: the provider fills them from getMockWeather() or with 0. */
++export const ALWAYS_SAMPLE_FIELDS: readonly WeatherField[] = [
++	'outdoor.trend',
++	'indoor.temp',
++	'indoor.trend',
++	'indoor.humidity',
++	'solar.uvi',
++	'solar.sunrise',
++	'solar.sunset',
++	'solar.moon',
++	'rain.rate',
++	'rain.event',
++	'rain.weekly',
++	'rain.monthly',
++	'rain.yearly',
++	'wind.timeSpeed',
++	'wind.timeGust',
++	'pressure.deltaRel',
++	'pressure.deltaAbs',
++	'battery.status',
++	'battery.note',
++	'series'
++];
++
++/** Dew point in °C (Magnus formula). */
++export function dewPointC(tempC: number, rhPct: number): number {
++	const a = 17.27;
++	const b = 237.7;
++	const alpha = (a * tempC) / (b + tempC) + Math.log(rhPct / 100);
++	return (b * alpha) / (a - alpha);
++}
++
+ /**
+  * Fallback mock weather data.
+  */
+ 
+ export function getMockWeather(): Weather {
+ 	const now = new Date();
+ 	return {
+ 		updatedAt: now.toISOString(),
+ 		outdoor: { temp: 12.2, trend: 0.8, feelsLike: 12.2, dewPoint: 5.6, humidity: 64, vpd: 0.511 },
+ 		indoor: { temp: 14.5, trend: -1.4, humidity: 57 },
+@@ -48,30 +119,36 @@ export function getMockWeather(): Weather {
+ 			temp: 6 + i * 0.12 + Math.sin(i / 3) * 0.5,
+ 			feels: 5.5 + i * 0.1 + Math.sin(i / 4) * 0.4,
+ 			dew: 3 + Math.sin(i / 5) * 0.3
+ 		}))
+ 	};
+ }
+ 
+ /**
+  * Fetch full weather payload from the app's weather API endpoint.
+  */
+-export type WeatherResult = { weather: Weather; connected: boolean; source: 'ecowitt' | 'mock' };
++export type WeatherResult = {
++	weather: Weather;
++	connected: boolean;
++	source: 'ecowitt' | 'mock';
++	/** Values that are sample data rather than readings; every field when `source` is `'mock'`. */
++	mockFields: WeatherField[];
++};
+ 
+ // Fetch via backend provider mapping FastAPI reading -> Weather shape
+ import { fetchBackendWeatherMeta } from '$lib/providers/backend';
+ import CONFIG from './config';
+ 
+ /** Pass SvelteKit's `fetch` from a load function; relative `/api` URLs fail on the server otherwise. */
+ export async function fetchWeather(fetchFn: typeof fetch = fetch): Promise<WeatherResult> {
+-	const { data, connected, source } = await fetchBackendWeatherMeta(fetchFn);
+-	return { weather: data, connected, source };
++	const { data, connected, source, mockFields } = await fetchBackendWeatherMeta(fetchFn);
++	return { weather: data, connected, source, mockFields };
+ }
+ 
+ /**
+  * Fetch a single weather metric from the app's weather API endpoint.
+  */
+ export type WeatherHistoryRow = {
+ 	timestamp_utc: string;
+ 	tz?: string | null;
+ 	temp_c?: number | null;
+ 	humidity_pct?: number | null;
+diff --git a/src/routes/+page.svelte b/src/routes/+page.svelte
+index 312385b..23134b2 100644
+--- a/src/routes/+page.svelte
++++ b/src/routes/+page.svelte
+@@ -1,87 +1,104 @@
+ <script lang="ts">
+ 	import { resolve } from '$app/paths';
+ 	import Card from '$lib/components/Card.svelte';
+ 	import NavIcon from '$lib/components/NavIcon.svelte';
++	import SampleDataChip from '$lib/components/SampleDataChip.svelte';
++	import CONFIG from '$lib/config';
+ 	import { compassPoint, mainTools, moreTools, soilHeadline } from '$lib/home-items';
+ 	import { externalLinks } from '$lib/nav';
++	import { SPRAY_LABELS, SPRAY_TONES, sprayConditions } from '$lib/spray';
+ 	import { formatDate } from '$lib/soil-tests/utils';
++	import type { WeatherField } from '$lib/weather';
+ 	import type { PageProps } from './$types';
+ 
+ 	let { data }: PageProps = $props();
+ 
+ 	const weather = $derived(data.weather);
+-	const isSample = $derived(weather?.source === 'mock');
++	const isSample = (field: WeatherField) => weather?.mockFields.includes(field) ?? false;
++	const spray = $derived(
++		weather ? sprayConditions(weather.weather, weather.mockFields, CONFIG.spray) : null
++	);
+ 	const soil = $derived(data.soil);
+ </script>
+ 
+ <svelte:head>
+ 	<title>Greenhill Bros Farm</title>
+ </svelte:head>
+ 
+ {#snippet sampleChip()}
+-	<span class="mt-2 self-start rounded-full bg-warn/15 px-2 py-0.5 text-xs text-warn">
+-		Sample data
+-	</span>
++	<span class="mt-2 self-start"><SampleDataChip /></span>
+ {/snippet}
+ 
+ <div class="mx-auto max-w-6xl space-y-8 px-4 py-6">
+ 	<h1 class="text-xl font-semibold md:sr-only">Greenhill Bros Farm</h1>
+ 
+ 	<section aria-labelledby="now-title" class="space-y-3">
+ 		<h2 id="now-title" class="text-lg font-semibold">Right now</h2>
+-		<div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
++		<div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
+ 			{#if weather}
+ 				<a
+ 					href={resolve('/weather')}
+ 					class="flex min-h-28 flex-col rounded-xl border border-border bg-panel p-4 text-text"
+ 				>
+ 					<span class="text-sm text-muted">Temperature</span>
+ 					<span class="mt-1 text-[2.4375rem] leading-none font-semibold tabular-nums">
+ 						{weather.weather.outdoor.temp.toFixed(1)}°
+ 					</span>
+ 					<span class="mt-2 text-sm text-muted">
+ 						Feels like {weather.weather.outdoor.feelsLike.toFixed(0)}°
+ 					</span>
+-					{#if isSample}{@render sampleChip()}{/if}
++					{#if isSample('outdoor.temp')}{@render sampleChip()}{/if}
+ 				</a>
+ 				<a
+ 					href={resolve('/weather/wind')}
+ 					class="flex min-h-28 flex-col rounded-xl border border-border bg-panel p-4 text-text"
+ 				>
+ 					<span class="text-sm text-muted">Wind</span>
+ 					<span class="mt-1 text-[2.4375rem] leading-none font-semibold tabular-nums">
+ 						{Math.round(weather.weather.wind.speed * 3.6)}
+ 						<span class="text-lg font-normal">km/h</span>
+ 					</span>
+ 					<span class="mt-2 text-sm text-muted">
+ 						From the {compassPoint(weather.weather.wind.dir)}, gusting
+ 						{Math.round(weather.weather.wind.gust * 3.6)} km/h
+ 					</span>
+-					{#if isSample}{@render sampleChip()}{/if}
++					{#if isSample('wind.speed')}{@render sampleChip()}{/if}
+ 				</a>
+ 				<a
+ 					href={resolve('/weather/rain')}
+ 					class="flex min-h-28 flex-col rounded-xl border border-border bg-panel p-4 text-text"
+ 				>
+ 					<span class="text-sm text-muted">Rain today</span>
+ 					<span class="mt-1 text-[2.4375rem] leading-none font-semibold tabular-nums">
+ 						{weather.weather.rain.daily.toFixed(1)}
+ 						<span class="text-lg font-normal">mm</span>
+ 					</span>
+ 					<span class="mt-2 text-sm text-muted">
+ 						{weather.weather.rain.hourly.toFixed(1)} mm in the last hour
+ 					</span>
+-					{#if isSample}{@render sampleChip()}{/if}
++					{#if isSample('rain.daily')}{@render sampleChip()}{/if}
+ 				</a>
++				{#if spray}
++					<a
++						href={resolve('/weather')}
++						class="flex min-h-28 flex-col rounded-xl border border-border bg-panel p-4 text-text"
++					>
++						<span class="text-sm text-muted">Spraying now</span>
++						<span class={['mt-1 text-2xl leading-tight font-semibold', SPRAY_TONES[spray.verdict]]}>
++							{SPRAY_LABELS[spray.verdict]}
++						</span>
++						<span class="mt-2 text-sm text-muted">{spray.summary}</span>
++					</a>
++				{/if}
+ 			{:else}
+-				<p class="col-span-2 rounded-xl border border-border bg-panel p-4 text-muted lg:col-span-3">
++				<p class="col-span-2 rounded-xl border border-border bg-panel p-4 text-muted lg:col-span-4">
+ 					Weather is unavailable. Open the weather page to try again.
+ 				</p>
+ 			{/if}
+ 			<a
+ 				href={resolve('/soiltests')}
+ 				class="col-span-2 flex min-h-28 flex-col rounded-xl border border-border bg-panel p-4 text-text lg:col-span-1"
+ 			>
+ 				<span class="text-sm text-muted">Soil</span>
+ 				{#if soil}
+ 					<span class="mt-1 text-xl leading-tight font-semibold">{soilHeadline(soil)}</span>
+diff --git a/src/routes/home-page.svelte.test.ts b/src/routes/home-page.svelte.test.ts
+index 0575e8c..a754e7e 100644
+--- a/src/routes/home-page.svelte.test.ts
++++ b/src/routes/home-page.svelte.test.ts
+@@ -1,20 +1,31 @@
+ import { page } from 'vitest/browser';
+ import { describe, expect, it, vi } from 'vitest';
+ import { render } from 'vitest-browser-svelte';
+ 
+-import { getMockWeather } from '$lib/weather';
++import { ALWAYS_SAMPLE_FIELDS, WEATHER_FIELDS, getMockWeather } from '$lib/weather';
+ import HomePage from './+page.svelte';
+ 
+ vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
+ 
+-const live = { weather: getMockWeather(), connected: true, source: 'ecowitt' as const };
++const live = {
++	weather: getMockWeather(),
++	connected: true,
++	source: 'ecowitt' as const,
++	mockFields: [...ALWAYS_SAMPLE_FIELDS]
++};
++const offline = {
++	...live,
++	connected: false,
++	source: 'mock' as const,
++	mockFields: [...WEATHER_FIELDS]
++};
+ const soil = {
+ 	paddocksTested: 12,
+ 	latestSampleDate: '2024-05-01',
+ 	worst: { metricLabel: 'Soil pH', direction: 'low' as const, count: 3 }
+ };
+ 
+ function renderHome(data: { weather: unknown; soil: unknown }) {
+ 	// `params` etc. aren't used by the page; the cast keeps the test focused on `data`.
+ 	render(HomePage, { data, params: {} } as never);
+ }
+@@ -23,25 +34,56 @@ describe('home page', () => {
+ 	it('shows live readings and the soil headline', async () => {
+ 		renderHome({ weather: live, soil });
+ 
+ 		await expect.element(page.getByText('12.2°')).toBeVisible();
+ 		await expect.element(page.getByText('From the SW, gusting 66 km/h')).toBeVisible();
+ 		await expect.element(page.getByText('Soil pH low in 3 paddocks')).toBeVisible();
+ 		expect(page.getByText('Sample data').elements()).toHaveLength(0);
+ 	});
+ 
+ 	it('labels every weather tile when the station is offline', async () => {
+-		renderHome({ weather: { ...live, connected: false, source: 'mock' }, soil });
++		renderHome({ weather: offline, soil });
+ 
+ 		expect(page.getByText('Sample data').elements()).toHaveLength(3);
+ 	});
+ 
++	it('says whether it’s a good time to spray, with the reason', async () => {
++		renderHome({ weather: live, soil });
++
++		const tile = page.getByRole('link').filter({ hasText: 'Spraying now' });
++		// Mock wind is 8.6 m/s = 31 km/h.
++		await expect.element(tile.getByText('Not suitable')).toBeVisible();
++		await expect.element(tile.getByText('Wind 31 km/h: too strong')).toBeVisible();
++	});
++
++	it('can’t judge spraying from sample data', async () => {
++		renderHome({ weather: offline, soil });
++
++		await expect
++			.element(
++				page
++					.getByRole('link')
++					.filter({ hasText: 'Spraying now' })
++					.getByText('Can’t tell', { exact: true })
++			)
++			.toBeVisible();
++	});
++
++	it('labels only the tile whose reading is sample data', async () => {
++		renderHome({ weather: { ...live, mockFields: [...ALWAYS_SAMPLE_FIELDS, 'rain.daily'] }, soil });
++
++		expect(page.getByText('Sample data').elements()).toHaveLength(1);
++		await expect
++			.element(page.getByRole('link').filter({ hasText: 'Rain today' }).getByText('Sample data'))
++			.toBeVisible();
++	});
++
+ 	it('explains when weather or soil data is unavailable', async () => {
+ 		renderHome({ weather: null, soil: null });
+ 
+ 		await expect.element(page.getByText(/Weather is unavailable/)).toBeVisible();
+ 		await expect.element(page.getByText('Unavailable', { exact: true })).toBeVisible();
+ 	});
+ 
+ 	it('links the main tools and opens external links in a new tab', async () => {
+ 		renderHome({ weather: live, soil });
+ 
+diff --git a/src/routes/manual/+page.svelte b/src/routes/manual/+page.svelte
+index efad9b1..eaaa997 100644
+--- a/src/routes/manual/+page.svelte
++++ b/src/routes/manual/+page.svelte
+@@ -267,21 +267,21 @@
+ 				</p>
+ 				<ul class="mt-3 space-y-2">
+ 					{#each csvHeaders as header}
+ 						<li>
+ 							<span class="font-medium text-white">{header.label}</span>
+ 							<span class="ml-1 block text-muted sm:ml-2 sm:inline">{header.description}</span>
+ 						</li>
+ 					{/each}
+ 				</ul>
+ 				<div
+-					class="mt-3 overflow-x-auto rounded-md border border-border/30 bg-panel/70 px-3 py-2 font-mono text-[11px] text-muted"
++					class="mt-3 overflow-x-auto rounded-md border border-border/30 bg-panel/70 px-3 py-2 font-mono text-xs text-muted"
+ 				>
+ 					fieldID,name_sample,sample_id,sample_date,client,P,K,Ca,Mg,S,Na,ph_water
+ 					<br />
+ 					4251583,ES30,LAB-129,2024-03-14,Greenhill Bros,56.7,562,2595,305,26.3,98.5,5.9
+ 				</div>
+ 			</div>
+ 		</div>
+ 	</Panel>
+ 
+ 	<Panel title="Need more help?">
+diff --git a/src/routes/weather/+page.svelte b/src/routes/weather/+page.svelte
+index ba4e5b0..28a7bf2 100644
+--- a/src/routes/weather/+page.svelte
++++ b/src/routes/weather/+page.svelte
+@@ -1,285 +1,222 @@
+ <script lang="ts">
+-	import Panel from '$lib/components/Panel.svelte';
+ 	import { onMount } from 'svelte';
+-	import type { Weather } from '$lib/weather';
+-	import { fetchWeather } from '$lib/weather';
++	import { resolve } from '$app/paths';
+ 
+-	export let data: { w: Weather; connected: boolean; source: 'ecowitt' | 'mock' };
+-	// updatedAt comes as a string from the API; coerce to Date with a proper type
+-	let w: Omit<Weather, 'updatedAt'> & { updatedAt: Date } = {
+-		...data.w,
+-		updatedAt: new Date(data.w.updatedAt)
+-	};
++	import Panel from '$lib/components/Panel.svelte';
++	import SampleDataChip from '$lib/components/SampleDataChip.svelte';
++	import SprayPanel from '$lib/components/SprayPanel.svelte';
++	import CONFIG from '$lib/config';
++	import { compassPoint } from '$lib/home-items';
++	import { sprayConditions } from '$lib/spray';
++	import { fetchWeather, type WeatherField, type WeatherResult } from '$lib/weather';
++	import { CHARTS, buildSeries } from './chart';
++	import OfflineBanner from './components/OfflineBanner.svelte';
++	import WeatherChart from './components/WeatherChart.svelte';
++	import type { PageProps } from './$types';
+ 
+-	const now = () => new Date();
+-	function fmt(n: number, digits = 1) {
+-		return n.toFixed(digits);
+-	}
+-	function arrow(n: number) {
+-		return n > 0 ? '↑' : n < 0 ? '↓' : '→';
++	let { data }: PageProps = $props();
++
++	// The load's reading until the first 15-second refresh replaces it.
++	let fresh = $state.raw<WeatherResult | null>(null);
++	let now = $state(Date.now());
++
++	const current = $derived(
++		fresh ?? {
++			weather: data.w,
++			connected: data.connected,
++			source: data.source,
++			mockFields: data.mockFields
++		}
++	);
++	const w = $derived(current.weather);
++	const spray = $derived(sprayConditions(w, current.mockFields, CONFIG.spray));
++	const outdoorSeries = $derived(buildSeries(data.history, CHARTS.outdoor!));
++	const ageSeconds = $derived(
++		Math.max(0, Math.round((now - new Date(w.updatedAt).getTime()) / 1000))
++	);
++
++	const isSample = (field: WeatherField) => current.mockFields.includes(field);
++	const anySample = (fields: WeatherField[]) => fields.some(isSample);
++	const fmt = (value: number, digits = 1) => value.toFixed(digits);
++
++	function age(seconds: number) {
++		if (seconds < 60) return `${seconds} s ago`;
++		const minutes = Math.round(seconds / 60);
++		return minutes < 60 ? `${minutes} min ago` : `${Math.round(minutes / 60)} h ago`;
+ 	}
+ 
+-	let secondsAgo = 0;
+-	let offline = !data.connected;
+-	let source: 'ecowitt' | 'mock' = data.source;
+ 	onMount(() => {
+-		const tick = setInterval(() => {
+-			secondsAgo = Math.floor((now().getTime() - w.updatedAt.getTime()) / 1000);
+-		}, 1000);
+-
+-		// Poll for latest weather; gracefully fall back if unavailable
++		const tick = setInterval(() => (now = Date.now()), 1000);
+ 		const poll = setInterval(async () => {
+-			try {
+-				const latest = await fetchWeather();
+-				w = { ...latest.weather, updatedAt: new Date(latest.weather.updatedAt) } as typeof w;
+-				offline = !latest.connected;
+-				source = latest.source;
+-			} catch (_) {
+-				offline = true;
+-			}
+-		}, 15000);
+-
++			fresh = await fetchWeather();
++		}, 15_000);
+ 		return () => {
+ 			clearInterval(tick);
+ 			clearInterval(poll);
+ 		};
+ 	});
+-
+-	$: dayLabel = 'Daily';
+-	// chart helpers
+-	const xs = (t: number) => 40 + (t / 47) * 740;
+-	const ys = (v: number) => 200 - (v / 14) * 180;
+ </script>
+ 
+-<div class="container mx-auto space-y-5 px-4 pb-8">
++<svelte:head>
++	<title>Weather</title>
++</svelte:head>
++
++{#snippet value(field: WeatherField, text: string, unit: string)}
++	<span
++		class={isSample(field) ? 'underline decoration-dotted underline-offset-4 opacity-60' : ''}
++		title={isSample(field) ? 'Sample value' : undefined}
++	>
++		{text}<span class="text-base font-normal"> {unit}</span>
++	</span>
++{/snippet}
++
++{#snippet chip(fields: WeatherField[])}
++	{#if anySample(fields)}<SampleDataChip />{/if}
++{/snippet}
++
++{#snippet reading(label: string, field: WeatherField, text: string, unit: string)}
++	<div>
++		<p class="text-sm text-muted">{label}</p>
++		<p class="text-2xl font-semibold tabular-nums">{@render value(field, text, unit)}</p>
++	</div>
++{/snippet}
++
++<div class="mx-auto max-w-6xl space-y-5 px-4 pb-8">
+ 	<div class="flex flex-wrap items-center justify-between gap-3 pt-6">
+ 		<h1 class="text-xl font-semibold">Weather</h1>
+-		<div class="flex items-center gap-3 text-xs">
+-			<div class="text-muted">Reported {secondsAgo}s ago</div>
++		<div class="flex items-center gap-3 text-sm">
++			<span class="text-muted">Updated {age(ageSeconds)}</span>
+ 			<span
+-				class={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${offline ? 'border-red-400/40 bg-red-400/10 text-red-300' : 'border-green-400/40 bg-green-400/10 text-green-300'}`}
+-				title={offline ? 'Using mock data' : 'Connected to Ecowitt'}
++				class={[
++					'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold',
++					current.connected ? 'border-accent/50 text-accent' : 'border-warn/60 text-warn'
++				]}
+ 			>
+-				<span class={`size-1.5 rounded-full ${offline ? 'bg-red-400' : 'bg-green-400'}`}></span>
+-				{offline ? 'Mock' : 'Live (Ecowitt)'}
++				<span class="size-1.5 rounded-full bg-current" aria-hidden="true"></span>
++				{current.connected ? 'Live' : 'Offline'}
+ 			</span>
+ 		</div>
+ 	</div>
+-	<div class="grid gap-4 lg:grid-cols-3 xl:grid-cols-4">
+-		<a href="/weather/outdoor" class="block transform transition hover:scale-105">
+-			<Panel title="Outdoor" class="h-full">
++
++	<OfflineBanner source={current.source} />
++
++	<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
++		<SprayPanel result={spray} />
++
++		<a href={resolve('/weather/outdoor')} class="block text-text">
++			<Panel title="Outdoor" class="h-full hover:border-accent">
++				{#snippet actions()}{@render chip([
++						'outdoor.temp',
++						'outdoor.humidity',
++						'outdoor.feelsLike',
++						'outdoor.dewPoint',
++						'outdoor.vpd'
++					])}{/snippet}
+ 				<div class="grid grid-cols-2 gap-4">
+-					<div>
+-						<div class="mb-1 text-xs text-muted">Temperature</div>
+-						<div class="text-3xl font-semibold">
+-							{fmt(w.outdoor.temp)}<span class="align-top text-base"> °C</span>
+-						</div>
+-						<div class="mt-1 text-xs text-muted">
+-							{arrow(w.outdoor.trend)}
+-							{fmt(Math.abs(w.outdoor.trend))} °C/hr
+-						</div>
+-						<div class="mt-1 text-xs text-muted">↗ 12.7 °C ↘ 4.9 °C</div>
+-						<div class="mt-1 text-xs text-accent">VPD {fmt(w.outdoor.vpd, 3)} kPa</div>
+-					</div>
+-					<div>
+-						<div class="mb-1 text-xs text-muted">Humidity</div>
+-						<div class="text-3xl font-semibold">
+-							{w.outdoor.humidity}<span class="align-top text-base"> %</span>
+-						</div>
+-						<div class="mt-1 text-xs text-muted">Feels Like {fmt(w.outdoor.feelsLike)} °C</div>
+-						<div class="mt-1 text-xs text-muted">Dew Point {fmt(w.outdoor.dewPoint)} °C</div>
+-					</div>
++					{@render reading('Temperature', 'outdoor.temp', fmt(w.outdoor.temp), '°C')}
++					{@render reading('Humidity', 'outdoor.humidity', fmt(w.outdoor.humidity, 0), '%')}
++					{@render reading('Feels like', 'outdoor.feelsLike', fmt(w.outdoor.feelsLike), '°C')}
++					{@render reading('Dew point', 'outdoor.dewPoint', fmt(w.outdoor.dewPoint), '°C')}
+ 				</div>
++				<p class="mt-3 text-sm text-muted">
++					VPD {@render value('outdoor.vpd', fmt(w.outdoor.vpd, 2), 'kPa')}
++				</p>
+ 			</Panel>
+ 		</a>
+ 
+-		<a href="/weather/indoor" class="block transform transition hover:scale-105">
+-			<Panel title="Indoor" class="h-full">
++		<a href={resolve('/weather/wind')} class="block text-text">
++			<Panel title="Wind" class="h-full hover:border-accent">
++				{#snippet actions()}{@render chip(['wind.speed', 'wind.gust', 'wind.dir'])}{/snippet}
+ 				<div class="grid grid-cols-2 gap-4">
+-					<div>
+-						<div class="mb-1 text-xs text-muted">Temperature</div>
+-						<div class="text-3xl font-semibold">
+-							{fmt(w.indoor.temp)}<span class="align-top text-base"> °C</span>
+-						</div>
+-						<div class="mt-1 text-xs text-muted">
+-							{arrow(w.indoor.trend)}
+-							{fmt(Math.abs(w.indoor.trend))} °C/hr
+-						</div>
+-						<div class="mt-1 text-xs text-muted">↗ 14.6 °C ↘ 11.6 °C</div>
+-					</div>
+-					<div>
+-						<div class="mb-1 text-xs text-muted">Humidity</div>
+-						<div class="text-3xl font-semibold">
+-							{w.indoor.humidity}<span class="align-top text-base"> %</span>
+-						</div>
+-						<div class="mt-1 text-xs text-muted">↗ 64 % ↘ 56 %</div>
+-					</div>
++					{@render reading('Average', 'wind.speed', String(Math.round(w.wind.speed * 3.6)), 'km/h')}
++					{@render reading('Gust', 'wind.gust', String(Math.round(w.wind.gust * 3.6)), 'km/h')}
+ 				</div>
++				<p class="mt-3 text-sm text-muted">
++					From the {@render value(
++						'wind.dir',
++						compassPoint(w.wind.dir),
++						`(${Math.round(w.wind.dir)}°)`
++					)}
++				</p>
+ 			</Panel>
+ 		</a>
+ 
+-		<a href="/weather/solar" class="block transform transition hover:scale-105">
+-			<Panel title="Solar and UVI" class="h-full">
++		<a href={resolve('/weather/rain')} class="block text-text">
++			<Panel title="Rainfall" class="h-full hover:border-accent">
++				{#snippet actions()}{@render chip([
++						'rain.daily',
++						'rain.hourly',
++						'rain.weekly',
++						'rain.monthly',
++						'rain.yearly'
++					])}{/snippet}
+ 				<div class="grid grid-cols-2 gap-4">
+-					<div>
+-						<div class="text-xs text-muted">{w.solar.moon}</div>
+-						<div class="mt-2">
+-							<div class="mb-1 text-xs text-muted">Solar</div>
+-							<div class="text-3xl font-semibold">
+-								{fmt(w.solar.solar)}<span class="align-top text-base"> W/m²</span>
+-							</div>
+-							<div class="mt-1 text-xs text-muted">↗ 828.9 W/m²</div>
+-						</div>
+-					</div>
+-					<div>
+-						<div class="mb-1 text-xs text-muted">UVI</div>
+-						<div class="text-3xl font-semibold">{w.solar.uvi}</div>
+-						<div class="mt-4 text-xs text-muted">☀ Sun Rise {w.solar.sunrise}</div>
+-						<div class="text-xs text-muted">☀ Sun Set {w.solar.sunset}</div>
+-					</div>
++					{@render reading('Today', 'rain.daily', fmt(w.rain.daily), 'mm')}
++					{@render reading('Past hour', 'rain.hourly', fmt(w.rain.hourly), 'mm')}
+ 				</div>
++				<p class="mt-3 text-sm text-muted">
++					Week {@render value('rain.weekly', fmt(w.rain.weekly), 'mm')}, month
++					{@render value('rain.monthly', fmt(w.rain.monthly), 'mm')}, year
++					{@render value('rain.yearly', fmt(w.rain.yearly), 'mm')}
++				</p>
+ 			</Panel>
+ 		</a>
+ 
+-		<a href="/weather/rain" class="block transform transition hover:scale-105">
+-			<Panel title="Rainfall" class="h-full">
++		<a href={resolve('/weather/pressure')} class="block text-text">
++			<Panel title="Pressure" class="h-full hover:border-accent">
++				{#snippet actions()}{@render chip(['pressure.rel', 'pressure.abs'])}{/snippet}
+ 				<div class="grid grid-cols-2 gap-4">
+-					<div>
+-						<div class="mb-1 text-xs text-muted">Rain Rate /hr</div>
+-						<div class="text-3xl font-semibold">
+-							{fmt(w.rain.rate)}<span class="align-top text-base"> mm</span>
+-						</div>
+-						<div class="mt-2 text-xs text-muted">Daily {fmt(w.rain.daily)} mm</div>
+-					</div>
+-					<div class="space-y-1 text-xs text-muted">
+-						<div>Event <span class="text-green-400">{fmt(w.rain.event)} mm</span></div>
+-						<div>Hourly {fmt(w.rain.hourly)} mm</div>
+-						<div>Weekly {fmt(w.rain.weekly)} mm</div>
+-						<div>Monthly {fmt(w.rain.monthly)} mm</div>
+-						<div>Yearly {fmt(w.rain.yearly)} mm</div>
+-					</div>
++					{@render reading('Relative', 'pressure.rel', fmt(w.pressure.rel), 'hPa')}
++					{@render reading('Absolute', 'pressure.abs', fmt(w.pressure.abs), 'hPa')}
+ 				</div>
+ 			</Panel>
+ 		</a>
+ 
+-		<a href="/weather/wind" class="block transform transition hover:scale-105 xl:col-span-2">
+-			<Panel title="Wind" class="h-full">
+-				<div class="grid grid-cols-3 items-center gap-4">
+-					<div class="col-span-2 flex items-center justify-center">
+-						<!-- Simple wind dial -->
+-						<svg viewBox="0 0 120 120" class="h-52 w-52">
+-							<circle
+-								cx="60"
+-								cy="60"
+-								r="54"
+-								class="fill-transparent stroke-border"
+-								stroke-width="2"
+-							/>
+-							<text x="60" y="64" text-anchor="middle" class="fill-white text-3xl font-semibold"
+-								>{Math.round(w.wind.dir)}</text
+-							>
+-							<text x="60" y="84" text-anchor="middle" class="fill-muted text-xs"
+-								>{['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][
+-									Math.round(((w.wind.dir % 360) + 22.5) / 45) % 8
+-								]}</text
+-							>
+-							<g transform={`rotate(${w.wind.dir} 60 60)`}>
+-								<polygon points="60,12 56,24 64,24" class="fill-accent" />
+-							</g>
+-						</svg>
+-					</div>
+-					<div class="text-sm text-muted">
+-						<div class="text-lg font-semibold text-white">Wind {fmt(w.wind.speed)} m/s</div>
+-						<div>
+-							↗ {fmt(w.wind.speed * 3.6)} km/h <span class="text-xs">{w.wind.timeSpeed}</span>
+-						</div>
+-						<div class="mt-2 text-lg font-semibold text-white">Gust {fmt(w.wind.gust)} m/s</div>
+-						<div>
+-							↗ {fmt(w.wind.gust * 3.6)} km/h <span class="text-xs">{w.wind.timeGust}</span>
+-						</div>
+-					</div>
++		<a href={resolve('/weather/solar')} class="block text-text">
++			<Panel title="Solar and UVI" class="h-full hover:border-accent">
++				{#snippet actions()}{@render chip([
++						'solar.solar',
++						'solar.uvi',
++						'solar.sunrise',
++						'solar.sunset'
++					])}{/snippet}
++				<div class="grid grid-cols-2 gap-4">
++					{@render reading('Solar', 'solar.solar', fmt(w.solar.solar, 0), 'W/m²')}
++					{@render reading('UV index', 'solar.uvi', String(w.solar.uvi), '')}
+ 				</div>
++				<p class="mt-3 text-sm text-muted">
++					Sunrise {@render value('solar.sunrise', w.solar.sunrise, '')}, sunset
++					{@render value('solar.sunset', w.solar.sunset, '')}
++				</p>
+ 			</Panel>
+ 		</a>
+ 
+-		<a href="/weather/pressure" class="block transform transition hover:scale-105">
+-			<Panel title="Pressure" class="h-full">
++		<a href={resolve('/weather/indoor')} class="block text-text">
++			<Panel title="Indoor" class="h-full hover:border-accent">
++				{#snippet actions()}{@render chip(['indoor.temp', 'indoor.humidity'])}{/snippet}
+ 				<div class="grid grid-cols-2 gap-4">
+-					<div>
+-						<div class="mb-1 text-xs text-muted">Relative</div>
+-						<div class="text-3xl font-semibold">
+-							{fmt(w.pressure.rel, 1)}<span class="align-top text-base"> hPa</span>
+-						</div>
+-						<div class="mt-1 text-xs text-muted">
+-							{arrow(w.pressure.deltaRel)}
+-							{fmt(Math.abs(w.pressure.deltaRel), 1)} hPa
+-						</div>
+-						<div class="mt-1 text-xs text-muted">↗ 994.2 hPa ↘ 990.1 hPa</div>
+-					</div>
+-					<div>
+-						<div class="mb-1 text-xs text-muted">Absolute</div>
+-						<div class="text-3xl font-semibold">
+-							{fmt(w.pressure.abs, 1)}<span class="align-top text-base"> hPa</span>
+-						</div>
+-						<div class="mt-1 text-xs text-muted">
+-							{arrow(w.pressure.deltaAbs)}
+-							{fmt(Math.abs(w.pressure.deltaAbs), 1)} hPa
+-						</div>
+-						<div class="mt-1 text-xs text-muted">↗ 994.2 hPa ↘ 990.1 hPa</div>
+-					</div>
++					{@render reading('Temperature', 'indoor.temp', fmt(w.indoor.temp), '°C')}
++					{@render reading('Humidity', 'indoor.humidity', fmt(w.indoor.humidity, 0), '%')}
+ 				</div>
+ 			</Panel>
+ 		</a>
+ 
+-		<a href="/weather/battery" class="block transform transition hover:scale-105">
+-			<Panel title="Battery" class="h-full">
+-				<div class="text-sm">
+-					<div class="font-semibold text-green-400">{w.battery.status}</div>
+-					<div class="text-muted">{w.battery.note}</div>
+-				</div>
++		<a href={resolve('/weather/battery')} class="block text-text">
++			<Panel title="Battery" class="h-full hover:border-accent">
++				{#snippet actions()}{@render chip(['battery.status', 'battery.note'])}{/snippet}
++				<p class="font-semibold">{@render value('battery.status', w.battery.status, '')}</p>
++				<p class="text-sm text-muted">{w.battery.note}</p>
+ 			</Panel>
+ 		</a>
+ 	</div>
+ 
+-	<!-- Simple trend chart -->
+-	<Panel title={`Outdoor — ${dayLabel}`}>
+-		<div class="overflow-x-auto">
+-			<svg viewBox="0 0 800 240" class="h-64 w-full">
+-				<defs>
+-					<clipPath id="clip">
+-						<rect x="40" y="20" width="740" height="180" />
+-					</clipPath>
+-				</defs>
+-				<g>
+-					<text x="10" y="30" class="fill-muted text-xs">Temp</text>
+-					<text x="10" y="50" class="fill-muted text-xs">Feels</text>
+-					<text x="10" y="70" class="fill-muted text-xs">Dew</text>
+-				</g>
+-				<g clip-path="url(#clip)">
+-					<polyline
+-						fill="none"
+-						stroke="#facc15"
+-						stroke-width="2"
+-						points={w.series.map((p) => `${xs(p.t)},${ys(p.temp)}`).join(' ')}
+-					/>
+-					<polyline
+-						fill="none"
+-						stroke="#3b82f6"
+-						stroke-width="2"
+-						points={w.series.map((p) => `${xs(p.t)},${ys(p.feels)}`).join(' ')}
+-					/>
+-					<polyline
+-						fill="none"
+-						stroke="#22c55e"
+-						stroke-width="2"
+-						points={w.series.map((p) => `${xs(p.t)},${ys(p.dew)}`).join(' ')}
+-					/>
+-				</g>
+-				<g class="text-muted">
+-					<line x1="40" y1="200" x2="780" y2="200" stroke="currentColor" stroke-opacity="0.3" />
+-					<text x="782" y="204" class="fill-muted text-xs">0</text>
+-				</g>
+-			</svg>
+-		</div>
++	<Panel title="Outdoor, last 24 hours">
++		<WeatherChart
++			title="Outdoor temperature and dew point, last 24 hours"
++			series={outdoorSeries}
++			unit="°C"
++			from={data.range.from * 1000}
++			to={data.range.to * 1000}
++		/>
+ 	</Panel>
+ </div>
+diff --git a/src/routes/weather/+page.ts b/src/routes/weather/+page.ts
+index 48a3579..51aa16b 100644
+--- a/src/routes/weather/+page.ts
++++ b/src/routes/weather/+page.ts
+@@ -1,7 +1,19 @@
+ import type { PageLoad } from './$types';
+-import { fetchWeather } from '$lib/weather';
++import { fetchWeather, fetchWeatherHistory, type WeatherHistoryRow } from '$lib/weather';
+ 
+ export const load: PageLoad = async ({ fetch }) => {
+-	const res = await fetchWeather(fetch);
+-	return { w: res.weather, connected: res.connected, source: res.source };
++	const now = Math.floor(Date.now() / 1000);
++	const from = now - 24 * 60 * 60;
++	const [res, history] = await Promise.all([
++		fetchWeather(fetch),
++		fetchWeatherHistory(from, now, fetch).catch((): WeatherHistoryRow[] => [])
++	]);
++	return {
++		w: res.weather,
++		connected: res.connected,
++		source: res.source,
++		mockFields: res.mockFields,
++		history,
++		range: { from, to: now }
++	};
+ };
+diff --git a/src/routes/weather/[metric]/+page.svelte b/src/routes/weather/[metric]/+page.svelte
+index d27f4aa..8856b12 100644
+--- a/src/routes/weather/[metric]/+page.svelte
++++ b/src/routes/weather/[metric]/+page.svelte
+@@ -1,160 +1,162 @@
+ <script lang="ts">
+ 	import { resolve } from '$app/paths';
+-	import type { Weather, WeatherHistoryRow } from '$lib/weather';
++	import type { WeatherHistoryRow } from '$lib/weather';
++	import { CHARTS, buildSeries, extremes, parseUtcMs } from '../chart';
++	import OfflineBanner from '../components/OfflineBanner.svelte';
++	import WeatherChart from '../components/WeatherChart.svelte';
++	import type { PageProps } from './$types';
+ 
+-	export let data: {
+-		metric: string;
+-		w: Weather;
+-		history: WeatherHistoryRow[];
+-		range: { from: number; to: number };
+-	};
+-	const metric = data.metric;
+-	const w = data.w;
+-	const history = Array.isArray(data.history) ? data.history : [];
+-
+-	const metricFields = {
+-		outdoor: ['temp_c', 'humidity_pct'],
+-		indoor: [],
+-		solar: ['solar_wm2'],
+-		rain: ['rain_1h_mm', 'rain_24h_mm'],
+-		wind: ['wind_avg_ms', 'wind_gust_ms', 'wind_dir_deg'],
+-		pressure: ['pressure_hpa'],
+-		battery: []
+-	} as const satisfies Partial<Record<string, (keyof WeatherHistoryRow)[]>>;
+-
+-	const metricKey = metric as keyof typeof metricFields;
+-	const selectedFields: (keyof WeatherHistoryRow)[] =
+-		metricFields[metricKey] ?? ([] as (keyof WeatherHistoryRow)[]);
+-	const timestampColumn: keyof WeatherHistoryRow = 'timestamp_utc';
+-	const baseColumns: (keyof WeatherHistoryRow)[] = selectedFields.length
+-		? [timestampColumn, ...selectedFields]
+-		: [timestampColumn];
+-	const dynamicColumns: (keyof WeatherHistoryRow)[] =
+-		history.length && typeof history[0] === 'object'
+-			? (Object.keys(history[0]) as (keyof WeatherHistoryRow)[]).filter(
+-					(key) => key !== timestampColumn
+-				)
+-			: [];
+-	const columns: (keyof WeatherHistoryRow)[] = selectedFields.length
+-		? baseColumns
+-		: [timestampColumn, ...dynamicColumns];
+-	const rangeHours = Math.max(1, Math.round((data.range.to - data.range.from) / 3600));
++	let { data }: PageProps = $props();
+ 
+-	const parseUtc = (value: string) => {
+-		const trimmed = value.trim();
+-		const hasTz = /[zZ]|[+-]\d{2}:?\d{2}$/.test(trimmed);
+-		const normalized = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T');
+-		const stamped = hasTz ? normalized : `${normalized}Z`;
+-		return new Date(stamped);
+-	};
+-
+-	const formatValue = (key: keyof WeatherHistoryRow, value: unknown) => {
+-		if (value === null || value === undefined) return '';
+-		if (key === 'timestamp_utc' && typeof value === 'string') {
+-			const parsed = parseUtc(value);
+-			return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+-		}
+-		if (typeof value === 'number') {
+-			return Number.isInteger(value) ? value.toString() : value.toFixed(2);
+-		}
+-		return String(value);
+-	};
+-
+-	const titles: Record<string, string> = {
++	const TITLES: Record<string, string> = {
+ 		outdoor: 'Outdoor',
+ 		indoor: 'Indoor',
+ 		solar: 'Solar and UVI',
+ 		rain: 'Rainfall',
+ 		wind: 'Wind',
+ 		pressure: 'Pressure',
+ 		battery: 'Battery'
+ 	};
+-	const title = titles[metric] ?? metric;
++	const FIELDS: Record<string, (keyof WeatherHistoryRow)[]> = {
++		outdoor: ['temp_c', 'humidity_pct'],
++		solar: ['solar_wm2'],
++		rain: ['rain_1h_mm', 'rain_24h_mm'],
++		wind: ['wind_avg_ms', 'wind_gust_ms', 'wind_dir_deg'],
++		pressure: ['pressure_hpa']
++	};
++	const HEADINGS: Partial<Record<keyof WeatherHistoryRow, string>> = {
++		timestamp_utc: 'Time',
++		temp_c: 'Temperature (°C)',
++		humidity_pct: 'Humidity (%)',
++		solar_wm2: 'Solar (W/m²)',
++		rain_1h_mm: 'Rain, past hour (mm)',
++		rain_24h_mm: 'Rain, past day (mm)',
++		wind_avg_ms: 'Wind (m/s)',
++		wind_gust_ms: 'Gust (m/s)',
++		wind_dir_deg: 'Direction (°)',
++		pressure_hpa: 'Pressure (hPa)'
++	};
++
++	/** Only own properties: `data.metric` is a route param, and a plain-object lookup would
++	 *  otherwise resolve to inherited members like `constructor` or `toString`. */
++	const own = <T,>(table: Partial<Record<string, T>>, key: string): T | undefined =>
++		Object.hasOwn(table, key) ? table[key] : undefined;
++
++	const title = $derived(own(TITLES, data.metric) ?? data.metric);
++	const spec = $derived(own(CHARTS, data.metric));
++	const series = $derived(spec ? buildSeries(data.history, spec) : []);
++	const summaries = $derived(
++		series.flatMap((line) => {
++			const range = extremes(line.points);
++			return range ? [{ label: line.label, ...range }] : [];
++		})
++	);
++	const columns = $derived<(keyof WeatherHistoryRow)[]>([
++		'timestamp_utc',
++		...(own(FIELDS, data.metric) ?? [])
++	]);
++	const rows = $derived(
++		[...data.history].sort(
++			(a, b) => (parseUtcMs(b.timestamp_utc) ?? 0) - (parseUtcMs(a.timestamp_utc) ?? 0)
++		)
++	);
++	const hours = $derived(Math.max(1, Math.round((data.range.to - data.range.from) / 3600)));
++	const timeFormat = new Intl.DateTimeFormat('en-AU', {
++		weekday: 'short',
++		hour: 'numeric',
++		minute: '2-digit'
++	});
+ 
+-	// Simple 24hr temperature series from the mock data
+-	const series = w.series;
+-	const xs = (t: number) => 40 + (t / 47) * 740;
+-	const ys = (v: number) => 200 - (v / 14) * 180;
+-	const high = Math.max(...series.map((p) => p.temp));
+-	const low = Math.min(...series.map((p) => p.temp));
+-	const bom = { high: 13, low: 5 };
++	function cell(row: WeatherHistoryRow, key: keyof WeatherHistoryRow) {
++		const raw = row[key];
++		if (raw === null || raw === undefined) return '-';
++		if (key === 'timestamp_utc') {
++			const ms = parseUtcMs(String(raw));
++			return ms === null ? String(raw) : timeFormat.format(ms);
++		}
++		return typeof raw === 'number'
++			? Number.isInteger(raw)
++				? String(raw)
++				: raw.toFixed(1)
++			: String(raw);
++	}
+ </script>
+ 
+-<div class="relative container mx-auto px-4 pb-8">
++<svelte:head>
++	<title>{title} weather</title>
++</svelte:head>
++
++<div class="mx-auto max-w-6xl space-y-5 px-4 pb-8">
+ 	<a
+ 		href={resolve('/weather')}
+ 		class="inline-flex min-h-11 items-center gap-2 pt-4 text-sm text-muted hover:text-text"
+ 	>
+ 		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="size-5" aria-hidden="true">
+ 			<path
+ 				d="M10.5 6 4.5 12l6 6M4.5 12h15"
+ 				fill="none"
+ 				stroke="currentColor"
+ 				stroke-width="2"
+ 				stroke-linecap="round"
+ 				stroke-linejoin="round"
+ 			/>
+ 		</svg>
+ 		All weather
+ 	</a>
+ 
+-	<h1 class="mt-2 mb-6 text-xl font-semibold">{title}</h1>
++	<h1 class="text-xl font-semibold">{title}</h1>
+ 
+-	<section class="mb-6 text-center">
+-		<div class="text-xl font-semibold">High {high.toFixed(1)}°C / Low {low.toFixed(1)}°C</div>
+-		<div class="text-sm text-muted">BoM Benchmark: High {bom.high}°C, Low {bom.low}°C</div>
+-	</section>
++	<OfflineBanner source={data.source} />
+ 
+-	<section class="overflow-x-auto">
+-		<svg viewBox="0 0 800 240" class="h-64 w-full">
+-			<defs>
+-				<clipPath id="clipDetail">
+-					<rect x="40" y="20" width="740" height="180" />
+-				</clipPath>
+-			</defs>
+-			<g clip-path="url(#clipDetail)">
+-				<polyline
+-					fill="none"
+-					stroke="#facc15"
+-					stroke-width="2"
+-					points={series.map((p) => `${xs(p.t)},${ys(p.temp)}`).join(' ')}
+-				/>
+-			</g>
+-			<g class="text-muted">
+-				<line x1="40" y1="200" x2="780" y2="200" stroke="currentColor" stroke-opacity="0.3" />
+-				<text x="782" y="204" class="fill-muted text-xs">0</text>
+-			</g>
+-		</svg>
+-	</section>
++	{#if spec}
++		<section class="space-y-2">
++			{#each summaries as summary (summary.label)}
++				<p class="text-lg">
++					{summary.label}: highest {Math.round(summary.high)}
++					{spec.unit}, lowest {Math.round(summary.low)}
++					{spec.unit}
++				</p>
++			{/each}
++			<WeatherChart
++				title="{title}, last {hours} hours"
++				{series}
++				unit={spec.unit}
++				from={data.range.from * 1000}
++				to={data.range.to * 1000}
++			/>
++		</section>
++	{:else}
++		<p class="text-muted">
++			The station doesn’t report {title.toLowerCase()} readings, so there’s nothing to chart.
++		</p>
++	{/if}
+ 
+-	<section class="mt-8">
+-		<h2 class="mb-1 text-lg font-semibold">Recent readings</h2>
+-		<p class="mb-2 text-xs text-muted">Showing last {rangeHours}h of data.</p>
+-		{#if history.length}
+-			<div class="overflow-x-auto">
+-				<table class="min-w-full text-left text-sm">
+-					<thead>
++	<section class="space-y-2">
++		<h2 class="text-lg font-semibold">Recent readings</h2>
++		<p class="text-sm text-muted">The last {hours} hours, newest first.</p>
++		{#if rows.length}
++			<div class="max-h-[60vh] overflow-auto rounded-xl border border-border">
++				<table class="min-w-full text-left text-sm" aria-label="Recent readings">
++					<thead class="sticky top-0 bg-panel">
+ 						<tr>
+-							{#each columns as h}
+-								<th class="border-b px-2 py-1 font-medium">
+-									{h === 'timestamp_utc' ? 'Timestamp' : h}
+-								</th>
++							{#each columns as column (column)}
++								<th class="px-3 py-2 font-semibold">{HEADINGS[column] ?? column}</th>
+ 							{/each}
+ 						</tr>
+ 					</thead>
+ 					<tbody>
+-						{#each history as row}
+-							<tr>
+-								{#each columns as h}
+-									<td class="border-b px-2 py-1">{formatValue(h, row?.[h])}</td>
++						{#each rows as row (row.timestamp_utc)}
++							<tr class="border-t border-border/60">
++								{#each columns as column (column)}
++									<td class="px-3 py-2 tabular-nums">{cell(row, column)}</td>
+ 								{/each}
+ 							</tr>
+ 						{/each}
+ 					</tbody>
+ 				</table>
+ 			</div>
+ 		{:else}
+-			<p class="text-sm text-muted">No recent readings available.</p>
++			<p class="text-muted">No readings in the last {hours} hours.</p>
+ 		{/if}
+ 	</section>
+ </div>
+diff --git a/src/routes/weather/[metric]/+page.ts b/src/routes/weather/[metric]/+page.ts
+index 7f0a663..bacef8c 100644
+--- a/src/routes/weather/[metric]/+page.ts
++++ b/src/routes/weather/[metric]/+page.ts
+@@ -1,23 +1,20 @@
+ import type { PageLoad } from './$types';
+-import { fetchWeather, fetchWeatherHistory } from '$lib/weather';
+-import type { WeatherHistoryRow } from '$lib/weather';
++import { fetchWeather, fetchWeatherHistory, type WeatherHistoryRow } from '$lib/weather';
+ 
+ export const load: PageLoad = async ({ params, fetch }) => {
+-	const res = await fetchWeather(fetch);
+ 	const now = Math.floor(Date.now() / 1000);
+ 	const from = now - 24 * 60 * 60;
+-	let history: WeatherHistoryRow[] = [];
+-	try {
+-		history = await fetchWeatherHistory(from, now, fetch);
+-	} catch (_) {
+-		history = [];
+-	}
++	const [res, history] = await Promise.all([
++		fetchWeather(fetch),
++		fetchWeatherHistory(from, now, fetch).catch((): WeatherHistoryRow[] => [])
++	]);
+ 	return {
+ 		metric: params.metric,
+ 		w: res.weather,
+ 		connected: res.connected,
+ 		source: res.source,
++		mockFields: res.mockFields,
+ 		history,
+ 		range: { from, to: now }
+ 	};
+ };
+diff --git a/src/routes/weather/[metric]/metric-page.svelte.test.ts b/src/routes/weather/[metric]/metric-page.svelte.test.ts
+new file mode 100644
+index 0000000..f1afb41
+--- /dev/null
++++ b/src/routes/weather/[metric]/metric-page.svelte.test.ts
+@@ -0,0 +1,84 @@
++import { page } from 'vitest/browser';
++import { describe, expect, it, vi } from 'vitest';
++import { render } from 'vitest-browser-svelte';
++
++import {
++	ALWAYS_SAMPLE_FIELDS,
++	WEATHER_FIELDS,
++	getMockWeather,
++	type WeatherField
++} from '$lib/weather';
++import MetricPage from './+page.svelte';
++
++vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
++
++const to = Math.floor(Date.UTC(2026, 8, 26, 12) / 1000);
++const range = { from: to - 86400, to };
++const history = [
++	{ timestamp_utc: '2026-09-26 02:00:00', temp_c: 12, wind_avg_ms: 5, wind_gust_ms: 8 },
++	{ timestamp_utc: '2026-09-26 03:00:00', temp_c: 14, wind_avg_ms: 2, wind_gust_ms: 4 }
++];
++
++function open(metric: string, source: 'ecowitt' | 'mock' = 'ecowitt') {
++	const mockFields: WeatherField[] =
++		source === 'mock' ? [...WEATHER_FIELDS] : [...ALWAYS_SAMPLE_FIELDS];
++	const data = {
++		metric,
++		w: getMockWeather(),
++		connected: source === 'ecowitt',
++		source,
++		mockFields,
++		history,
++		range
++	};
++	render(MetricPage, { data, params: { metric } } as never);
++}
++
++describe('weather detail page', () => {
++	it('shows wind highs and lows in km/h, not temperature', async () => {
++		open('wind');
++
++		await expect.element(page.getByRole('heading', { level: 1, name: 'Wind' })).toBeVisible();
++		await expect.element(page.getByText('Average: highest 18 km/h, lowest 7 km/h')).toBeVisible();
++		expect(page.getByText(/°C/).elements()).toHaveLength(0);
++	});
++
++	it('says when the station doesn’t report a metric instead of charting sample data', async () => {
++		open('indoor');
++
++		await expect
++			.element(
++				page.getByText('The station doesn’t report indoor readings, so there’s nothing to chart.')
++			)
++			.toBeVisible();
++		expect(page.getByRole('img').elements()).toHaveLength(0);
++	});
++
++	it('shows the offline banner on sample data', async () => {
++		open('outdoor', 'mock');
++
++		await expect.element(page.getByText('Weather station offline.')).toBeVisible();
++	});
++
++	it('lists the recent readings', async () => {
++		open('outdoor');
++
++		await expect.element(page.getByRole('heading', { name: 'Recent readings' })).toBeVisible();
++		expect(
++			page.getByRole('table', { name: 'Recent readings' }).getByRole('row').elements()
++		).toHaveLength(3);
++	});
++
++	it('ignores inherited object properties for an unknown metric param', async () => {
++		expect(() => open('constructor')).not.toThrow();
++
++		await expect
++			.element(
++				page.getByText(
++					'The station doesn’t report constructor readings, so there’s nothing to chart.'
++				)
++			)
++			.toBeVisible();
++		expect(page.getByRole('img').elements()).toHaveLength(0);
++	});
++});
+diff --git a/src/routes/weather/chart.test.ts b/src/routes/weather/chart.test.ts
+new file mode 100644
+index 0000000..de46ae2
+--- /dev/null
++++ b/src/routes/weather/chart.test.ts
+@@ -0,0 +1,88 @@
++import { describe, expect, it } from 'vitest';
++
++import { CHARTS, buildSeries, extremes, hourTicks, hourlyRows, parseUtcMs } from './chart';
++
++const rows = [
++	{
++		timestamp_utc: '2026-09-26 02:00:00',
++		temp_c: 12,
++		humidity_pct: 80,
++		wind_avg_ms: 5,
++		wind_gust_ms: 8
++	},
++	{
++		timestamp_utc: '2026-09-26 01:00:00',
++		temp_c: 10,
++		humidity_pct: 90,
++		wind_avg_ms: null,
++		wind_gust_ms: 6
++	},
++	{ timestamp_utc: 'not a time', temp_c: 99 }
++];
++
++describe('parseUtcMs', () => {
++	it('reads backend timestamps as UTC', () => {
++		expect(parseUtcMs('2026-09-26 01:00:00')).toBe(Date.UTC(2026, 8, 26, 1));
++		expect(parseUtcMs('2026-09-26T01:00:00+10:00')).toBe(Date.UTC(2026, 8, 25, 15));
++		expect(parseUtcMs('nonsense')).toBeNull();
++	});
++});
++
++describe('buildSeries', () => {
++	it('charts temperature and dew point for outdoor, oldest first, skipping bad rows', () => {
++		const [temp, dew] = buildSeries(rows, CHARTS.outdoor!);
++		expect(temp.label).toBe('Temperature');
++		expect(temp.points.map((p) => p.v)).toEqual([10, 12]);
++		expect(dew.label).toBe('Dew point');
++		expect(dew.points[0].v).toBeCloseTo(8.4, 1);
++	});
++
++	it('charts wind in km/h and leaves out missing readings', () => {
++		const [average, gust] = buildSeries(rows, CHARTS.wind!);
++		expect(CHARTS.wind!.unit).toBe('km/h');
++		expect(average.points.map((p) => p.v)).toEqual([18]);
++		expect(gust.points.map((p) => Math.round(p.v))).toEqual([22, 29]);
++	});
++});
++
++describe('hourTicks', () => {
++	it('marks every 6 hours on the local clock', () => {
++		const from = new Date(2026, 8, 26, 1, 30).getTime();
++		const ticks = hourTicks(from, from + 24 * 3600_000);
++		expect(ticks.map((t) => new Date(t).getHours())).toEqual([6, 12, 18, 0]);
++	});
++});
++
++describe('hourlyRows', () => {
++	it('keeps the last value per hour for each series', () => {
++		const hour = new Date(2026, 8, 26, 9).getTime();
++		const series = [
++			{
++				label: 'A',
++				colour: '',
++				points: [
++					{ t: hour + 60_000, v: 1 },
++					{ t: hour + 120_000, v: 2 }
++				]
++			},
++			{ label: 'B', colour: '', points: [{ t: hour + 3600_000, v: 5 }] }
++		];
++		expect(hourlyRows(series)).toEqual([
++			{ t: hour, values: [2, null] },
++			{ t: hour + 3600_000, values: [null, 5] }
++		]);
++	});
++});
++
++describe('extremes', () => {
++	it('finds the high and low, or null without points', () => {
++		expect(
++			extremes([
++				{ t: 0, v: 3 },
++				{ t: 1, v: -1 },
++				{ t: 2, v: 7 }
++			])
++		).toEqual({ high: 7, low: -1 });
++		expect(extremes([])).toBeNull();
++	});
++});
+diff --git a/src/routes/weather/chart.ts b/src/routes/weather/chart.ts
+new file mode 100644
+index 0000000..e769043
+--- /dev/null
++++ b/src/routes/weather/chart.ts
+@@ -0,0 +1,117 @@
++import { dewPointC, type WeatherHistoryRow } from '$lib/weather';
++
++export type ChartPoint = { t: number; v: number };
++export type ChartSeries = { label: string; colour: string; points: ChartPoint[] };
++export type ChartSpec = {
++	unit: string;
++	series: {
++		label: string;
++		colour: string;
++		value: (row: WeatherHistoryRow) => number | null | undefined;
++	}[];
++};
++
++const kmh = (ms: number | null | undefined) => (ms === null || ms === undefined ? null : ms * 3.6);
++
++/** Series to chart for each weather detail page; metrics missing here have no history to chart. */
++export const CHARTS: Partial<Record<string, ChartSpec>> = {
++	outdoor: {
++		unit: '°C',
++		series: [
++			{ label: 'Temperature', colour: '#facc15', value: (row) => row.temp_c },
++			{
++				label: 'Dew point',
++				colour: 'rgb(var(--status-high))',
++				value: (row) =>
++					row.temp_c != null && row.humidity_pct != null && row.humidity_pct > 0
++						? dewPointC(row.temp_c, row.humidity_pct)
++						: null
++			}
++		]
++	},
++	wind: {
++		unit: 'km/h',
++		series: [
++			{ label: 'Average', colour: 'rgb(var(--accent))', value: (row) => kmh(row.wind_avg_ms) },
++			{ label: 'Gust', colour: 'rgb(var(--warn))', value: (row) => kmh(row.wind_gust_ms) }
++		]
++	},
++	rain: {
++		unit: 'mm',
++		series: [
++			{
++				label: 'Rain in the past hour',
++				colour: 'rgb(var(--status-high))',
++				value: (row) => row.rain_1h_mm
++			}
++		]
++	},
++	pressure: {
++		unit: 'hPa',
++		series: [{ label: 'Pressure', colour: '#c4b5fd', value: (row) => row.pressure_hpa }]
++	},
++	solar: {
++		unit: 'W/m²',
++		series: [{ label: 'Solar', colour: '#facc15', value: (row) => row.solar_wm2 }]
++	}
++};
++
++/** Backend timestamps are UTC, often without a zone ("2026-09-26 01:00:00"). */
++export function parseUtcMs(value: string): number | null {
++	const trimmed = value.trim();
++	const hasZone = /[zZ]|[+-]\d{2}:?\d{2}$/.test(trimmed);
++	const iso = trimmed.replace(' ', 'T');
++	const ms = new Date(hasZone ? iso : `${iso}Z`).getTime();
++	return Number.isNaN(ms) ? null : ms;
++}
++
++export function buildSeries(history: readonly WeatherHistoryRow[], spec: ChartSpec): ChartSeries[] {
++	const timed = history
++		.map((row) => ({ row, t: parseUtcMs(String(row.timestamp_utc ?? '')) }))
++		.filter((entry): entry is { row: WeatherHistoryRow; t: number } => entry.t !== null)
++		.sort((a, b) => a.t - b.t);
++
++	return spec.series.map(({ label, colour, value }) => ({
++		label,
++		colour,
++		points: timed.flatMap(({ row, t }) => {
++			const v = value(row);
++			return typeof v === 'number' && Number.isFinite(v) ? [{ t, v }] : [];
++		})
++	}));
++}
++
++export function hourTicks(from: number, to: number, every = 6): number[] {
++	const tick = new Date(from);
++	tick.setMinutes(0, 0, 0);
++	if (tick.getTime() < from) tick.setHours(tick.getHours() + 1);
++	while (tick.getHours() % every !== 0) tick.setHours(tick.getHours() + 1);
++
++	const ticks: number[] = [];
++	while (tick.getTime() <= to) {
++		ticks.push(tick.getTime());
++		tick.setHours(tick.getHours() + every);
++	}
++	return ticks;
++}
++
++export function hourlyRows(series: ChartSeries[]): { t: number; values: (number | null)[] }[] {
++	const rows = new Map<number, (number | null)[]>();
++	series.forEach((line, index) => {
++		for (const point of line.points) {
++			const hour = new Date(point.t);
++			hour.setMinutes(0, 0, 0);
++			const key = hour.getTime();
++			const values = rows.get(key) ?? series.map(() => null);
++			values[index] = point.v;
++			rows.set(key, values);
++		}
++	});
++	return [...rows.entries()].sort(([a], [b]) => a - b).map(([t, values]) => ({ t, values }));
++}
++
++export function extremes(points: ChartPoint[]): { high: number; low: number } | null {
++	if (points.length === 0) return null;
++	const values = points.map((point) => point.v);
++	return { high: Math.max(...values), low: Math.min(...values) };
++}
+diff --git a/src/routes/weather/components/OfflineBanner.svelte b/src/routes/weather/components/OfflineBanner.svelte
+new file mode 100644
+index 0000000..b9eb0d5
+--- /dev/null
++++ b/src/routes/weather/components/OfflineBanner.svelte
+@@ -0,0 +1,12 @@
++<script lang="ts">
++	type Props = { source: 'ecowitt' | 'mock' };
++
++	let { source }: Props = $props();
++</script>
++
++{#if source === 'mock'}
++	<div role="status" class="rounded-xl border border-warn/60 bg-warn/10 px-4 py-3">
++		<p class="font-semibold text-warn">Weather station offline.</p>
++		<p>These are sample numbers — don’t use them for decisions.</p>
++	</div>
++{/if}
+diff --git a/src/routes/weather/components/OfflineBanner.svelte.test.ts b/src/routes/weather/components/OfflineBanner.svelte.test.ts
+new file mode 100644
+index 0000000..88a42c6
+--- /dev/null
++++ b/src/routes/weather/components/OfflineBanner.svelte.test.ts
+@@ -0,0 +1,22 @@
++import { page } from 'vitest/browser';
++import { describe, expect, it } from 'vitest';
++import { render } from 'vitest-browser-svelte';
++
++import OfflineBanner from './OfflineBanner.svelte';
++
++describe('OfflineBanner.svelte', () => {
++	it('warns when the numbers are sample data', async () => {
++		render(OfflineBanner, { source: 'mock' });
++
++		await expect.element(page.getByText('Weather station offline.')).toBeVisible();
++		await expect
++			.element(page.getByText('These are sample numbers — don’t use them for decisions.'))
++			.toBeVisible();
++	});
++
++	it('stays hidden for live readings', async () => {
++		render(OfflineBanner, { source: 'ecowitt' });
++
++		expect(page.getByText('Weather station offline.').elements()).toHaveLength(0);
++	});
++});
+diff --git a/src/routes/weather/components/WeatherChart.svelte b/src/routes/weather/components/WeatherChart.svelte
+new file mode 100644
+index 0000000..0a1ea61
+--- /dev/null
++++ b/src/routes/weather/components/WeatherChart.svelte
+@@ -0,0 +1,104 @@
++<script lang="ts">
++	import { MediaQuery } from 'svelte/reactivity';
++
++	import { hourTicks, hourlyRows, type ChartSeries } from '../chart';
++
++	type Props = { title: string; series: ChartSeries[]; unit: string; from: number; to: number };
++
++	let { title, series, unit, from, to }: Props = $props();
++
++	const wide = new MediaQuery('min-width: 48rem');
++	let measured = $state(0);
++	const width = $derived(measured || 360);
++	const height = $derived(wide.current ? 260 : 300);
++	const pad = { left: 40, right: 12, top: 12, bottom: 28 };
++
++	const values = $derived(series.flatMap((line) => line.points.map((point) => point.v)));
++	const min = $derived(values.length ? Math.floor(Math.min(...values)) : 0);
++	const max = $derived(Math.max(min + 1, values.length ? Math.ceil(Math.max(...values)) : 1));
++	const span = $derived(max - min || 1);
++	const ticks = $derived(hourTicks(from, to));
++	const rows = $derived(hourlyRows(series));
++	const timeFormat = new Intl.DateTimeFormat('en-AU', { hour: 'numeric' });
++	const rowFormat = new Intl.DateTimeFormat('en-AU', { weekday: 'short', hour: 'numeric' });
++
++	const x = (t: number) => pad.left + ((t - from) / (to - from)) * (width - pad.left - pad.right);
++	const y = (v: number) =>
++		height - pad.bottom - ((v - min) / span) * (height - pad.top - pad.bottom);
++</script>
++
++{#if values.length === 0}
++	<p class="text-muted">No readings in the last 24 hours.</p>
++{:else}
++	<ul class="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
++		{#each series as line (line.label)}
++			<li class="flex items-center gap-2">
++				<span class="h-1 w-5 rounded-full" style:background={line.colour} aria-hidden="true"></span>
++				{line.label}
++			</li>
++		{/each}
++	</ul>
++	<div bind:clientWidth={measured}>
++		<svg viewBox="0 0 {width} {height}" {height} class="block w-full" role="img" aria-label={title}>
++			{#each [min, (min + max) / 2, max] as value, i (i)}
++				<line
++					x1={pad.left}
++					x2={width - pad.right}
++					y1={y(value)}
++					y2={y(value)}
++					stroke="rgb(var(--border))"
++				/>
++				<text
++					x={pad.left - 6}
++					y={y(value) + 4}
++					text-anchor="end"
++					font-size="12"
++					fill="rgb(var(--muted))"
++				>
++					{Math.round(value)}
++				</text>
++			{/each}
++			{#each ticks as tick (tick)}
++				<text
++					x={x(tick)}
++					y={height - 8}
++					text-anchor="middle"
++					font-size="12"
++					fill="rgb(var(--muted))"
++				>
++					{timeFormat.format(tick)}
++				</text>
++			{/each}
++			{#each series as line (line.label)}
++				<polyline
++					fill="none"
++					stroke={line.colour}
++					stroke-width="2"
++					stroke-linejoin="round"
++					points={line.points.map((point) => `${x(point.t)},${y(point.v)}`).join(' ')}
++				/>
++			{/each}
++		</svg>
++	</div>
++	<table class="sr-only">
++		<caption>{title}, hourly, in {unit}</caption>
++		<thead>
++			<tr>
++				<th scope="col">Time</th>
++				{#each series as line (line.label)}
++					<th scope="col">{line.label}</th>
++				{/each}
++			</tr>
++		</thead>
++		<tbody>
++			{#each rows as row (row.t)}
++				<tr>
++					<th scope="row">{rowFormat.format(row.t)}</th>
++					{#each row.values as value, index (index)}
++						<td>{value === null ? '-' : value.toFixed(1)}</td>
++					{/each}
++				</tr>
++			{/each}
++		</tbody>
++	</table>
++{/if}
+diff --git a/src/routes/weather/components/WeatherChart.svelte.test.ts b/src/routes/weather/components/WeatherChart.svelte.test.ts
+new file mode 100644
+index 0000000..1753bdb
+--- /dev/null
++++ b/src/routes/weather/components/WeatherChart.svelte.test.ts
+@@ -0,0 +1,62 @@
++import { page } from 'vitest/browser';
++import { describe, expect, it } from 'vitest';
++import { render } from 'vitest-browser-svelte';
++
++import WeatherChart from './WeatherChart.svelte';
++
++const from = new Date(2026, 8, 26, 0).getTime();
++const to = from + 24 * 3600_000;
++const series = [
++	{
++		label: 'Temperature',
++		colour: '#facc15',
++		points: [
++			{ t: from + 3600_000, v: 10 },
++			{ t: from + 7200_000, v: 12 }
++		]
++	}
++];
++
++describe('WeatherChart.svelte', () => {
++	it('has a legend and an hourly table for screen readers', async () => {
++		render(WeatherChart, { title: 'Outdoor, last 24 hours', series, unit: '°C', from, to });
++
++		await expect.element(page.getByRole('img', { name: 'Outdoor, last 24 hours' })).toBeVisible();
++		await expect.element(page.getByText('Temperature', { exact: true }).first()).toBeVisible();
++		expect(page.getByRole('row').elements()).toHaveLength(3);
++	});
++
++	it('says so when there are no readings', async () => {
++		render(WeatherChart, {
++			title: 'Outdoor',
++			series: [{ ...series[0], points: [] }],
++			unit: '°C',
++			from,
++			to
++		});
++
++		await expect.element(page.getByText('No readings in the last 24 hours.')).toBeVisible();
++		expect(page.getByRole('img').elements()).toHaveLength(0);
++	});
++
++	it('renders a flat series without duplicate gridline keys', async () => {
++		render(WeatherChart, {
++			title: 'Pressure, last 24 hours',
++			series: [
++				{
++					label: 'Pressure',
++					colour: '#c4b5fd',
++					points: [
++						{ t: from + 3600_000, v: 1012 },
++						{ t: from + 7200_000, v: 1012 }
++					]
++				}
++			],
++			unit: 'hPa',
++			from,
++			to
++		});
++
++		await expect.element(page.getByRole('img', { name: 'Pressure, last 24 hours' })).toBeVisible();
++	});
++});
+diff --git a/src/routes/weather/weather-page.svelte.test.ts b/src/routes/weather/weather-page.svelte.test.ts
+new file mode 100644
+index 0000000..00d0a7a
+--- /dev/null
++++ b/src/routes/weather/weather-page.svelte.test.ts
+@@ -0,0 +1,64 @@
++import { page } from 'vitest/browser';
++import { describe, expect, it, vi } from 'vitest';
++import { render } from 'vitest-browser-svelte';
++
++import {
++	ALWAYS_SAMPLE_FIELDS,
++	WEATHER_FIELDS,
++	getMockWeather,
++	type WeatherField
++} from '$lib/weather';
++import WeatherPage from './+page.svelte';
++
++vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
++
++const to = Math.floor(Date.now() / 1000);
++const range = { from: to - 86400, to };
++
++function renderWith(source: 'ecowitt' | 'mock', mockFields: WeatherField[]) {
++	const data = {
++		w: getMockWeather(),
++		connected: source === 'ecowitt',
++		source,
++		mockFields,
++		history: [],
++		range
++	};
++	render(WeatherPage, { data, params: {} } as never);
++}
++
++const panel = (title: string) =>
++	page.getByRole('link').filter({ has: page.getByRole('heading', { name: title }) });
++
++describe('weather page', () => {
++	it('chips only the panels that contain sample values', async () => {
++		renderWith('ecowitt', [...ALWAYS_SAMPLE_FIELDS, 'outdoor.humidity']);
++
++		await expect.element(panel('Outdoor').getByText('Sample data')).toBeVisible();
++		expect(panel('Pressure').getByText('Sample data').elements()).toHaveLength(0);
++		await expect.element(panel('Outdoor').getByTitle('Sample value').first()).toBeVisible();
++		expect(page.getByText('Weather station offline.').elements()).toHaveLength(0);
++	});
++
++	it('shows the offline banner and can’t judge spraying on sample data', async () => {
++		renderWith('mock', [...WEATHER_FIELDS]);
++
++		await expect.element(page.getByText('Weather station offline.')).toBeVisible();
++		await expect.element(page.getByText('Can’t tell', { exact: true })).toBeVisible();
++	});
++
++	it('leads with the spraying verdict', async () => {
++		renderWith('ecowitt', [...ALWAYS_SAMPLE_FIELDS]);
++
++		const headings = page.getByRole('heading', { level: 3 }).elements();
++		expect(headings[0].textContent).toBe('Spraying now');
++		// Mock wind is 8.6 m/s = 31 km/h.
++		await expect.element(page.getByText('Not suitable', { exact: true })).toBeVisible();
++	});
++
++	it('says there are no readings to chart instead of drawing sample lines', async () => {
++		renderWith('ecowitt', [...ALWAYS_SAMPLE_FIELDS]);
++
++		await expect.element(page.getByText('No readings in the last 24 hours.')).toBeVisible();
++	});
++});

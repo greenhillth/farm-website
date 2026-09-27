@@ -1,0 +1,180 @@
+# Review package: a7de6e9..72f28fe
+
+## Commits
+72f28fe Keep chart gridline keys unique and axis text at 12px
+
+## Files changed
+ src/routes/weather/components/WeatherChart.svelte  | 81 ++++++++++++----------
+ .../weather/components/WeatherChart.svelte.test.ts | 21 ++++++
+ 2 files changed, 66 insertions(+), 36 deletions(-)
+
+## Diff
+diff --git a/src/routes/weather/components/WeatherChart.svelte b/src/routes/weather/components/WeatherChart.svelte
+index 48edfa5..0a1ea61 100644
+--- a/src/routes/weather/components/WeatherChart.svelte
++++ b/src/routes/weather/components/WeatherChart.svelte
+@@ -1,27 +1,28 @@
+ <script lang="ts">
+ 	import { MediaQuery } from 'svelte/reactivity';
+ 
+ 	import { hourTicks, hourlyRows, type ChartSeries } from '../chart';
+ 
+ 	type Props = { title: string; series: ChartSeries[]; unit: string; from: number; to: number };
+ 
+ 	let { title, series, unit, from, to }: Props = $props();
+ 
+ 	const wide = new MediaQuery('min-width: 48rem');
+-	const width = $derived(wide.current ? 800 : 360);
++	let measured = $state(0);
++	const width = $derived(measured || 360);
+ 	const height = $derived(wide.current ? 260 : 300);
+ 	const pad = { left: 40, right: 12, top: 12, bottom: 28 };
+ 
+ 	const values = $derived(series.flatMap((line) => line.points.map((point) => point.v)));
+ 	const min = $derived(values.length ? Math.floor(Math.min(...values)) : 0);
+-	const max = $derived(values.length ? Math.ceil(Math.max(...values)) : 1);
++	const max = $derived(Math.max(min + 1, values.length ? Math.ceil(Math.max(...values)) : 1));
+ 	const span = $derived(max - min || 1);
+ 	const ticks = $derived(hourTicks(from, to));
+ 	const rows = $derived(hourlyRows(series));
+ 	const timeFormat = new Intl.DateTimeFormat('en-AU', { hour: 'numeric' });
+ 	const rowFormat = new Intl.DateTimeFormat('en-AU', { weekday: 'short', hour: 'numeric' });
+ 
+ 	const x = (t: number) => pad.left + ((t - from) / (to - from)) * (width - pad.left - pad.right);
+ 	const y = (v: number) =>
+ 		height - pad.bottom - ((v - min) / span) * (height - pad.top - pad.bottom);
+ </script>
+@@ -30,54 +31,62 @@
+ 	<p class="text-muted">No readings in the last 24 hours.</p>
+ {:else}
+ 	<ul class="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+ 		{#each series as line (line.label)}
+ 			<li class="flex items-center gap-2">
+ 				<span class="h-1 w-5 rounded-full" style:background={line.colour} aria-hidden="true"></span>
+ 				{line.label}
+ 			</li>
+ 		{/each}
+ 	</ul>
+-	<svg viewBox="0 0 {width} {height}" class="w-full" role="img" aria-label={title}>
+-		{#each [min, (min + max) / 2, max] as value (value)}
+-			<line
+-				x1={pad.left}
+-				x2={width - pad.right}
+-				y1={y(value)}
+-				y2={y(value)}
+-				stroke="rgb(var(--border))"
+-			/>
+-			<text
+-				x={pad.left - 6}
+-				y={y(value) + 4}
+-				text-anchor="end"
+-				font-size="12"
+-				fill="rgb(var(--muted))"
+-			>
+-				{Math.round(value)}
+-			</text>
+-		{/each}
+-		{#each ticks as tick (tick)}
+-			<text x={x(tick)} y={height - 8} text-anchor="middle" font-size="12" fill="rgb(var(--muted))">
+-				{timeFormat.format(tick)}
+-			</text>
+-		{/each}
+-		{#each series as line (line.label)}
+-			<polyline
+-				fill="none"
+-				stroke={line.colour}
+-				stroke-width="2"
+-				stroke-linejoin="round"
+-				points={line.points.map((point) => `${x(point.t)},${y(point.v)}`).join(' ')}
+-			/>
+-		{/each}
+-	</svg>
++	<div bind:clientWidth={measured}>
++		<svg viewBox="0 0 {width} {height}" {height} class="block w-full" role="img" aria-label={title}>
++			{#each [min, (min + max) / 2, max] as value, i (i)}
++				<line
++					x1={pad.left}
++					x2={width - pad.right}
++					y1={y(value)}
++					y2={y(value)}
++					stroke="rgb(var(--border))"
++				/>
++				<text
++					x={pad.left - 6}
++					y={y(value) + 4}
++					text-anchor="end"
++					font-size="12"
++					fill="rgb(var(--muted))"
++				>
++					{Math.round(value)}
++				</text>
++			{/each}
++			{#each ticks as tick (tick)}
++				<text
++					x={x(tick)}
++					y={height - 8}
++					text-anchor="middle"
++					font-size="12"
++					fill="rgb(var(--muted))"
++				>
++					{timeFormat.format(tick)}
++				</text>
++			{/each}
++			{#each series as line (line.label)}
++				<polyline
++					fill="none"
++					stroke={line.colour}
++					stroke-width="2"
++					stroke-linejoin="round"
++					points={line.points.map((point) => `${x(point.t)},${y(point.v)}`).join(' ')}
++				/>
++			{/each}
++		</svg>
++	</div>
+ 	<table class="sr-only">
+ 		<caption>{title}, hourly, in {unit}</caption>
+ 		<thead>
+ 			<tr>
+ 				<th scope="col">Time</th>
+ 				{#each series as line (line.label)}
+ 					<th scope="col">{line.label}</th>
+ 				{/each}
+ 			</tr>
+ 		</thead>
+diff --git a/src/routes/weather/components/WeatherChart.svelte.test.ts b/src/routes/weather/components/WeatherChart.svelte.test.ts
+index 804afd5..1753bdb 100644
+--- a/src/routes/weather/components/WeatherChart.svelte.test.ts
++++ b/src/routes/weather/components/WeatherChart.svelte.test.ts
+@@ -31,11 +31,32 @@ describe('WeatherChart.svelte', () => {
+ 			title: 'Outdoor',
+ 			series: [{ ...series[0], points: [] }],
+ 			unit: '°C',
+ 			from,
+ 			to
+ 		});
+ 
+ 		await expect.element(page.getByText('No readings in the last 24 hours.')).toBeVisible();
+ 		expect(page.getByRole('img').elements()).toHaveLength(0);
+ 	});
++
++	it('renders a flat series without duplicate gridline keys', async () => {
++		render(WeatherChart, {
++			title: 'Pressure, last 24 hours',
++			series: [
++				{
++					label: 'Pressure',
++					colour: '#c4b5fd',
++					points: [
++						{ t: from + 3600_000, v: 1012 },
++						{ t: from + 7200_000, v: 1012 }
++					]
++				}
++			],
++			unit: 'hPa',
++			from,
++			to
++		});
++
++		await expect.element(page.getByRole('img', { name: 'Pressure, last 24 hours' })).toBeVisible();
++	});
+ });

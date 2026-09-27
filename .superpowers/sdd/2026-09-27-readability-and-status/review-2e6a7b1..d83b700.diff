@@ -1,0 +1,225 @@
+# Review package: 2e6a7b1..d83b700
+
+## Commits
+d83b700 Add a Spraying tile to the home strip and mark sample readings per tile
+
+## Files changed
+ src/routes/+page.svelte             | 35 ++++++++++++++++++++-------
+ src/routes/home-page.svelte.test.ts | 48 ++++++++++++++++++++++++++++++++++---
+ 2 files changed, 71 insertions(+), 12 deletions(-)
+
+## Diff
+diff --git a/src/routes/+page.svelte b/src/routes/+page.svelte
+index 312385b..23134b2 100644
+--- a/src/routes/+page.svelte
++++ b/src/routes/+page.svelte
+@@ -1,87 +1,104 @@
+ <script lang="ts">
+ 	import { resolve } from '$app/paths';
+ 	import Card from '$lib/components/Card.svelte';
+ 	import NavIcon from '$lib/components/NavIcon.svelte';
++	import SampleDataChip from '$lib/components/SampleDataChip.svelte';
++	import CONFIG from '$lib/config';
+ 	import { compassPoint, mainTools, moreTools, soilHeadline } from '$lib/home-items';
+ 	import { externalLinks } from '$lib/nav';
++	import { SPRAY_LABELS, SPRAY_TONES, sprayConditions } from '$lib/spray';
+ 	import { formatDate } from '$lib/soil-tests/utils';
++	import type { WeatherField } from '$lib/weather';
+ 	import type { PageProps } from './$types';
+ 
+ 	let { data }: PageProps = $props();
+ 
+ 	const weather = $derived(data.weather);
+-	const isSample = $derived(weather?.source === 'mock');
++	const isSample = (field: WeatherField) => weather?.mockFields.includes(field) ?? false;
++	const spray = $derived(
++		weather ? sprayConditions(weather.weather, weather.mockFields, CONFIG.spray) : null
++	);
+ 	const soil = $derived(data.soil);
+ </script>
+ 
+ <svelte:head>
+ 	<title>Greenhill Bros Farm</title>
+ </svelte:head>
+ 
+ {#snippet sampleChip()}
+-	<span class="mt-2 self-start rounded-full bg-warn/15 px-2 py-0.5 text-xs text-warn">
+-		Sample data
+-	</span>
++	<span class="mt-2 self-start"><SampleDataChip /></span>
+ {/snippet}
+ 
+ <div class="mx-auto max-w-6xl space-y-8 px-4 py-6">
+ 	<h1 class="text-xl font-semibold md:sr-only">Greenhill Bros Farm</h1>
+ 
+ 	<section aria-labelledby="now-title" class="space-y-3">
+ 		<h2 id="now-title" class="text-lg font-semibold">Right now</h2>
+-		<div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
++		<div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
+ 			{#if weather}
+ 				<a
+ 					href={resolve('/weather')}
+ 					class="flex min-h-28 flex-col rounded-xl border border-border bg-panel p-4 text-text"
+ 				>
+ 					<span class="text-sm text-muted">Temperature</span>
+ 					<span class="mt-1 text-[2.4375rem] leading-none font-semibold tabular-nums">
+ 						{weather.weather.outdoor.temp.toFixed(1)}°
+ 					</span>
+ 					<span class="mt-2 text-sm text-muted">
+ 						Feels like {weather.weather.outdoor.feelsLike.toFixed(0)}°
+ 					</span>
+-					{#if isSample}{@render sampleChip()}{/if}
++					{#if isSample('outdoor.temp')}{@render sampleChip()}{/if}
+ 				</a>
+ 				<a
+ 					href={resolve('/weather/wind')}
+ 					class="flex min-h-28 flex-col rounded-xl border border-border bg-panel p-4 text-text"
+ 				>
+ 					<span class="text-sm text-muted">Wind</span>
+ 					<span class="mt-1 text-[2.4375rem] leading-none font-semibold tabular-nums">
+ 						{Math.round(weather.weather.wind.speed * 3.6)}
+ 						<span class="text-lg font-normal">km/h</span>
+ 					</span>
+ 					<span class="mt-2 text-sm text-muted">
+ 						From the {compassPoint(weather.weather.wind.dir)}, gusting
+ 						{Math.round(weather.weather.wind.gust * 3.6)} km/h
+ 					</span>
+-					{#if isSample}{@render sampleChip()}{/if}
++					{#if isSample('wind.speed')}{@render sampleChip()}{/if}
+ 				</a>
+ 				<a
+ 					href={resolve('/weather/rain')}
+ 					class="flex min-h-28 flex-col rounded-xl border border-border bg-panel p-4 text-text"
+ 				>
+ 					<span class="text-sm text-muted">Rain today</span>
+ 					<span class="mt-1 text-[2.4375rem] leading-none font-semibold tabular-nums">
+ 						{weather.weather.rain.daily.toFixed(1)}
+ 						<span class="text-lg font-normal">mm</span>
+ 					</span>
+ 					<span class="mt-2 text-sm text-muted">
+ 						{weather.weather.rain.hourly.toFixed(1)} mm in the last hour
+ 					</span>
+-					{#if isSample}{@render sampleChip()}{/if}
++					{#if isSample('rain.daily')}{@render sampleChip()}{/if}
+ 				</a>
++				{#if spray}
++					<a
++						href={resolve('/weather')}
++						class="flex min-h-28 flex-col rounded-xl border border-border bg-panel p-4 text-text"
++					>
++						<span class="text-sm text-muted">Spraying now</span>
++						<span class={['mt-1 text-2xl leading-tight font-semibold', SPRAY_TONES[spray.verdict]]}>
++							{SPRAY_LABELS[spray.verdict]}
++						</span>
++						<span class="mt-2 text-sm text-muted">{spray.summary}</span>
++					</a>
++				{/if}
+ 			{:else}
+-				<p class="col-span-2 rounded-xl border border-border bg-panel p-4 text-muted lg:col-span-3">
++				<p class="col-span-2 rounded-xl border border-border bg-panel p-4 text-muted lg:col-span-4">
+ 					Weather is unavailable. Open the weather page to try again.
+ 				</p>
+ 			{/if}
+ 			<a
+ 				href={resolve('/soiltests')}
+ 				class="col-span-2 flex min-h-28 flex-col rounded-xl border border-border bg-panel p-4 text-text lg:col-span-1"
+ 			>
+ 				<span class="text-sm text-muted">Soil</span>
+ 				{#if soil}
+ 					<span class="mt-1 text-xl leading-tight font-semibold">{soilHeadline(soil)}</span>
+diff --git a/src/routes/home-page.svelte.test.ts b/src/routes/home-page.svelte.test.ts
+index 0575e8c..a754e7e 100644
+--- a/src/routes/home-page.svelte.test.ts
++++ b/src/routes/home-page.svelte.test.ts
+@@ -1,20 +1,31 @@
+ import { page } from 'vitest/browser';
+ import { describe, expect, it, vi } from 'vitest';
+ import { render } from 'vitest-browser-svelte';
+ 
+-import { getMockWeather } from '$lib/weather';
++import { ALWAYS_SAMPLE_FIELDS, WEATHER_FIELDS, getMockWeather } from '$lib/weather';
+ import HomePage from './+page.svelte';
+ 
+ vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
+ 
+-const live = { weather: getMockWeather(), connected: true, source: 'ecowitt' as const };
++const live = {
++	weather: getMockWeather(),
++	connected: true,
++	source: 'ecowitt' as const,
++	mockFields: [...ALWAYS_SAMPLE_FIELDS]
++};
++const offline = {
++	...live,
++	connected: false,
++	source: 'mock' as const,
++	mockFields: [...WEATHER_FIELDS]
++};
+ const soil = {
+ 	paddocksTested: 12,
+ 	latestSampleDate: '2024-05-01',
+ 	worst: { metricLabel: 'Soil pH', direction: 'low' as const, count: 3 }
+ };
+ 
+ function renderHome(data: { weather: unknown; soil: unknown }) {
+ 	// `params` etc. aren't used by the page; the cast keeps the test focused on `data`.
+ 	render(HomePage, { data, params: {} } as never);
+ }
+@@ -23,25 +34,56 @@ describe('home page', () => {
+ 	it('shows live readings and the soil headline', async () => {
+ 		renderHome({ weather: live, soil });
+ 
+ 		await expect.element(page.getByText('12.2°')).toBeVisible();
+ 		await expect.element(page.getByText('From the SW, gusting 66 km/h')).toBeVisible();
+ 		await expect.element(page.getByText('Soil pH low in 3 paddocks')).toBeVisible();
+ 		expect(page.getByText('Sample data').elements()).toHaveLength(0);
+ 	});
+ 
+ 	it('labels every weather tile when the station is offline', async () => {
+-		renderHome({ weather: { ...live, connected: false, source: 'mock' }, soil });
++		renderHome({ weather: offline, soil });
+ 
+ 		expect(page.getByText('Sample data').elements()).toHaveLength(3);
+ 	});
+ 
++	it('says whether it’s a good time to spray, with the reason', async () => {
++		renderHome({ weather: live, soil });
++
++		const tile = page.getByRole('link').filter({ hasText: 'Spraying now' });
++		// Mock wind is 8.6 m/s = 31 km/h.
++		await expect.element(tile.getByText('Not suitable')).toBeVisible();
++		await expect.element(tile.getByText('Wind 31 km/h: too strong')).toBeVisible();
++	});
++
++	it('can’t judge spraying from sample data', async () => {
++		renderHome({ weather: offline, soil });
++
++		await expect
++			.element(
++				page
++					.getByRole('link')
++					.filter({ hasText: 'Spraying now' })
++					.getByText('Can’t tell', { exact: true })
++			)
++			.toBeVisible();
++	});
++
++	it('labels only the tile whose reading is sample data', async () => {
++		renderHome({ weather: { ...live, mockFields: [...ALWAYS_SAMPLE_FIELDS, 'rain.daily'] }, soil });
++
++		expect(page.getByText('Sample data').elements()).toHaveLength(1);
++		await expect
++			.element(page.getByRole('link').filter({ hasText: 'Rain today' }).getByText('Sample data'))
++			.toBeVisible();
++	});
++
+ 	it('explains when weather or soil data is unavailable', async () => {
+ 		renderHome({ weather: null, soil: null });
+ 
+ 		await expect.element(page.getByText(/Weather is unavailable/)).toBeVisible();
+ 		await expect.element(page.getByText('Unavailable', { exact: true })).toBeVisible();
+ 	});
+ 
+ 	it('links the main tools and opens external links in a new tab', async () => {
+ 		renderHome({ weather: live, soil });
+ 
