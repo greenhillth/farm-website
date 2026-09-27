@@ -3,40 +3,35 @@
 
 	const quickLinks = [
 		{
-			label: 'Farm dashboard',
-			description: 'Return to the home grid of tools.',
-			href: '/',
-			cta: 'Back to home →'
-		},
-		{
 			label: 'Interactive farm map',
 			description: 'See paddock boundaries and soil layers.',
 			href: '/map',
-			cta: 'Open map →'
+			cta: 'Open map'
 		},
 		{
 			label: 'Soil tests',
 			description: 'Review and add laboratory results.',
 			href: '/soiltests',
-			cta: 'Manage samples →'
+			cta: 'Manage samples'
 		},
 		{
 			label: 'Weather station',
 			description: 'Check live on-farm conditions.',
 			href: '/weather',
-			cta: 'View weather →'
+			cta: 'View weather'
 		}
 	] as const;
 
 	const navigationSteps = [
 		{
-			title: 'Start from the home tiles',
-			detail: 'The homepage lists each tool as a card. Click a card to open that section in-place.'
+			title: 'Use the bar at the bottom of your phone',
+			detail:
+				'Home, Map, Weather and Soil tests are always one tap away. More holds Paddocks, this help page and the SharePoint links.'
 		},
 		{
-			title: 'Use the top back links',
+			title: 'On a computer, use the bar along the top',
 			detail:
-				'Every feature page has a “← Back to home” (or map) link in the header so you are never stuck.'
+				'The same pages are listed across the top. Links opens the SharePoint sites in a new tab.'
 		},
 		{
 			title: 'Look for panels and actions',
@@ -45,8 +40,7 @@
 		},
 		{
 			title: 'Search when lists feel long',
-			detail:
-				'Tables for paddocks, soil tests and timesheets filter instantly as you type in the search box.'
+			detail: 'The paddock and soil test lists filter as you type in the search box.'
 		}
 	] as const;
 
@@ -88,15 +82,6 @@
 			tips: [
 				'Values update automatically; watch the “Reported … ago” label under each sensor block.',
 				'Scroll to see indoor, outdoor and solar panels arranged in the same panel layout.'
-			]
-		},
-		{
-			title: 'Timesheets',
-			summary: 'Lightweight log of work completed on the farm, ready for more automation later.',
-			href: '/timesheet',
-			tips: [
-				'Totals appear in the summary strip below the Recent Entries table.',
-				'The Quick Add panel shows the fields the future entry form will collect.'
 			]
 		}
 	] as const;
@@ -158,7 +143,7 @@
 		{
 			title: 'Need a hand?',
 			description:
-				'If something looks off, note it in the paddock tasks panel or message Tom at the Coding Sweatshop directly so he can follow up.'
+				'If something looks off, message Tom at the Coding Sweatshop directly so he can follow up.'
 		}
 	] as const;
 </script>
@@ -167,12 +152,8 @@
 	<title>Operations manual | Greenhill Bros Farm</title>
 </svelte:head>
 
-<header class="container mx-auto flex items-center justify-between gap-4 px-4 py-4">
-	<a href="/" class="text-sm text-muted hover:text-white">&larr; Back to home</a>
-	<div class="text-xs text-muted">Operations manual</div>
-</header>
-
-<main class="container mx-auto space-y-5 px-4 pb-12">
+<div class="container mx-auto space-y-5 px-4 pb-12">
+	<h1 class="pt-6 text-xl font-semibold">Help</h1>
 	<Panel title="Welcome to the farm manual">
 		<div class="space-y-4 text-sm leading-relaxed text-muted">
 			<p>
@@ -235,7 +216,7 @@
 					<article class="rounded-lg border border-border/40 bg-white/5 p-4">
 						<div class="flex items-center justify-between gap-3">
 							<h3 class="text-sm font-semibold text-white">{feature.title}</h3>
-							<a href={feature.href} class="text-xs text-muted hover:text-white">Open →</a>
+							<a href={feature.href} class="text-xs text-muted hover:text-white">Open</a>
 						</div>
 						<p class="mt-2 text-sm leading-relaxed text-muted">{feature.summary}</p>
 						<ul class="mt-3 list-disc space-y-2 pl-5 text-xs text-muted">
@@ -315,4 +296,4 @@
 			{/each}
 		</div>
 	</Panel>
-</main>
+</div>

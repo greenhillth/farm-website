@@ -102,7 +102,7 @@ if [ -n "$CID" ]; then
 	if [ "$user" = node ]; then pass "runs as node"; else fail "runs as '$user' (want node)"; fi
 fi
 
-for p in / /map /soiltests /weather /weather/outdoor; do expect_status "$p" 200; done
+for p in / /map /soiltests /weather /weather/outdoor /paddocks /manual; do expect_status "$p" 200; done
 
 curl -s "$APP/api/weather/current" >"$TMP/get.json"
 expect_body "GET keeps the /api prefix" "$TMP/get.json" '"method":"GET","path":"/api/weather/current"'

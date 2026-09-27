@@ -1022,12 +1022,8 @@
 	</div>
 {/if}
 
-<header class="container mx-auto flex items-center justify-between gap-4 px-4 py-4">
-	<a href="/" class="text-sm text-muted hover:text-white">&larr; Back to home</a>
-	<div class="text-xs text-muted">Soil Tests</div>
-</header>
-
-<main class="container mx-auto space-y-5 px-4 pb-8">
+<div class="container mx-auto space-y-5 px-4 pb-8">
+	<h1 class="pt-6 text-xl font-semibold">Soil tests</h1>
 	<Panel title="Soil tests">
 		<div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 			<input
@@ -1213,7 +1209,7 @@
 			</div>
 		{/if}
 	</Panel>
-</main>
+</div>
 
 {#if showUploader}
 	<div class="modal-backdrop" role="presentation" on:click|self={closeUploader}>

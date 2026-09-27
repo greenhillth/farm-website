@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import type { Weather, WeatherHistoryRow } from '$lib/weather';
 
 	export let data: {
@@ -81,24 +82,23 @@
 
 <div class="relative container mx-auto px-4 pb-8">
 	<a
-		href="/weather"
-		aria-label="Back to weather"
-		class="absolute top-3 left-3 z-[1000] flex items-center gap-2 rounded-full border border-border bg-panel/95 px-3 py-2 text-sm text-white shadow-md backdrop-blur transition hover:border-accent/60 hover:bg-panel focus:ring-2 focus:ring-accent/40 focus:outline-none"
+		href={resolve('/weather')}
+		class="inline-flex min-h-11 items-center gap-2 pt-4 text-sm text-muted hover:text-text"
 	>
-		<!-- arrow-left icon -->
-		<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="size-5" viewBox="0 0 24 24"
-			><path
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="size-5" aria-hidden="true">
+			<path
 				d="M10.5 6 4.5 12l6 6M4.5 12h15"
+				fill="none"
 				stroke="currentColor"
 				stroke-width="2"
 				stroke-linecap="round"
 				stroke-linejoin="round"
-			/></svg
-		>
-		<span class="hidden sm:inline">Back</span>
+			/>
+		</svg>
+		All weather
 	</a>
 
-	<h1 class="mt-12 mb-6 text-center text-2xl font-semibold">{title}</h1>
+	<h1 class="mt-2 mb-6 text-xl font-semibold">{title}</h1>
 
 	<section class="mb-6 text-center">
 		<div class="text-xl font-semibold">High {high.toFixed(1)}°C / Low {low.toFixed(1)}°C</div>

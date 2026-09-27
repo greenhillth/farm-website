@@ -51,21 +51,20 @@
 	const ys = (v: number) => 200 - (v / 14) * 180;
 </script>
 
-<header class="container mx-auto flex items-center justify-between gap-4 px-4 py-4">
-	<a href="/" class="text-sm text-muted hover:text-white">&larr; Back to home</a>
-	<div class="flex items-center gap-3 text-xs">
-		<div class="text-muted">Reported {secondsAgo}s ago</div>
-		<span
-			class={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${offline ? 'border-red-400/40 bg-red-400/10 text-red-300' : 'border-green-400/40 bg-green-400/10 text-green-300'}`}
-			title={offline ? 'Using mock data' : 'Connected to Ecowitt'}
-		>
-			<span class={`size-1.5 rounded-full ${offline ? 'bg-red-400' : 'bg-green-400'}`}></span>
-			{offline ? 'Mock' : 'Live (Ecowitt)'}
-		</span>
+<div class="container mx-auto space-y-5 px-4 pb-8">
+	<div class="flex flex-wrap items-center justify-between gap-3 pt-6">
+		<h1 class="text-xl font-semibold">Weather</h1>
+		<div class="flex items-center gap-3 text-xs">
+			<div class="text-muted">Reported {secondsAgo}s ago</div>
+			<span
+				class={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${offline ? 'border-red-400/40 bg-red-400/10 text-red-300' : 'border-green-400/40 bg-green-400/10 text-green-300'}`}
+				title={offline ? 'Using mock data' : 'Connected to Ecowitt'}
+			>
+				<span class={`size-1.5 rounded-full ${offline ? 'bg-red-400' : 'bg-green-400'}`}></span>
+				{offline ? 'Mock' : 'Live (Ecowitt)'}
+			</span>
+		</div>
 	</div>
-</header>
-
-<main class="container mx-auto space-y-5 px-4 pb-8">
 	<div class="grid gap-4 lg:grid-cols-3 xl:grid-cols-4">
 		<a href="/weather/outdoor" class="block transform transition hover:scale-105">
 			<Panel title="Outdoor" class="h-full">
@@ -283,4 +282,4 @@
 			</svg>
 		</div>
 	</Panel>
-</main>
+</div>
