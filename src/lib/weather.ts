@@ -28,6 +28,77 @@ export type Weather = {
 	series: { t: number; temp: number; feels: number; dew: number }[];
 };
 
+/** Every value on the weather pages, as a dotted path into `Weather`. */
+export const WEATHER_FIELDS = [
+	'outdoor.temp',
+	'outdoor.trend',
+	'outdoor.feelsLike',
+	'outdoor.dewPoint',
+	'outdoor.humidity',
+	'outdoor.vpd',
+	'indoor.temp',
+	'indoor.trend',
+	'indoor.humidity',
+	'solar.solar',
+	'solar.uvi',
+	'solar.sunrise',
+	'solar.sunset',
+	'solar.moon',
+	'rain.rate',
+	'rain.daily',
+	'rain.event',
+	'rain.hourly',
+	'rain.weekly',
+	'rain.monthly',
+	'rain.yearly',
+	'wind.dir',
+	'wind.speed',
+	'wind.gust',
+	'wind.timeSpeed',
+	'wind.timeGust',
+	'pressure.rel',
+	'pressure.abs',
+	'pressure.deltaRel',
+	'pressure.deltaAbs',
+	'battery.status',
+	'battery.note',
+	'series'
+] as const;
+
+export type WeatherField = (typeof WEATHER_FIELDS)[number];
+
+/** Fields the station doesn't report: the provider fills them from getMockWeather() or with 0. */
+export const ALWAYS_SAMPLE_FIELDS: readonly WeatherField[] = [
+	'outdoor.trend',
+	'indoor.temp',
+	'indoor.trend',
+	'indoor.humidity',
+	'solar.uvi',
+	'solar.sunrise',
+	'solar.sunset',
+	'solar.moon',
+	'rain.rate',
+	'rain.event',
+	'rain.weekly',
+	'rain.monthly',
+	'rain.yearly',
+	'wind.timeSpeed',
+	'wind.timeGust',
+	'pressure.deltaRel',
+	'pressure.deltaAbs',
+	'battery.status',
+	'battery.note',
+	'series'
+];
+
+/** Dew point in °C (Magnus formula). */
+export function dewPointC(tempC: number, rhPct: number): number {
+	const a = 17.27;
+	const b = 237.7;
+	const alpha = (a * tempC) / (b + tempC) + Math.log(rhPct / 100);
+	return (b * alpha) / (a - alpha);
+}
+
 /**
  * Fallback mock weather data.
  */
@@ -55,7 +126,13 @@ export function getMockWeather(): Weather {
 /**
  * Fetch full weather payload from the app's weather API endpoint.
  */
-export type WeatherResult = { weather: Weather; connected: boolean; source: 'ecowitt' | 'mock' };
+export type WeatherResult = {
+	weather: Weather;
+	connected: boolean;
+	source: 'ecowitt' | 'mock';
+	/** Values that are sample data rather than readings; every field when `source` is `'mock'`. */
+	mockFields: WeatherField[];
+};
 
 // Fetch via backend provider mapping FastAPI reading -> Weather shape
 import { fetchBackendWeatherMeta } from '$lib/providers/backend';
@@ -63,8 +140,8 @@ import CONFIG from './config';
 
 /** Pass SvelteKit's `fetch` from a load function; relative `/api` URLs fail on the server otherwise. */
 export async function fetchWeather(fetchFn: typeof fetch = fetch): Promise<WeatherResult> {
-	const { data, connected, source } = await fetchBackendWeatherMeta(fetchFn);
-	return { weather: data, connected, source };
+	const { data, connected, source, mockFields } = await fetchBackendWeatherMeta(fetchFn);
+	return { weather: data, connected, source, mockFields };
 }
 
 /**
@@ -89,7 +166,10 @@ export async function fetchWeatherHistory(
 	to: number,
 	fetchFn: typeof fetch = fetch
 ): Promise<WeatherHistoryRow[]> {
-	const res = await fetchFn(`${CONFIG.backend.weather}?from=${from}&to=${to}&_ts=${Date.now()}`);
+	// The backend's default limit (1,000) is less than a day of 60-second readings.
+	const res = await fetchFn(
+		`${CONFIG.backend.weatherHistory}?from=${from}&to=${to}&limit=2000&_ts=${Date.now()}`
+	);
 	if (!res.ok) {
 		throw new Error(`Unable to fetch history: ${res.status}`);
 	}

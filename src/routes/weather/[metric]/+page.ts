@@ -1,22 +1,19 @@
 import type { PageLoad } from './$types';
-import { fetchWeather, fetchWeatherHistory } from '$lib/weather';
-import type { WeatherHistoryRow } from '$lib/weather';
+import { fetchWeather, fetchWeatherHistory, type WeatherHistoryRow } from '$lib/weather';
 
 export const load: PageLoad = async ({ params, fetch }) => {
-	const res = await fetchWeather(fetch);
 	const now = Math.floor(Date.now() / 1000);
 	const from = now - 24 * 60 * 60;
-	let history: WeatherHistoryRow[] = [];
-	try {
-		history = await fetchWeatherHistory(from, now, fetch);
-	} catch (_) {
-		history = [];
-	}
+	const [res, history] = await Promise.all([
+		fetchWeather(fetch),
+		fetchWeatherHistory(from, now, fetch).catch((): WeatherHistoryRow[] => [])
+	]);
 	return {
 		metric: params.metric,
 		w: res.weather,
 		connected: res.connected,
 		source: res.source,
+		mockFields: res.mockFields,
 		history,
 		range: { from, to: now }
 	};

@@ -7,7 +7,7 @@ const CONFIG = {
 		farm: `${apiBase}/farm`,
 		titles: `${apiBase}/farm/titles`,
 		geojson: `${apiBase}/farm`,
-		weather: `${apiBase}/weather`,
+		weatherHistory: `${apiBase}/weather/history`,
 		currentWeather: `${apiBase}/weather/current`,
 		tests: `${apiBase}/soil-tests`,
 		latestTest: `${apiBase}/soil-tests?latest=true`,
@@ -25,6 +25,18 @@ const CONFIG = {
 		url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
 		attribution: 'Imagery © Esri, Maxar, Earthstar Geographics, and the GIS community',
 		maxZoom: 20
+	},
+	/** Spraying thresholds from common Australian label guidance. Speeds in km/h, Delta T in °C. */
+	spray: {
+		windMinKmh: 3,
+		windGoodMaxKmh: 15,
+		windMarginalMaxKmh: 20,
+		gustMarginalKmh: 20,
+		deltaTGoodMin: 2,
+		deltaTGoodMax: 8,
+		deltaTMarginalMax: 10,
+		/** Older readings get no verdict: the backend returns its newest row however old it is. */
+		maxReadingAgeMinutes: 20
 	},
 	soilMetrics: [
 		{

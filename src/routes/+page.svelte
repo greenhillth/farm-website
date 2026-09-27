@@ -2,15 +2,23 @@
 	import { resolve } from '$app/paths';
 	import Card from '$lib/components/Card.svelte';
 	import NavIcon from '$lib/components/NavIcon.svelte';
+	import SampleDataChip from '$lib/components/SampleDataChip.svelte';
+	import CONFIG from '$lib/config';
 	import { compassPoint, mainTools, moreTools, soilHeadline } from '$lib/home-items';
 	import { externalLinks } from '$lib/nav';
+	import { SPRAY_LABELS, SPRAY_TONES, sprayConditions } from '$lib/spray';
 	import { formatDate } from '$lib/soil-tests/utils';
+	import type { WeatherField } from '$lib/weather';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	const weather = $derived(data.weather);
-	const isSample = $derived(weather?.source === 'mock');
+	const isSample = (field: WeatherField) => weather?.mockFields.includes(field) ?? false;
+	const anySample = (fields: WeatherField[]) => fields.some(isSample);
+	const spray = $derived(
+		weather ? sprayConditions(weather.weather, weather.mockFields, CONFIG.spray) : null
+	);
 	const soil = $derived(data.soil);
 </script>
 
@@ -19,9 +27,7 @@
 </svelte:head>
 
 {#snippet sampleChip()}
-	<span class="mt-2 self-start rounded-full bg-warn/15 px-2 py-0.5 text-xs text-warn">
-		Sample data
-	</span>
+	<span class="mt-2 self-start"><SampleDataChip /></span>
 {/snippet}
 
 <div class="mx-auto max-w-6xl space-y-8 px-4 py-6">
@@ -29,7 +35,7 @@
 
 	<section aria-labelledby="now-title" class="space-y-3">
 		<h2 id="now-title" class="text-lg font-semibold">Right now</h2>
-		<div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+		<div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
 			{#if weather}
 				<a
 					href={resolve('/weather')}
@@ -42,7 +48,7 @@
 					<span class="mt-2 text-sm text-muted">
 						Feels like {weather.weather.outdoor.feelsLike.toFixed(0)}°
 					</span>
-					{#if isSample}{@render sampleChip()}{/if}
+					{#if anySample(['outdoor.temp', 'outdoor.feelsLike'])}{@render sampleChip()}{/if}
 				</a>
 				<a
 					href={resolve('/weather/wind')}
@@ -57,7 +63,7 @@
 						From the {compassPoint(weather.weather.wind.dir)}, gusting
 						{Math.round(weather.weather.wind.gust * 3.6)} km/h
 					</span>
-					{#if isSample}{@render sampleChip()}{/if}
+					{#if anySample(['wind.speed', 'wind.gust', 'wind.dir'])}{@render sampleChip()}{/if}
 				</a>
 				<a
 					href={resolve('/weather/rain')}
@@ -71,10 +77,22 @@
 					<span class="mt-2 text-sm text-muted">
 						{weather.weather.rain.hourly.toFixed(1)} mm in the last hour
 					</span>
-					{#if isSample}{@render sampleChip()}{/if}
+					{#if anySample(['rain.daily', 'rain.hourly'])}{@render sampleChip()}{/if}
 				</a>
+				{#if spray}
+					<a
+						href={resolve('/weather')}
+						class="flex min-h-28 flex-col rounded-xl border border-border bg-panel p-4 text-text"
+					>
+						<span class="text-sm text-muted">Spraying now</span>
+						<span class={['mt-1 text-2xl leading-tight font-semibold', SPRAY_TONES[spray.verdict]]}>
+							{SPRAY_LABELS[spray.verdict]}
+						</span>
+						<span class="mt-2 text-sm text-muted">{spray.summary}</span>
+					</a>
+				{/if}
 			{:else}
-				<p class="col-span-2 rounded-xl border border-border bg-panel p-4 text-muted lg:col-span-3">
+				<p class="col-span-2 rounded-xl border border-border bg-panel p-4 text-muted lg:col-span-4">
 					Weather is unavailable. Open the weather page to try again.
 				</p>
 			{/if}
