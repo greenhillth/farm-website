@@ -31,8 +31,8 @@
 		solar_wm2: 'Solar (W/m²)',
 		rain_1h_mm: 'Rain, past hour (mm)',
 		rain_24h_mm: 'Rain, past day (mm)',
-		wind_avg_ms: 'Wind (m/s)',
-		wind_gust_ms: 'Gust (m/s)',
+		wind_avg_ms: 'Wind (km/h)',
+		wind_gust_ms: 'Gust (km/h)',
 		wind_dir_deg: 'Direction (°)',
 		pressure_hpa: 'Pressure (hPa)'
 	};
@@ -73,6 +73,10 @@
 		if (key === 'timestamp_utc') {
 			const ms = parseUtcMs(String(raw));
 			return ms === null ? String(raw) : timeFormat.format(ms);
+		}
+		// The backend stores wind in m/s; the summaries and chart show km/h.
+		if ((key === 'wind_avg_ms' || key === 'wind_gust_ms') && typeof raw === 'number') {
+			return (raw * 3.6).toFixed(1);
 		}
 		return typeof raw === 'number'
 			? Number.isInteger(raw)

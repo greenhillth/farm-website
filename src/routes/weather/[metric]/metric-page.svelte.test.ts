@@ -69,6 +69,24 @@ describe('weather detail page', () => {
 		).toHaveLength(3);
 	});
 
+	it('lists wind and gust readings in km/h', async () => {
+		open('wind');
+
+		const table = page.getByRole('table', { name: 'Recent readings' });
+		await expect.element(table.getByText('Wind (km/h)')).toBeVisible();
+		await expect.element(table.getByText('Gust (km/h)')).toBeVisible();
+		// Newest first: 2 m/s and 4 m/s at 03:00, then 5 m/s and 8 m/s at 02:00.
+		const cells = table
+			.getByRole('row')
+			.elements()
+			.slice(1)
+			.map((row) => [...row.querySelectorAll('td')].map((td) => td.textContent?.trim()));
+		expect(cells.map((row) => row.slice(1, 3))).toEqual([
+			['7.2', '14.4'],
+			['18.0', '28.8']
+		]);
+	});
+
 	it('ignores inherited object properties for an unknown metric param', async () => {
 		expect(() => open('constructor')).not.toThrow();
 
