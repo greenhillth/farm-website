@@ -1,6 +1,6 @@
 # Map on phones — farm-website
 
-Date: 2026-09-27 · Status: draft design, awaiting Tom's review · UX project 2 of 4 (A) · Depends on project 1 (app shell)
+Date: 2026-09-27 · Status: approved 2026-09-27 · UX project 2 of 4 (A) · Depends on project 1 (app shell)
 
 ## Goal
 

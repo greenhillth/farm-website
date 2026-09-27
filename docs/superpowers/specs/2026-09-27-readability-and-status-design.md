@@ -1,6 +1,6 @@
 # Readability and plain-language status — farm-website
 
-Date: 2026-09-27 · Status: draft design, awaiting Tom's review · UX project 4 of 4 (D) · Depends on project 1 (app shell)
+Date: 2026-09-27 · Status: approved 2026-09-27 · UX project 4 of 4 (D) · Depends on project 1 (app shell)
 
 ## Goal
 

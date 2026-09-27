@@ -1,6 +1,6 @@
 # App shell and home page — farm-website
 
-Date: 2026-09-27 · Status: draft design, awaiting Tom's review · UX project 1 of 4 (B)
+Date: 2026-09-27 · Status: approved 2026-09-27 · UX project 1 of 4 (B)
 
 ## Goal
 
