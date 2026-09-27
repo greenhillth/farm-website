@@ -1,4 +1,4 @@
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 
@@ -105,6 +105,38 @@ describe('soil tests page on a desktop', () => {
 			.element(page.getByText('Couldn’t load soil tests. Check the connection and try again.'))
 			.toBeVisible();
 		await expect.element(page.getByRole('button', { name: 'Retry' })).toBeVisible();
+	});
+
+	it('treats closing a finished import like pressing Close', async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+			if (url.startsWith('/api/soil-tests/import'))
+				return Response.json({ jobId: 'j1', stage: 'complete', inserted: 3, skipped: 0 });
+			if (url.startsWith('/api/soil-tests')) return Response.json(tests);
+			if (url.startsWith('/api/farm')) return Response.json(farm);
+			return new Response('not found', { status: 404 });
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		openAt('/soiltests?year=2024');
+
+		await page.getByRole('button', { name: 'Import tests' }).click();
+		await page
+			.getByLabelText('Choose CSV file')
+			.upload(
+				new File(
+					['id_sample,fieldID,sample_date,name_sample,P\n5000,42,2024-05-01,New,50'],
+					'tests.csv',
+					{ type: 'text/csv' }
+				)
+			);
+		await page.getByRole('button', { name: 'Continue' }).click();
+		await expect.element(page.getByText('Imported 3 tests')).toBeVisible();
+
+		await userEvent.keyboard('{Escape}');
+
+		await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
+		await expect.element(page.getByText('Imported 3 tests.')).toBeVisible();
+		await expect.element(page.getByLabelText('Year')).toHaveValue('');
 	});
 
 	it('drops a selected test from the delete count when a filter hides it', async () => {
