@@ -103,17 +103,22 @@ export const TIMESPANS: readonly Timespan[] = [
 ];
 
 /**
- * Drop buckets holding under three quarters of the usual number of readings. A day cut short
- * by an outage averages only the hours it has, e.g. just an afternoon, and would spike.
+ * Drop buckets holding under three quarters of the readings their neighbours hold (the
+ * median of up to `reach` buckets either side). A day cut short by an outage averages only
+ * the hours it has, e.g. just an afternoon, and would spike. Comparing with neighbours
+ * rather than the whole span keeps periods recorded more sparsely: history backfilled from
+ * EcoWitt has 48 or 288 readings a day, not 1,440.
  */
-export function wellFilled<T extends { count?: number }>(rows: readonly T[]): T[] {
-	const counts = rows
-		.map((row) => row.count)
-		.filter((count): count is number => typeof count === 'number')
-		.sort((a, b) => a - b);
-	if (counts.length === 0) return [...rows];
-	const median = counts[Math.floor(counts.length / 2)];
-	return rows.filter((row) => typeof row.count !== 'number' || row.count >= median * 0.75);
+export function wellFilled<T extends { count?: number }>(rows: readonly T[], reach = 3): T[] {
+	return rows.filter((row, i) => {
+		if (typeof row.count !== 'number') return true;
+		const around = rows
+			.slice(Math.max(0, i - reach), i + reach + 1)
+			.map((other) => other.count)
+			.filter((count): count is number => typeof count === 'number')
+			.sort((a, b) => a - b);
+		return row.count >= around[Math.floor(around.length / 2)] * 0.75;
+	});
 }
 
 /**
