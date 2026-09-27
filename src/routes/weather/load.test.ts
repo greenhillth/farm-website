@@ -11,7 +11,7 @@ function backendFetch() {
 	return vi.fn(async (input: RequestInfo | URL) => {
 		const url = String(input);
 		if (url.startsWith('/api/weather/current')) return Response.json(reading);
-		if (url.startsWith('/api/weather?')) return Response.json({ data: [] });
+		if (url.startsWith('/api/weather/history?')) return Response.json({ data: [reading] });
 		return new Response('not found', { status: 404 });
 	});
 }
@@ -19,7 +19,13 @@ function backendFetch() {
 type DashboardEvent = Parameters<typeof dashboardLoad>[0];
 type MetricEvent = Parameters<typeof metricLoad>[0];
 // PageLoad results are typed `void | Record<string, any>`; these loads always return data.
-type LoadResult = { w: Weather; connected: boolean; source: string; metric?: string };
+type LoadResult = {
+	w: Weather;
+	connected: boolean;
+	source: string;
+	metric?: string;
+	history: unknown[];
+};
 
 describe('weather load functions', () => {
 	it('dashboard load reads current weather through the fetch it is given', async () => {
@@ -29,6 +35,18 @@ describe('weather load functions', () => {
 		expect(fetch).toHaveBeenCalledWith('/api/weather/current');
 		expect(result).toMatchObject({ connected: true, source: 'ecowitt' });
 		expect(result.w.outdoor.temp).toBe(14.2);
+	});
+
+	it('reads up to a day of minute readings from the history endpoint', async () => {
+		const fetch = backendFetch();
+		const result = (await dashboardLoad({ fetch } as unknown as DashboardEvent)) as LoadResult;
+
+		const historyUrl = fetch.mock.calls
+			.map(([input]) => String(input))
+			.find((url) => url.includes('from='));
+		expect(historyUrl).toMatch(/^\/api\/weather\/history\?/);
+		expect(historyUrl).toContain('limit=2000');
+		expect(result.history).toEqual([reading]);
 	});
 
 	it('metric load reads current weather through the fetch it is given', async () => {

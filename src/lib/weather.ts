@@ -166,7 +166,10 @@ export async function fetchWeatherHistory(
 	to: number,
 	fetchFn: typeof fetch = fetch
 ): Promise<WeatherHistoryRow[]> {
-	const res = await fetchFn(`${CONFIG.backend.weather}?from=${from}&to=${to}&_ts=${Date.now()}`);
+	// The backend's default limit (1,000) is less than a day of 60-second readings.
+	const res = await fetchFn(
+		`${CONFIG.backend.weatherHistory}?from=${from}&to=${to}&limit=2000&_ts=${Date.now()}`
+	);
 	if (!res.ok) {
 		throw new Error(`Unable to fetch history: ${res.status}`);
 	}

@@ -7,7 +7,7 @@ const CONFIG = {
 		farm: `${apiBase}/farm`,
 		titles: `${apiBase}/farm/titles`,
 		geojson: `${apiBase}/farm`,
-		weather: `${apiBase}/weather`,
+		weatherHistory: `${apiBase}/weather/history`,
 		currentWeather: `${apiBase}/weather/current`,
 		tests: `${apiBase}/soil-tests`,
 		latestTest: `${apiBase}/soil-tests?latest=true`,
