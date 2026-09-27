@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { resolve } from '$app/paths';
 	import Panel from '$lib/components/Panel.svelte';
 	import CONFIG from '$lib/config';
 
 	type Paddock = {
 		id: string;
 		name: string;
-		crop?: string | null;
 		areaHectares: number | null;
 		centroid: { lat: number; lon: number } | null;
 	};
@@ -151,7 +151,6 @@
 					return {
 						id: String(props.fieldID || props.ADSFLDID || props.FIELDID || crypto.randomUUID()),
 						name: String(props.fieldName || props.FIELDNAME || 'Unnamed'),
-						crop: null,
 						areaHectares:
 							typeof areaSqM === 'number' && Number.isFinite(areaSqM) ? areaSqM / 10000 : null,
 						centroid: centroid ? { lat: centroid.lat, lon: centroid.lon } : null
@@ -167,7 +166,7 @@
 
 	$: searchTerm = q.trim().toLowerCase();
 	$: filtered = searchTerm
-		? paddocks.filter((p) => `${p.name} ${p.id} ${p.crop ?? ''}`.toLowerCase().includes(searchTerm))
+		? paddocks.filter((p) => `${p.name} ${p.id}`.toLowerCase().includes(searchTerm))
 		: paddocks;
 </script>
 
@@ -180,7 +179,6 @@
 				bind:value={q}
 				class="w-full max-w-md rounded-md border border-border bg-white/5 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/40"
 			/>
-			<a href="/map" class="text-sm text-muted hover:text-white">Open map →</a>
 		</div>
 
 		{#if loading}
@@ -194,7 +192,6 @@
 						<tr>
 							<th class="py-2 pr-4">Name</th>
 							<th class="py-2 pr-4">ID</th>
-							<th class="py-2 pr-4">Crop</th>
 							<th class="py-2 pr-4 text-right">Size (ha)</th>
 							<th class="py-2 pr-4 text-right">Latitude</th>
 							<th class="py-2 text-right">Longitude</th>
@@ -209,7 +206,7 @@
 										{#if p.centroid}
 											<a
 												class="text-xs text-muted underline hover:text-white"
-												href={`/map?metric=OM#${encodeURIComponent(p.name)}`}
+												href={`${resolve('/map')}?paddock=${encodeURIComponent(p.id)}`}
 											>
 												View on map
 											</a>
@@ -217,7 +214,6 @@
 									</div>
 								</td>
 								<td class="py-2 pr-4">{p.id}</td>
-								<td class="py-2 pr-4">{p.crop ?? '-'}</td>
 								<td class="py-2 pr-4 text-right">
 									{#if typeof p.areaHectares === 'number'}
 										{areaFormatter.format(p.areaHectares)}
@@ -246,21 +242,4 @@
 			</div>
 		{/if}
 	</Panel>
-
-	<div class="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-		<Panel title="Recent Notes">
-			<ul class="list-disc space-y-1 pl-5 text-sm text-muted">
-				<li>South paddock: inspect fence line</li>
-				<li>North ridge: soil sampling next week</li>
-				<li>Creek paddock: spot spray blackberry regrowth</li>
-			</ul>
-		</Panel>
-
-		<Panel title="Upcoming Tasks">
-			<ul class="list-disc space-y-1 pl-5 text-sm text-muted">
-				<li>Fertilize OM trial plots (Friday)</li>
-				<li>Check troughs in Top Flat</li>
-			</ul>
-		</Panel>
-	</div>
 </div>
