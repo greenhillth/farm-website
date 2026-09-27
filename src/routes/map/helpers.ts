@@ -14,15 +14,6 @@ export {
 	type SoilTestRecord
 } from '$lib/soil-status';
 
-export type QuickLink = { href: string; label: string };
-
-export const quickLinks: QuickLink[] = [
-	{ href: '/', label: 'Back to home' },
-	{ href: '/paddocks', label: 'Paddock manager' },
-	{ href: '/soiltests', label: 'Soil tests' },
-	{ href: '/weather', label: 'Weather station' }
-];
-
 export type BaseLayerConfig = {
 	id: string;
 	label: string;

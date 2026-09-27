@@ -44,7 +44,7 @@
 	<span></span>
 </header>
 
-<main class="container">
+<div class="container">
 	<section class="rounded-xl border border-border bg-panel p-4 shadow-sm md:p-6">
 		<div class="relative mx-auto w-full max-w-[960px]">
 			<img
@@ -73,4 +73,4 @@
 		</div>
 		<p class="mt-3 text-sm text-muted">nothing to see here!</p>
 	</section>
-</main>
+</div>

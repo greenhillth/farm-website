@@ -171,12 +171,8 @@
 		: paddocks;
 </script>
 
-<header class="container mx-auto flex items-center justify-between gap-4 px-4 py-4">
-	<a href="/" class="text-sm text-muted hover:text-white">&larr; Back to home</a>
-	<div class="text-xs text-muted">Paddock Manager</div>
-</header>
-
-<main class="container mx-auto space-y-5 px-4 pb-8">
+<div class="container mx-auto space-y-5 px-4 pb-8">
+	<h1 class="pt-6 text-xl font-semibold">Paddocks</h1>
 	<Panel title="Paddocks">
 		<div class="mb-3 flex items-center gap-3">
 			<input
@@ -267,4 +263,4 @@
 			</ul>
 		</Panel>
 	</div>
-</main>
+</div>

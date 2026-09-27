@@ -13,7 +13,6 @@
 	import 'leaflet/dist/leaflet.css';
 
 	import {
-		quickLinks as helperQuickLinks,
 		type BaseLayerConfig,
 		type LegendDetails,
 		type LegendPercents,
@@ -41,8 +40,6 @@
 		extractFieldId,
 		type SoilTestRecord
 	} from './helpers';
-
-	const quickLinks = helperQuickLinks;
 
 	const metricOptions = CONFIG.soilMetrics;
 	if (metricOptions.length === 0) {
@@ -539,9 +536,7 @@
 	}
 </script>
 
-<div
-	class="map-shell relative flex h-dvh min-h-[540px] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"
->
+<div class="map-shell relative flex bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
 	<aside
 		bind:this={navPanel}
 		class={`map-sidebar relative flex h-full shrink-0 overflow-visible transition-[width] duration-300 ease-in-out ${navOpen ? 'w-80 max-w-full' : 'w-0'}`}
@@ -864,21 +859,10 @@
 					{/if}
 				</section>
 			</nav>
-			<nav aria-label="Quick links" class="space-y-1 text-sm">
-				{#each quickLinks as link}
-					<a
-						href={link.href}
-						class="flex items-center justify-between rounded-md px-3 py-2 text-muted transition hover:bg-white/5 hover:text-white"
-					>
-						<span>{link.label}</span>
-						<span aria-hidden="true" class="text-xs text-muted/70">→</span>
-					</a>
-				{/each}
-			</nav>
 		</div>
 	</aside>
 
-	<main class="map-main relative min-w-0 flex-1 bg-bg">
+	<div class="map-main relative min-w-0 flex-1 bg-bg">
 		<div
 			bind:this={mapContainer}
 			class="map-canvas absolute inset-0"
@@ -941,26 +925,6 @@
 				<p class="text-sm text-muted">Preparing paddock boundaries…</p>
 			</div>
 		{/if}
-
-		<a
-			href="/"
-			class={`map-home absolute top-4 right-4 z-[1000] inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
-				isStreetsBase
-					? 'border-white/60 bg-slate-950/95 text-white shadow-xl hover:border-white/80'
-					: 'border-white/10 bg-panel/95 text-white shadow-lg hover:border-white/30'
-			}`}
-			aria-label="Back to home"
-		>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				viewBox="0 0 24 24"
-				fill="currentColor"
-				class="h-5 w-5"
-			>
-				<path d="M12 3.172 3 10.5V21h6v-6h6v6h6V10.5L12 3.172z" />
-			</svg>
-			<span class="hidden sm:inline">Home</span>
-		</a>
 
 		<!-- Selected title info panel -->
 		{#if selectedTitle}
@@ -1036,10 +1000,15 @@
 				</div>
 			</div>
 		{/if}
-	</main>
+	</div>
 </div>
 
 <style>
+	.map-shell {
+		height: calc(100dvh - var(--shell-top) - var(--shell-bottom));
+		min-height: 420px;
+	}
+
 	.map-status {
 		position: absolute;
 		inset: auto 1.5rem 1.5rem 1.5rem;
