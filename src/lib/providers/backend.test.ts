@@ -74,6 +74,17 @@ describe('fetchBackendWeatherMeta mockFields', () => {
 		expect(data.battery).toEqual({ status: 'NORMAL', note: 'Outdoor sensor array' });
 	});
 
+	it('calculates sunrise, sunset and the moon phase instead of using samples', async () => {
+		const result = await fetchBackendWeatherMeta(returning(full));
+
+		expect(result.data.solar.sunrise).toMatch(/^\d{2}:\d{2}$/);
+		expect(result.data.solar.sunset).toMatch(/^\d{2}:\d{2}$/);
+		expect(result.data.solar.sunrise < result.data.solar.sunset).toBe(true);
+		expect(result.data.solar.moon).toMatch(/Moon|Crescent|Quarter|Gibbous/);
+		expect(result.mockFields).not.toContain('solar.sunrise');
+		expect(result.mockFields).not.toContain('solar.moon');
+	});
+
 	it('reports a low battery', async () => {
 		const { data } = await fetchBackendWeatherMeta(returning({ ...full, battery_sensor_array: 1 }));
 
