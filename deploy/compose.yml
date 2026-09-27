@@ -6,6 +6,13 @@ services:
     env_file: .env
     ports:
       - '127.0.0.1:${HOST_PORT:?HOST_PORT must be set in .env}:3000'
-    extra_hosts:
-      - 'host.docker.internal:host-gateway'
+    networks:
+      - default
+      - backend
     restart: unless-stopped
+
+networks:
+  # gbros-api's network, created by its scripts/deploy.sh. The API is http://gbros-api:8000 on it.
+  backend:
+    name: ${BACKEND_NETWORK:-farmstack}
+    external: true

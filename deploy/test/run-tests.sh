@@ -9,6 +9,7 @@ TEST_PORT=${TEST_PORT:-4987}
 REPO=localhost:$REG_PORT/farm-website-test-fixture
 REG_NAME=farm-website-test-registry
 TEST_LABEL="farm-website.test=deploy"
+TEST_NET=farm-website-test-backend-net
 export HEALTH_TIMEOUT=${HEALTH_TIMEOUT:-20}
 WORK=$(mktemp -d)
 FAILED=0
@@ -32,6 +33,7 @@ cleanup() {
 	for cid in $(docker ps -aq --filter "label=$TEST_LABEL" 2>/dev/null); do
 		docker rm -f "$cid" >/dev/null 2>&1 || true
 	done
+	docker network rm "$TEST_NET" >/dev/null 2>&1 || true
 	rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -45,6 +47,7 @@ COMPOSE_PROJECT_NAME=farm-website-test-$1
 IMAGE_REPO=$REPO
 IMAGE_TAG=
 HOST_PORT=$TEST_PORT
+BACKEND_NETWORK=$TEST_NET
 EOF
 	echo "$dir"
 }
@@ -53,6 +56,8 @@ env_val() { grep "^$2=" "$1/.env" | cut -d= -f2-; }
 served() { curl -fsS "http://127.0.0.1:$TEST_PORT/" 2>/dev/null || echo "(nothing)"; }
 
 echo "--- building fixtures"
+# Stands in for gbros-api's farmstack network, which compose.yml joins as an external network.
+docker network create --label "$TEST_LABEL" "$TEST_NET" >/dev/null
 docker run -d --name "$REG_NAME" --label "$TEST_LABEL" -p "127.0.0.1:$REG_PORT:5000" registry:2 >/dev/null
 ready=0
 for _ in $(seq 1 20); do
@@ -136,9 +141,20 @@ if [ "$tags" = "v1.0.3 v1.0.4 v1.0.5 " ]; then pass "kept $tags"; else fail "ima
 echo "--- 8: status"
 status=$("$A/deploy.sh" --status)
 if echo "$status" | grep -q "running: v1.0.5 (healthy)"; then pass "status shows v1.0.5 healthy"; else fail "status: $status"; fi
-(cd "$A" && docker compose down >/dev/null 2>&1)
 
-echo "--- 9: failed first deploy leaves nothing running"
+echo "--- 9: web reaches a container on the backend network by name"
+docker run -d --name farm-website-test-backend --label "$TEST_LABEL" --network "$TEST_NET" "$REPO:v1.0.4" >/dev/null
+reply=
+for _ in $(seq 1 10); do
+	reply=$(cd "$A" && docker compose exec -T web wget -qO- http://farm-website-test-backend:3000/ 2>/dev/null) && break
+	sleep 1
+done
+if [ "$reply" = v1.0.4 ]; then pass "web -> http://farm-website-test-backend:3000 answered v1.0.4"; else fail "backend by name answered '$reply'"; fi
+docker rm -f farm-website-test-backend >/dev/null
+(cd "$A" && docker compose down >/dev/null 2>&1)
+if docker network inspect "$TEST_NET" >/dev/null 2>&1; then pass "down left the external network alone"; else fail "down removed $TEST_NET"; fi
+
+echo "--- 10: failed first deploy leaves nothing running"
 B=$(new_site b)
 if "$B/deploy.sh" v1.0.2 >/dev/null 2>&1; then fail "broken first deploy reported success"; else pass "broken first deploy failed"; fi
 state=$(cd "$B" && docker inspect -f '{{.State.Status}}' "$(docker compose ps -a -q web)" 2>/dev/null || echo missing)
@@ -147,12 +163,18 @@ if [ -z "$(env_val "$B" IMAGE_TAG)" ]; then pass ".env IMAGE_TAG cleared"; else 
 if grep -q "none -> v1.0.2 FAILED, no previous release; stopped" "$B/deploy.log"; then pass "logged failed first deploy"; else fail "deploy.log: $(cat "$B/deploy.log" 2>/dev/null)"; fi
 (cd "$B" && docker compose down >/dev/null 2>&1)
 
-echo "--- 10: failed compose up rolls back"
+echo "--- 11: failed compose up rolls back"
 C=$(new_site c)
 "$C/deploy.sh" v1.0.5 >/dev/null || fail "deploy v1.0.5"
 if "$C/deploy.sh" v1.0.6 >/dev/null 2>&1; then fail "unstartable v1.0.6 reported success"; else pass "unstartable v1.0.6 failed"; fi
 if [ "$(served)" = v1.0.5 ] && [ "$(env_val "$C" IMAGE_TAG)" = v1.0.5 ]; then pass "rolled back to v1.0.5"; else fail "after failed up: serving $(served), .env $(env_val "$C" IMAGE_TAG)"; fi
 if grep -q "v1.0.5 -> v1.0.6 FAILED, rolled back to v1.0.5" "$C/deploy.log"; then pass "logged rollback"; else fail "deploy.log: $(cat "$C/deploy.log" 2>/dev/null)"; fi
+
+echo "--- 12: missing backend network fails the deploy and names the network"
+D=$(new_site d)
+sed -i "s/^BACKEND_NETWORK=.*/BACKEND_NETWORK=farm-website-test-missing-net/" "$D/.env"
+if out=$("$D/deploy.sh" v1.0.5 2>&1); then fail "deploy without the network reported success"; else pass "deploy without the network failed"; fi
+if echo "$out" | grep -q "farm-website-test-missing-net"; then pass "error names the missing network"; else fail "output: $out"; fi
 
 if [ "$FAILED" -ne 0 ]; then
 	echo "deploy tests FAILED"
