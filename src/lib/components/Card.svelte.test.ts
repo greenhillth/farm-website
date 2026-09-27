@@ -35,4 +35,24 @@ describe('Card.svelte', () => {
 		await expect.element(page.getByRole('img', { name: 'Weather station' })).toBeVisible();
 		await expect.element(page.getByText('Live')).toBeVisible();
 	});
+
+	it('shows a repeated tag once', async () => {
+		render(Card, { href: '/soiltests', title: 'Soil', tags: ['soil', 'soil', 'tests'] });
+
+		await expect.element(page.getByText('#tests')).toBeVisible();
+		expect(page.getByText('#soil').elements()).toHaveLength(1);
+	});
+
+	it('lazy-loads its image', async () => {
+		render(Card, {
+			href: '/weather',
+			title: 'Weather',
+			image: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=',
+			imageAlt: 'Weather station'
+		});
+
+		const img = page.getByRole('img', { name: 'Weather station' });
+		await expect.element(img).toHaveAttribute('loading', 'lazy');
+		await expect.element(img).toHaveAttribute('decoding', 'async');
+	});
 });

@@ -68,7 +68,7 @@
 <main class="container mx-auto space-y-5 px-4 pb-8">
 	<div class="grid gap-4 lg:grid-cols-3 xl:grid-cols-4">
 		<a href="/weather/outdoor" class="block transform transition hover:scale-105">
-			<Panel title="Outdoor" className="h-full">
+			<Panel title="Outdoor" class="h-full">
 				<div class="grid grid-cols-2 gap-4">
 					<div>
 						<div class="mb-1 text-xs text-muted">Temperature</div>
@@ -95,7 +95,7 @@
 		</a>
 
 		<a href="/weather/indoor" class="block transform transition hover:scale-105">
-			<Panel title="Indoor" className="h-full">
+			<Panel title="Indoor" class="h-full">
 				<div class="grid grid-cols-2 gap-4">
 					<div>
 						<div class="mb-1 text-xs text-muted">Temperature</div>
@@ -120,7 +120,7 @@
 		</a>
 
 		<a href="/weather/solar" class="block transform transition hover:scale-105">
-			<Panel title="Solar and UVI" className="h-full">
+			<Panel title="Solar and UVI" class="h-full">
 				<div class="grid grid-cols-2 gap-4">
 					<div>
 						<div class="text-xs text-muted">{w.solar.moon}</div>
@@ -143,7 +143,7 @@
 		</a>
 
 		<a href="/weather/rain" class="block transform transition hover:scale-105">
-			<Panel title="Rainfall" className="h-full">
+			<Panel title="Rainfall" class="h-full">
 				<div class="grid grid-cols-2 gap-4">
 					<div>
 						<div class="mb-1 text-xs text-muted">Rain Rate /hr</div>
@@ -164,7 +164,7 @@
 		</a>
 
 		<a href="/weather/wind" class="block transform transition hover:scale-105 xl:col-span-2">
-			<Panel title="Wind" className="h-full">
+			<Panel title="Wind" class="h-full">
 				<div class="grid grid-cols-3 items-center gap-4">
 					<div class="col-span-2 flex items-center justify-center">
 						<!-- Simple wind dial -->
@@ -204,7 +204,7 @@
 		</a>
 
 		<a href="/weather/pressure" class="block transform transition hover:scale-105">
-			<Panel title="Pressure" className="h-full">
+			<Panel title="Pressure" class="h-full">
 				<div class="grid grid-cols-2 gap-4">
 					<div>
 						<div class="mb-1 text-xs text-muted">Relative</div>
@@ -233,7 +233,7 @@
 		</a>
 
 		<a href="/weather/battery" class="block transform transition hover:scale-105">
-			<Panel title="Battery" className="h-full">
+			<Panel title="Battery" class="h-full">
 				<div class="text-sm">
 					<div class="font-semibold text-green-400">{w.battery.status}</div>
 					<div class="text-muted">{w.battery.note}</div>
@@ -243,7 +243,7 @@
 	</div>
 
 	<!-- Simple trend chart -->
-	<Panel title={`Outdoor — ${dayLabel}`} className="">
+	<Panel title={`Outdoor — ${dayLabel}`}>
 		<div class="overflow-x-auto">
 			<svg viewBox="0 0 800 240" class="h-64 w-full">
 				<defs>
