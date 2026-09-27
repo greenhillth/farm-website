@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { CHARTS, buildSeries, extremes, hourTicks, hourlyRows, parseUtcMs } from './chart';
+import {
+	CHARTS,
+	buildSeries,
+	extremes,
+	hourTicks,
+	hourlyRows,
+	parseUtcMs,
+	segments,
+	tickFormat,
+	timeTicks,
+	wellFilled
+} from './chart';
 
 const rows = [
 	{
@@ -84,5 +95,62 @@ describe('extremes', () => {
 			])
 		).toEqual({ high: 7, low: -1 });
 		expect(extremes([])).toBeNull();
+	});
+});
+
+describe('segments', () => {
+	it('breaks a line where readings stop for longer than the gap', () => {
+		const points = [0, 60_000, 120_000, 3_600_000, 3_660_000].map((t) => ({ t, v: 1 }));
+
+		expect(segments(points, 10 * 60_000).map((s) => s.length)).toEqual([3, 2]);
+		expect(segments([], 60_000)).toEqual([]);
+	});
+});
+
+describe('timeTicks and tickFormat', () => {
+	const at = (month: number, day: number) => new Date(2026, month, day).getTime();
+
+	it('uses hours for a day, days for a week, and months for a year', () => {
+		const dayTicks = timeTicks(at(8, 26), at(8, 27));
+		expect(dayTicks.every((t) => new Date(t).getHours() % 6 === 0)).toBe(true);
+
+		const weekTicks = timeTicks(at(8, 20), at(8, 27));
+		expect(weekTicks).toHaveLength(8); // both ends are midnights
+		expect(weekTicks.every((t) => new Date(t).getHours() === 0)).toBe(true);
+
+		const monthTicks = timeTicks(at(8, 27) - 30 * 86_400_000, at(8, 27));
+		expect(monthTicks.map((t) => new Date(t).getDate())).toEqual([1, 8, 15, 22]);
+
+		const yearTicks = timeTicks(at(8, 27) - 365 * 86_400_000, at(8, 27));
+		expect(yearTicks.every((t) => new Date(t).getDate() === 1)).toBe(true);
+		expect(yearTicks.length).toBeGreaterThanOrEqual(11);
+
+		expect(tickFormat(at(8, 20), at(8, 27)).format(at(8, 21))).toBe('21 Sept');
+		expect(tickFormat(at(0, 1), at(11, 31)).format(at(2, 1))).toBe('Mar');
+	});
+});
+
+describe('wellFilled', () => {
+	it('drops buckets with far fewer readings than usual, like a day cut short', () => {
+		const rows = [10, 12, 11, 6, 12].map((count, i) => ({ timestamp_utc: String(i), count }));
+
+		expect(wellFilled(rows).map((row) => row.count)).toEqual([10, 12, 11, 12]);
+		expect(
+			wellFilled<{ timestamp_utc: string; count?: number }>([{ timestamp_utc: 'raw' }])
+		).toHaveLength(1);
+	});
+});
+
+describe('rain chart', () => {
+	it('charts rain since midnight, from the older column when the new one is missing', () => {
+		const rows = [
+			{ timestamp_utc: '2026-03-01T06:00:00+00:00', rain_24h_mm: 3.2 },
+			{ timestamp_utc: '2026-09-28T06:00:00+00:00', rain_24h_mm: 9, rain_daily_mm: 4 }
+		];
+
+		const [daily] = buildSeries(rows, CHARTS.rain!);
+
+		expect(daily.label).toBe('Since midnight');
+		expect(daily.points.map((p) => p.v)).toEqual([3.2, 4]);
 	});
 });
