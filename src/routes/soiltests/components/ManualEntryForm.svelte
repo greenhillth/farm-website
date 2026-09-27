@@ -80,7 +80,7 @@
 				})
 			});
 			if (!response.ok) {
-				let message = `Couldn't save the test (${response.status}).`;
+				let message = `Couldn’t save the test (${response.status}).`;
 				try {
 					const problem = (await response.json()) as { message?: unknown; detail?: unknown };
 					const reason = problem.message ?? problem.detail;
@@ -93,7 +93,7 @@
 			submitting = false;
 			onsaved();
 		} catch {
-			fail(`Couldn't save the test. Check the connection and try again.`);
+			fail('Couldn’t save the test. Check the connection and try again.');
 		}
 	}
 </script>
