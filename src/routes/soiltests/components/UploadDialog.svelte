@@ -21,25 +21,45 @@
 	];
 	let confirmingClose = $state(false);
 
+	// Set while the component closes the dialog itself, so handleClose ignores that close.
+	let unmounting = false;
+
 	// The dialog exists only while open; showModal gives focus trapping and Escape for free.
 	const openModal: Attachment<HTMLDialogElement> = (node) => {
 		node.showModal();
-		return () => node.close();
+		return () => {
+			unmounting = true;
+			node.close();
+		};
 	};
 
 	function requestClose() {
 		if (running) confirmingClose = true;
 		else onclose();
 	}
+
+	function handleCancel(event: Event) {
+		// A cancel the browser won't let us stop (e.g. a second Escape) is followed by close.
+		if (!event.cancelable) return;
+		event.preventDefault();
+		requestClose();
+	}
+
+	// The browser closed the dialog on its own: reopen it while importing, otherwise tell the page.
+	function handleClose(event: Event) {
+		if (unmounting) return;
+		if (running) {
+			(event.currentTarget as HTMLDialogElement).showModal();
+			confirmingClose = true;
+		} else onclose();
+	}
 </script>
 
 <dialog
 	{@attach openModal}
 	aria-labelledby={titleId}
-	oncancel={(event) => {
-		event.preventDefault();
-		requestClose();
-	}}
+	oncancel={handleCancel}
+	onclose={handleClose}
 	class="upload-dialog m-auto flex max-h-[min(92dvh,60rem)] w-[min(100%-2rem,48rem)] flex-col rounded-2xl border border-border bg-panel p-0 text-text shadow-2xl"
 >
 	<header class="flex items-center gap-3 border-b border-border py-2 pr-2 pl-5">

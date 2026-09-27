@@ -64,4 +64,57 @@ describe('UploadDialog.svelte', () => {
 		await page.getByRole('button', { name: 'Stop import' }).click();
 		expect(onclose).toHaveBeenCalledOnce();
 	});
+
+	it('stays open when Escape is pressed twice during an import', async () => {
+		const onclose = vi.fn();
+		render(UploadDialog, {
+			mode: 'csv',
+			onmodechange: () => {},
+			running: true,
+			onclose,
+			manual,
+			csv
+		});
+
+		await userEvent.keyboard('{Escape}');
+		await userEvent.keyboard('{Escape}');
+
+		await expect.element(page.getByRole('dialog')).toHaveAttribute('open');
+		await expect.element(page.getByText('Stop the import?')).toBeVisible();
+		expect(onclose).not.toHaveBeenCalled();
+	});
+
+	it('reports a close the browser forces while an import runs', async () => {
+		const onclose = vi.fn();
+		render(UploadDialog, {
+			mode: 'csv',
+			onmodechange: () => {},
+			running: true,
+			onclose,
+			manual,
+			csv
+		});
+
+		// Chrome closes without a cancelable cancel event after a second Escape with no user activation.
+		(document.querySelector('dialog') as HTMLDialogElement).close();
+
+		await expect.element(page.getByRole('dialog')).toHaveAttribute('open');
+		await expect.element(page.getByText('Stop the import?')).toBeVisible();
+		expect(onclose).not.toHaveBeenCalled();
+	});
+
+	it('reports a close the browser forces when nothing is running', async () => {
+		const onclose = vi.fn();
+		render(UploadDialog, {
+			mode: 'manual',
+			onmodechange: () => {},
+			running: false,
+			onclose,
+			manual,
+			csv
+		});
+
+		(document.querySelector('dialog') as HTMLDialogElement).close();
+		await vi.waitFor(() => expect(onclose).toHaveBeenCalledOnce());
+	});
 });
