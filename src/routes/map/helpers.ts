@@ -90,6 +90,14 @@ export const NO_DATA_STYLE = {
 	weight: 1
 };
 
+/** With no soil metric chosen the imagery shows through: paddocks are outlines only. */
+export const OUTLINE_STYLE = {
+	fillColor: '#ffffff',
+	fillOpacity: 0,
+	color: '#22d3ee',
+	weight: 2
+};
+
 export function hexToRgb(hex: string): [number, number, number] {
 	const clean = hex.replace('#', '');
 	const int = parseInt(clean, 16);

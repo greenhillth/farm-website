@@ -25,6 +25,7 @@
 	import type { LocateFix, PaddockOption } from './components/types';
 	import {
 		NO_DATA_STYLE,
+		OUTLINE_STYLE,
 		buildPaddockTooltipHtml,
 		computeLegendDetails,
 		computeLegendPercents,
@@ -329,7 +330,7 @@
 		const sample = entry.id === null ? undefined : soilByField.get(entry.id);
 		const value = sample?.metrics[metric.id];
 		const hasValue = typeof value === 'number' && Number.isFinite(value);
-		let style = {};
+		let style = metric.id === 'none' ? OUTLINE_STYLE : {};
 		let valueText: string | null = null;
 
 		if (scaleReady && hasValue) {
@@ -530,11 +531,10 @@
 		</aside>
 	{/if}
 
-	<div class="relative min-w-0 flex-1">
-		<div
-			{@attach createMap}
-			class={['map-canvas absolute inset-0', labelsHidden && 'labels-hidden']}
-		></div>
+	<div class={['relative min-w-0 flex-1', labelsHidden && 'labels-hidden']}>
+		<!-- Leaflet adds its own classes to this element, so its class attribute must never change:
+		     Svelte would overwrite them and the map would lose its layout. -->
+		<div {@attach createMap} class="map-canvas absolute inset-0"></div>
 
 		{#if desktop.current}
 			{#if !navOpen}
@@ -701,7 +701,7 @@
 		z-index: 900;
 	}
 
-	:global(.map-canvas.labels-hidden .leaflet-tooltip) {
+	:global(.labels-hidden .map-canvas .leaflet-tooltip) {
 		display: none !important;
 	}
 

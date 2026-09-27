@@ -1,4 +1,4 @@
-import { page, userEvent } from 'vitest/browser';
+import { page, userEvent, type Locator } from 'vitest/browser';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 
@@ -156,4 +156,63 @@ describe('map page on a desktop', () => {
 		await expect.element(page.getByRole('combobox', { name: 'Find a paddock' })).toBeVisible();
 		await expect.element(page.getByRole('button', { name: 'Layers' })).not.toBeInTheDocument();
 	});
+
+	// Svelte used to own the map container's class attribute, so toggling `labels-hidden` wiped
+	// the classes Leaflet adds (leaflet-container…) and the base map tiles disappeared.
+	it('keeps the Leaflet map intact when boundaries and labels are toggled', async () => {
+		stubFetch();
+		openAt('/map');
+		await expect.element(page.getByText('Showing 3 mapped paddocks.')).toBeVisible();
+
+		const container = document.querySelector('.leaflet-container');
+		expect(container).not.toBeNull();
+		const boundaries = page.getByRole('checkbox', { name: 'Show field boundaries' });
+		const labels = page.getByRole('checkbox', { name: 'Show paddock labels' });
+
+		toggle(boundaries);
+		await expect.element(boundaries).not.toBeChecked();
+		expect(paddockPaths()).toHaveLength(0);
+		expect(container!.classList).toContain('leaflet-container');
+
+		toggle(boundaries);
+		await expect.element(boundaries).toBeChecked();
+		toggle(labels);
+		await expect.element(labels).not.toBeChecked();
+		expect(paddockPaths()).toHaveLength(3);
+		expect(container!.classList).toContain('leaflet-container');
+		expect(container!.closest('.labels-hidden')).not.toBeNull();
+	});
+
+	it('outlines paddocks without a fill when no soil metric is chosen', async () => {
+		stubFetch();
+		openAt('/map');
+		await expect.element(page.getByText('Showing 3 mapped paddocks.')).toBeVisible();
+
+		const paths = paddockPaths();
+		expect(paths).toHaveLength(3);
+		for (const path of paths) {
+			expect(path.getAttribute('fill-opacity')).toBe('0');
+			expect(path.getAttribute('stroke')).not.toBe('none');
+		}
+
+		paths[0].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+		expect(Number(paths[0].getAttribute('fill-opacity'))).toBeLessThan(0.5);
+		paths[0].dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
+		expect(paths[0].getAttribute('fill-opacity')).toBe('0');
+
+		await page.getByRole('button', { name: 'Soil pH' }).click();
+		await expect
+			.poll(() => paddockPaths().map((path) => Number(path.getAttribute('fill-opacity'))))
+			.toContain(0.88);
+	});
 });
+
+// In the test iframe a Playwright click on these checkboxes (low in the sidebar) fires no click
+// event at all, so click the input itself.
+function toggle(checkbox: Locator) {
+	(checkbox.element() as HTMLInputElement).click();
+}
+
+function paddockPaths() {
+	return [...document.querySelectorAll('.leaflet-overlay-pane path.leaflet-interactive')];
+}
