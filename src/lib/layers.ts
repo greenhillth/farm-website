@@ -136,6 +136,8 @@ const DEFAULT_HOVER_STYLE = {
 	weight: 2,
 	fillOpacity: 0.95
 };
+// An unfilled (outline-only) paddock gets a light tint on hover rather than a solid fill.
+const OUTLINE_HOVER_FILL_OPACITY = 0.2;
 
 /** Build a colored GeoJSON layer + legend for a given metric. */
 export function buildMetricLayer(
@@ -253,8 +255,9 @@ export function buildBaseLayer(geojson: any, L: typeof import('leaflet')) {
 					const base = typedLayer.__baseStyle ?? DEFAULT_PADDOCK_STYLE;
 					(layer as any).setStyle({
 						...base,
-						weight: DEFAULT_HOVER_STYLE.weight,
-						fillOpacity: Math.min(1, DEFAULT_HOVER_STYLE.fillOpacity)
+						weight: Math.max(base.weight ?? 0, DEFAULT_HOVER_STYLE.weight),
+						fillOpacity:
+							base.fillOpacity === 0 ? OUTLINE_HOVER_FILL_OPACITY : DEFAULT_HOVER_STYLE.fillOpacity
 					});
 					if ('bringToFront' in layer && typeof (layer as any).bringToFront === 'function') {
 						(layer as any).bringToFront();
