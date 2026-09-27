@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css';
+	import '@fontsource-variable/atkinson-hyperlegible-next';
 	import favicon from '$lib/assets/favicon.svg';
 
 	let { children } = $props();

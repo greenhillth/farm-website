@@ -25,7 +25,7 @@
 
 <a class="group block" {href} aria-label={title}>
 	<article
-		class="relative overflow-hidden rounded-xl border border-border bg-panel shadow-sm transition duration-200 ease-out will-change-transform group-hover:scale-[1.02] group-hover:border-accent group-focus-visible:border-accent"
+		class="relative overflow-hidden rounded-xl border border-border bg-panel shadow-sm transition-colors group-hover:border-accent group-focus-visible:border-accent"
 	>
 		<!-- Hero -->
 		{#if image}
@@ -35,7 +35,7 @@
 					alt={imageAlt}
 					loading="lazy"
 					decoding="async"
-					class="h-full w-full object-cover transition-transform duration-200 ease-out select-none group-hover:scale-105"
+					class="h-full w-full object-cover select-none"
 				/>
 			</div>
 		{:else}

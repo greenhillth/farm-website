@@ -8,6 +8,11 @@
 	--color-muted: rgb(var(--muted));
 	--color-accent: rgb(var(--accent));
 	--color-border: rgb(var(--border));
+	--color-status-low: rgb(var(--status-low));
+	--color-status-high: rgb(var(--status-high));
+	--color-warn: rgb(var(--warn));
+	--color-danger: rgb(var(--danger));
+	--font-sans: 'Atkinson Hyperlegible Next Variable', system-ui, sans-serif;
 }
 
 /* Keep Leaflet typography consistent if you use it */
@@ -24,6 +29,19 @@
 	--muted: 159 179 200; /* #9fb3c8 */
 	--accent: 114 228 156; /* #72e49c */
 	--border: 31 42 55; /* #1f2a37 */
+	--status-low: 242 179 91; /* #f2b35b */
+	--status-high: 120 189 240; /* #78bdf0 */
+	--warn: 242 179 91; /* #f2b35b */
+	--danger: 248 113 113; /* #f87171 */
+	/* Space the app shell takes; full-height pages subtract these. */
+	--shell-top: 0px;
+	--shell-bottom: calc(4rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 48rem) {
+	:root {
+		--shell-top: 3.5rem;
+		--shell-bottom: 0px;
+	}
 }
 * {
 	box-sizing: border-box;
@@ -36,7 +54,8 @@ body,
 }
 body {
 	font:
-		14px/1.4 system-ui,
+		14px/1.4 'Atkinson Hyperlegible Next Variable',
+		system-ui,
 		-apple-system,
 		Segoe UI,
 		Roboto,
