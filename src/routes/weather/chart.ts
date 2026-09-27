@@ -11,7 +11,6 @@ export type ChartSpec = {
 	}[];
 };
 
-const HOUR = 3600_000;
 const kmh = (ms: number | null | undefined) => (ms === null || ms === undefined ? null : ms * 3.6);
 
 /** Series to chart for each weather detail page; metrics missing here have no history to chart. */
@@ -116,5 +115,3 @@ export function extremes(points: ChartPoint[]): { high: number; low: number } | 
 	const values = points.map((point) => point.v);
 	return { high: Math.max(...values), low: Math.min(...values) };
 }
-
-export { HOUR };

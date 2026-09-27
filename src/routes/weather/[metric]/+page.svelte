@@ -1,66 +1,14 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import type { Weather, WeatherHistoryRow } from '$lib/weather';
+	import type { WeatherHistoryRow } from '$lib/weather';
+	import { CHARTS, buildSeries, extremes, parseUtcMs } from '../chart';
+	import OfflineBanner from '../components/OfflineBanner.svelte';
+	import WeatherChart from '../components/WeatherChart.svelte';
+	import type { PageProps } from './$types';
 
-	export let data: {
-		metric: string;
-		w: Weather;
-		history: WeatherHistoryRow[];
-		range: { from: number; to: number };
-	};
-	const metric = data.metric;
-	const w = data.w;
-	const history = Array.isArray(data.history) ? data.history : [];
+	let { data }: PageProps = $props();
 
-	const metricFields = {
-		outdoor: ['temp_c', 'humidity_pct'],
-		indoor: [],
-		solar: ['solar_wm2'],
-		rain: ['rain_1h_mm', 'rain_24h_mm'],
-		wind: ['wind_avg_ms', 'wind_gust_ms', 'wind_dir_deg'],
-		pressure: ['pressure_hpa'],
-		battery: []
-	} as const satisfies Partial<Record<string, (keyof WeatherHistoryRow)[]>>;
-
-	const metricKey = metric as keyof typeof metricFields;
-	const selectedFields: (keyof WeatherHistoryRow)[] =
-		metricFields[metricKey] ?? ([] as (keyof WeatherHistoryRow)[]);
-	const timestampColumn: keyof WeatherHistoryRow = 'timestamp_utc';
-	const baseColumns: (keyof WeatherHistoryRow)[] = selectedFields.length
-		? [timestampColumn, ...selectedFields]
-		: [timestampColumn];
-	const dynamicColumns: (keyof WeatherHistoryRow)[] =
-		history.length && typeof history[0] === 'object'
-			? (Object.keys(history[0]) as (keyof WeatherHistoryRow)[]).filter(
-					(key) => key !== timestampColumn
-				)
-			: [];
-	const columns: (keyof WeatherHistoryRow)[] = selectedFields.length
-		? baseColumns
-		: [timestampColumn, ...dynamicColumns];
-	const rangeHours = Math.max(1, Math.round((data.range.to - data.range.from) / 3600));
-
-	const parseUtc = (value: string) => {
-		const trimmed = value.trim();
-		const hasTz = /[zZ]|[+-]\d{2}:?\d{2}$/.test(trimmed);
-		const normalized = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T');
-		const stamped = hasTz ? normalized : `${normalized}Z`;
-		return new Date(stamped);
-	};
-
-	const formatValue = (key: keyof WeatherHistoryRow, value: unknown) => {
-		if (value === null || value === undefined) return '';
-		if (key === 'timestamp_utc' && typeof value === 'string') {
-			const parsed = parseUtc(value);
-			return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
-		}
-		if (typeof value === 'number') {
-			return Number.isInteger(value) ? value.toString() : value.toFixed(2);
-		}
-		return String(value);
-	};
-
-	const titles: Record<string, string> = {
+	const TITLES: Record<string, string> = {
 		outdoor: 'Outdoor',
 		indoor: 'Indoor',
 		solar: 'Solar and UVI',
@@ -69,18 +17,71 @@
 		pressure: 'Pressure',
 		battery: 'Battery'
 	};
-	const title = titles[metric] ?? metric;
+	const FIELDS: Record<string, (keyof WeatherHistoryRow)[]> = {
+		outdoor: ['temp_c', 'humidity_pct'],
+		solar: ['solar_wm2'],
+		rain: ['rain_1h_mm', 'rain_24h_mm'],
+		wind: ['wind_avg_ms', 'wind_gust_ms', 'wind_dir_deg'],
+		pressure: ['pressure_hpa']
+	};
+	const HEADINGS: Partial<Record<keyof WeatherHistoryRow, string>> = {
+		timestamp_utc: 'Time',
+		temp_c: 'Temperature (°C)',
+		humidity_pct: 'Humidity (%)',
+		solar_wm2: 'Solar (W/m²)',
+		rain_1h_mm: 'Rain, past hour (mm)',
+		rain_24h_mm: 'Rain, past day (mm)',
+		wind_avg_ms: 'Wind (m/s)',
+		wind_gust_ms: 'Gust (m/s)',
+		wind_dir_deg: 'Direction (°)',
+		pressure_hpa: 'Pressure (hPa)'
+	};
 
-	// Simple 24hr temperature series from the mock data
-	const series = w.series;
-	const xs = (t: number) => 40 + (t / 47) * 740;
-	const ys = (v: number) => 200 - (v / 14) * 180;
-	const high = Math.max(...series.map((p) => p.temp));
-	const low = Math.min(...series.map((p) => p.temp));
-	const bom = { high: 13, low: 5 };
+	const title = $derived(TITLES[data.metric] ?? data.metric);
+	const spec = $derived(CHARTS[data.metric]);
+	const series = $derived(spec ? buildSeries(data.history, spec) : []);
+	const summaries = $derived(
+		series.flatMap((line) => {
+			const range = extremes(line.points);
+			return range ? [{ label: line.label, ...range }] : [];
+		})
+	);
+	const columns = $derived<(keyof WeatherHistoryRow)[]>([
+		'timestamp_utc',
+		...(FIELDS[data.metric] ?? [])
+	]);
+	const rows = $derived(
+		[...data.history].sort(
+			(a, b) => (parseUtcMs(b.timestamp_utc) ?? 0) - (parseUtcMs(a.timestamp_utc) ?? 0)
+		)
+	);
+	const hours = $derived(Math.max(1, Math.round((data.range.to - data.range.from) / 3600)));
+	const timeFormat = new Intl.DateTimeFormat('en-AU', {
+		weekday: 'short',
+		hour: 'numeric',
+		minute: '2-digit'
+	});
+
+	function cell(row: WeatherHistoryRow, key: keyof WeatherHistoryRow) {
+		const raw = row[key];
+		if (raw === null || raw === undefined) return '-';
+		if (key === 'timestamp_utc') {
+			const ms = parseUtcMs(String(raw));
+			return ms === null ? String(raw) : timeFormat.format(ms);
+		}
+		return typeof raw === 'number'
+			? Number.isInteger(raw)
+				? String(raw)
+				: raw.toFixed(1)
+			: String(raw);
+	}
 </script>
 
-<div class="relative container mx-auto px-4 pb-8">
+<svelte:head>
+	<title>{title} weather</title>
+</svelte:head>
+
+<div class="mx-auto max-w-6xl space-y-5 px-4 pb-8">
 	<a
 		href={resolve('/weather')}
 		class="inline-flex min-h-11 items-center gap-2 pt-4 text-sm text-muted hover:text-text"
@@ -98,55 +99,51 @@
 		All weather
 	</a>
 
-	<h1 class="mt-2 mb-6 text-xl font-semibold">{title}</h1>
+	<h1 class="text-xl font-semibold">{title}</h1>
 
-	<section class="mb-6 text-center">
-		<div class="text-xl font-semibold">High {high.toFixed(1)}°C / Low {low.toFixed(1)}°C</div>
-		<div class="text-sm text-muted">BoM Benchmark: High {bom.high}°C, Low {bom.low}°C</div>
-	</section>
+	<OfflineBanner source={data.source} />
 
-	<section class="overflow-x-auto">
-		<svg viewBox="0 0 800 240" class="h-64 w-full">
-			<defs>
-				<clipPath id="clipDetail">
-					<rect x="40" y="20" width="740" height="180" />
-				</clipPath>
-			</defs>
-			<g clip-path="url(#clipDetail)">
-				<polyline
-					fill="none"
-					stroke="#facc15"
-					stroke-width="2"
-					points={series.map((p) => `${xs(p.t)},${ys(p.temp)}`).join(' ')}
-				/>
-			</g>
-			<g class="text-muted">
-				<line x1="40" y1="200" x2="780" y2="200" stroke="currentColor" stroke-opacity="0.3" />
-				<text x="782" y="204" class="fill-muted text-xs">0</text>
-			</g>
-		</svg>
-	</section>
+	{#if spec}
+		<section class="space-y-2">
+			{#each summaries as summary (summary.label)}
+				<p class="text-lg">
+					{summary.label}: highest {Math.round(summary.high)}
+					{spec.unit}, lowest {Math.round(summary.low)}
+					{spec.unit}
+				</p>
+			{/each}
+			<WeatherChart
+				title="{title}, last {hours} hours"
+				{series}
+				unit={spec.unit}
+				from={data.range.from * 1000}
+				to={data.range.to * 1000}
+			/>
+		</section>
+	{:else}
+		<p class="text-muted">
+			The station doesn’t report {title.toLowerCase()} readings, so there’s nothing to chart.
+		</p>
+	{/if}
 
-	<section class="mt-8">
-		<h2 class="mb-1 text-lg font-semibold">Recent readings</h2>
-		<p class="mb-2 text-xs text-muted">Showing last {rangeHours}h of data.</p>
-		{#if history.length}
-			<div class="overflow-x-auto">
-				<table class="min-w-full text-left text-sm">
-					<thead>
+	<section class="space-y-2">
+		<h2 class="text-lg font-semibold">Recent readings</h2>
+		<p class="text-sm text-muted">The last {hours} hours, newest first.</p>
+		{#if rows.length}
+			<div class="max-h-[60vh] overflow-auto rounded-xl border border-border">
+				<table class="min-w-full text-left text-sm" aria-label="Recent readings">
+					<thead class="sticky top-0 bg-panel">
 						<tr>
-							{#each columns as h}
-								<th class="border-b px-2 py-1 font-medium">
-									{h === 'timestamp_utc' ? 'Timestamp' : h}
-								</th>
+							{#each columns as column (column)}
+								<th class="px-3 py-2 font-semibold">{HEADINGS[column] ?? column}</th>
 							{/each}
 						</tr>
 					</thead>
 					<tbody>
-						{#each history as row}
-							<tr>
-								{#each columns as h}
-									<td class="border-b px-2 py-1">{formatValue(h, row?.[h])}</td>
+						{#each rows as row (row.timestamp_utc)}
+							<tr class="border-t border-border/60">
+								{#each columns as column (column)}
+									<td class="px-3 py-2 tabular-nums">{cell(row, column)}</td>
 								{/each}
 							</tr>
 						{/each}
@@ -154,7 +151,7 @@
 				</table>
 			</div>
 		{:else}
-			<p class="text-sm text-muted">No recent readings available.</p>
+			<p class="text-muted">No readings in the last {hours} hours.</p>
 		{/if}
 	</section>
 </div>
