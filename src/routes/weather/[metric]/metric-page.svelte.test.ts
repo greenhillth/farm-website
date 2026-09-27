@@ -44,11 +44,11 @@ describe('weather detail page', () => {
 	});
 
 	it('says when the station doesn’t report a metric instead of charting sample data', async () => {
-		open('indoor');
+		open('battery');
 
 		await expect
 			.element(
-				page.getByText('The station doesn’t report indoor readings, so there’s nothing to chart.')
+				page.getByText('The station doesn’t report battery readings, so there’s nothing to chart.')
 			)
 			.toBeVisible();
 		expect(page.getByRole('img').elements()).toHaveLength(0);

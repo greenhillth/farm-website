@@ -3,7 +3,7 @@
 	import type { WeatherHistoryRow } from '$lib/weather';
 	import { CHARTS, buildSeries, extremes, parseUtcMs } from '../chart';
 	import OfflineBanner from '../components/OfflineBanner.svelte';
-	import WeatherChart from '../components/WeatherChart.svelte';
+	import WeatherChartPanel from '../components/WeatherChartPanel.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -20,7 +20,8 @@
 	const FIELDS: Record<string, (keyof WeatherHistoryRow)[]> = {
 		outdoor: ['temp_c', 'humidity_pct'],
 		solar: ['solar_wm2'],
-		rain: ['rain_1h_mm', 'rain_24h_mm'],
+		rain: ['rain_1h_mm', 'rain_24h_mm', 'rain_daily_mm'],
+		indoor: ['indoor_temp_c', 'indoor_humidity_pct'],
 		wind: ['wind_avg_ms', 'wind_gust_ms', 'wind_dir_deg'],
 		pressure: ['pressure_hpa']
 	};
@@ -30,7 +31,10 @@
 		humidity_pct: 'Humidity (%)',
 		solar_wm2: 'Solar (W/m²)',
 		rain_1h_mm: 'Rain, past hour (mm)',
-		rain_24h_mm: 'Rain, past day (mm)',
+		rain_24h_mm: 'Rain, past 24 hours (mm)',
+		rain_daily_mm: 'Rain, since midnight (mm)',
+		indoor_temp_c: 'Temperature (°C)',
+		indoor_humidity_pct: 'Humidity (%)',
 		wind_avg_ms: 'Wind (km/h)',
 		wind_gust_ms: 'Gust (km/h)',
 		wind_dir_deg: 'Direction (°)',
@@ -121,12 +125,12 @@
 					{spec.unit}
 				</p>
 			{/each}
-			<WeatherChart
-				title="{title}, last {hours} hours"
-				{series}
-				unit={spec.unit}
-				from={data.range.from * 1000}
-				to={data.range.to * 1000}
+			<p class="text-sm text-muted">Highs and lows are for the last {hours} hours.</p>
+			<WeatherChartPanel
+				history={data.history}
+				range={data.range}
+				metric={data.metric}
+				metrics={[{ key: data.metric, label: title }]}
 			/>
 		</section>
 	{:else}

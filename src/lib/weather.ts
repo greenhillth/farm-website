@@ -159,7 +159,37 @@ export type WeatherHistoryRow = {
 	rain_1h_mm?: number | null;
 	rain_24h_mm?: number | null;
 	solar_wm2?: number | null;
+	// Stored since gbros-api#15; absent from older readings.
+	dew_point_c?: number | null;
+	indoor_temp_c?: number | null;
+	indoor_humidity_pct?: number | null;
+	rain_daily_mm?: number | null;
+	uvi?: number | null;
+	/** Series rows only: how many readings the bucket averages. */
+	count?: number;
 };
+
+export type WeatherSeries = { bucketSec: number; rows: WeatherHistoryRow[] };
+
+/** Readings averaged into buckets (gusts and rain totals take the maximum), for long spans. */
+export async function fetchWeatherSeries(
+	from: number,
+	to: number,
+	fetchFn: typeof fetch = fetch,
+	points = 500
+): Promise<WeatherSeries> {
+	const res = await fetchFn(
+		`${CONFIG.backend.weatherSeries}?from=${from}&to=${to}&points=${points}`
+	);
+	if (!res.ok) {
+		throw new Error(`Unable to fetch series: ${res.status}`);
+	}
+	const json = await res.json();
+	return {
+		bucketSec: typeof json?.bucket_sec === 'number' ? json.bucket_sec : 60,
+		rows: Array.isArray(json?.data) ? (json.data as WeatherHistoryRow[]) : []
+	};
+}
 
 export async function fetchWeatherHistory(
 	from: number,
