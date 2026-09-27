@@ -26,6 +26,16 @@ const CONFIG = {
 		attribution: 'Imagery © Esri, Maxar, Earthstar Geographics, and the GIS community',
 		maxZoom: 20
 	},
+	/** Spraying thresholds from common Australian label guidance. Speeds in km/h, Delta T in °C. */
+	spray: {
+		windMinKmh: 3,
+		windGoodMaxKmh: 15,
+		windMarginalMaxKmh: 20,
+		gustMarginalKmh: 20,
+		deltaTGoodMin: 2,
+		deltaTGoodMax: 8,
+		deltaTMarginalMax: 10
+	},
 	soilMetrics: [
 		{
 			id: 'none',
