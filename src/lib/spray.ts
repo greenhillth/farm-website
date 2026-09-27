@@ -18,7 +18,7 @@ export const SPRAY_LABELS: Record<SprayVerdict, string> = {
 	good: 'Good',
 	marginal: 'Marginal',
 	'not-suitable': 'Not suitable',
-	unknown: "Can't tell"
+	unknown: 'Can’t tell'
 };
 
 export const SPRAY_TONES: Record<SprayVerdict, string> = {
@@ -88,10 +88,10 @@ export function sprayConditions(
 ): SprayResult {
 	const missing = INPUTS.filter(([field]) => mockFields.includes(field)).map(([, label]) => label);
 	if (missing.length > 0) {
-		return unknown(`Can't tell — the station isn't reporting ${orList(missing)}.`);
+		return unknown(`Can’t tell — the station isn’t reporting ${orList(missing)}.`);
 	}
 	const dt = deltaT(weather.outdoor.temp, weather.outdoor.humidity);
-	if (dt === null) return unknown("Can't tell — the humidity reading is out of range.");
+	if (dt === null) return unknown('Can’t tell — the humidity reading is out of range.');
 
 	const gustKmh = weather.wind.gust * 3.6;
 	const rain = weather.rain.hourly;

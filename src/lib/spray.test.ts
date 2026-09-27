@@ -96,24 +96,24 @@ describe('sprayConditions', () => {
 		expect(result.summary).toBe('Rain in the last hour (0.4 mm)');
 	});
 
-	it(`can't tell when an input is sample data, and names it`, () => {
+	it(`can’t tell when an input is sample data, and names it`, () => {
 		expect(sprayConditions(calm, ['wind.speed'], t)).toEqual({
 			verdict: 'unknown',
-			reasons: [`Can't tell — the station isn't reporting wind speed.`],
-			summary: `Can't tell — the station isn't reporting wind speed.`
+			reasons: [`Can’t tell — the station isn’t reporting wind speed.`],
+			summary: `Can’t tell — the station isn’t reporting wind speed.`
 		});
 		expect(sprayConditions(calm, ['outdoor.temp', 'outdoor.humidity'], t).reasons).toEqual([
-			`Can't tell — the station isn't reporting temperature or humidity.`
+			`Can’t tell — the station isn’t reporting temperature or humidity.`
 		]);
 	});
 
-	it(`can't tell when humidity is out of range`, () => {
+	it(`can’t tell when humidity is out of range`, () => {
 		const result = sprayConditions(
 			weatherWith({ temp: 20, humidity: 0 }, { speed: 2.5, gust: 4 }),
 			[],
 			t
 		);
 		expect(result.verdict).toBe('unknown');
-		expect(result.reasons).toEqual([`Can't tell — the humidity reading is out of range.`]);
+		expect(result.reasons).toEqual([`Can’t tell — the humidity reading is out of range.`]);
 	});
 });
