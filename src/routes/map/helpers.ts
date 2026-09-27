@@ -236,10 +236,10 @@ export function buildPaddockTooltipHtml({
 		parts.push(`<div>${escapeHtml(metric.label)}: ${escapeHtml(valueText ?? 'No data')}</div>`);
 		if (sampleDate) {
 			parts.push(
-				`<div class="text-[0.7rem] opacity-80">Sample: ${escapeHtml(formatSampleDate(sampleDate))}</div>`
+				`<div class="text-xs opacity-80">Sample: ${escapeHtml(formatSampleDate(sampleDate))}</div>`
 			);
 		} else if (colorable) {
-			parts.push('<div class="text-[0.7rem] opacity-80">No recent sample</div>');
+			parts.push('<div class="text-xs opacity-80">No recent sample</div>');
 		}
 	}
 	return parts.join('');
