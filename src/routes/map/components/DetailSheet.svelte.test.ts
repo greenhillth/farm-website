@@ -32,4 +32,23 @@ describe('DetailSheet.svelte', () => {
 		await page.getByRole('button', { name: 'Close' }).click();
 		expect(onclose).toHaveBeenCalledTimes(2);
 	});
+
+	it('does not scroll the map when it takes focus while sliding up (phone)', async () => {
+		// The map shell clips its overflow. Focusing the sheet while its slide-up animation still
+		// has it below the shell used to scroll the shell up, so the sheet jumped to the top of the
+		// screen before snapping back to the bottom.
+		await page.viewport(390, 800);
+		const shell = document.createElement('div');
+		shell.style.cssText = 'position: relative; height: 600px; overflow: hidden';
+		document.body.append(shell);
+
+		render(DetailSheet, {
+			target: shell,
+			props: { title: 'North flat', onclose: () => {}, children }
+		});
+
+		await expect.element(page.getByRole('dialog', { name: 'North flat' })).toHaveFocus();
+		expect(shell.scrollTop).toBe(0);
+		shell.remove();
+	});
 });

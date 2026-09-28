@@ -9,9 +9,12 @@
 	const titleId = $props.id();
 
 	// Focus moves in when the sheet opens and back to where it was when the sheet closes.
+	// preventScroll: on phones the sheet opens mid slide-up, still below the map shell, and a
+	// scrolling focus would scroll that overflow-hidden shell to reveal it, throwing the sheet to
+	// the top of the screen until the animation ends.
 	const focusIn: Attachment<HTMLElement> = (node) => {
 		const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-		node.focus();
+		node.focus({ preventScroll: true });
 		return () => {
 			if (previous?.isConnected) previous.focus();
 		};
