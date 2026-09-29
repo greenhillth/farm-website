@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<title>Farm map overhaul samples</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600&display=swap"
+		/>
+		<link rel="stylesheet" href="shared/samples.css" />
+		<style>
+			/* Layout: a short intro, then one row per sample with what to look at and what to decide. */
+			main {
+				max-width: 50rem;
+				margin: 0 auto;
+				padding: 2rem 1rem 4rem;
+				display: grid;
+				gap: 2rem;
+			}
+
+			.samples {
+				display: grid;
+				gap: 1rem;
+				margin: 0;
+				padding: 0;
+				list-style: none;
+			}
+
+			.samples a.card {
+				display: grid;
+				grid-template-columns: 44px minmax(0, 1fr);
+				gap: 0.25rem 1rem;
+				padding: 1rem 1.1rem;
+				border-radius: 12px;
+				border: 1px solid var(--border);
+				background: var(--panel);
+				color: var(--text);
+			}
+
+			.samples a.card:hover {
+				border-color: var(--accent);
+				text-decoration: none;
+			}
+
+			.samples .badge {
+				--size: 44px;
+				grid-row: span 3;
+			}
+
+			.samples h2 {
+				font-size: 1.125rem;
+			}
+
+			.samples p {
+				color: var(--muted);
+				font-size: 0.9375rem;
+			}
+
+			.samples .ask {
+				color: var(--text);
+				font-size: 0.875rem;
+			}
+
+			.samples .ask strong {
+				color: var(--warn);
+				font-weight: 600;
+			}
+
+			.questions {
+				margin: 0;
+				padding-left: 1.25rem;
+				display: grid;
+				gap: 0.5rem;
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<header style="display: grid; gap: 0.6rem">
+				<h1>Farm map overhaul samples</h1>
+				<p class="muted">
+					Static prototypes for views and infrastructure on the farm map. The paddock outlines and
+					soil pH are real. Every asset is made up and placed by hand around the Woodcote paddocks,
+					and live readings are simulated. The research behind them is in
+					<code>docs/map-overhaul/README.md</code>.
+				</p>
+			</header>
+
+			<ul class="samples">
+				<li>
+					<a class="card" href="views.html">
+						<span class="badge status-running" id="g-views"></span>
+						<h2>Map views</h2>
+						<p>
+							The map with Soil, Irrigation, Infrastructure and Property views. Tap a pivot, pump or
+							pole to see its card and what it is connected to. Try the search with "4812" or
+							"pump", and narrow the window to see the phone layout.
+						</p>
+						<p class="ask">
+							<strong>Decide:</strong> are these the right four views? Does tapping a pivot and
+							seeing its water supply light up feel useful?
+						</p>
+					</a>
+				</li>
+				<li>
+					<a class="card" href="icons.html">
+						<span class="badge" id="g-icons"></span>
+						<h2>Icon sheet</h2>
+						<p>
+							Every asset glyph, the status and selection states, line and area styles, and what
+							shows at each zoom level.
+						</p>
+						<p class="ask">
+							<strong>Decide:</strong> neutral badges with a status ring (A), or badges coloured by
+							type (B)? Any glyph you can't read at a glance?
+						</p>
+					</a>
+				</li>
+				<li>
+					<a class="card" href="editing.html">
+						<span class="badge" id="g-edit"></span>
+						<h2>Editing storyboard</h2>
+						<p>
+							Adding a pole, drawing a water main, editing a pivot on a desktop, removing and
+							moving. Seven frames, not interactive.
+						</p>
+						<p class="ask">
+							<strong>Decide:</strong> should everyone who can open the site be able to edit, or
+							only some people?
+						</p>
+					</a>
+				</li>
+			</ul>
+
+			<section style="display: grid; gap: 0.75rem">
+				<h2>Other questions for you</h2>
+				<ol class="questions">
+					<li>
+						What should they be called? The research suggests <strong>assets</strong> ("Add an
+						asset", "asset types"). Other options: features, infrastructure, map items.
+					</li>
+					<li>Which live data sources exist today (pivot controllers, pump drives, meters)?</li>
+					<li>Should paddocks and titles become asset types too, or stay separate?</li>
+					<li>Anything missing from the type list: tanks, troughs, fences, sheds, bores?</li>
+				</ol>
+			</section>
+		</main>
+		<script src="shared/icons.js"></script>
+		<script>
+			document.getElementById('g-views').innerHTML = window.glyphSvg('pivot');
+			document.getElementById('g-icons').innerHTML = window.glyphSvg('pole');
+			document.getElementById('g-edit').innerHTML = window.glyphSvg('water_main');
+		</script>
+	</body>
+</html>

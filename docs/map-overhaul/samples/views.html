@@ -1,0 +1,1446 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<title>Map views prototype</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600&display=swap"
+		/>
+		<link rel="stylesheet" href="shared/leaflet.css" />
+		<link rel="stylesheet" href="shared/samples.css" />
+		<style>
+			/* Layout: desktop keeps today's sidebar (views replace the layer toggles); phones get a
+			   segmented view switcher over the map and a bottom sheet for details. */
+			html,
+			body {
+				height: 100%;
+			}
+
+			body {
+				display: flex;
+				flex-direction: column;
+			}
+
+			.app {
+				flex: 1;
+				min-height: 0;
+				display: flex;
+			}
+
+			.sidebar {
+				width: 20rem;
+				flex-shrink: 0;
+				overflow-y: auto;
+				background: var(--panel);
+				border-right: 1px solid var(--border);
+				padding: 1.25rem;
+				display: flex;
+				flex-direction: column;
+				gap: 1.5rem;
+			}
+
+			.map-wrap {
+				position: relative;
+				flex: 1;
+				min-width: 0;
+			}
+
+			#map {
+				position: absolute;
+				inset: 0;
+			}
+
+			/* Search */
+			.search {
+				position: relative;
+			}
+
+			.search input {
+				width: 100%;
+				min-height: 44px;
+				padding: 0 0.85rem;
+				border-radius: 8px;
+				border: 1px solid var(--border-strong);
+				background: var(--bg);
+			}
+
+			.search ul {
+				position: absolute;
+				z-index: 1200;
+				left: 0;
+				right: 0;
+				top: calc(100% + 4px);
+				margin: 0;
+				padding: 0.25rem;
+				list-style: none;
+				background: var(--panel-2);
+				border: 1px solid var(--border-strong);
+				border-radius: 12px;
+				box-shadow: 0 12px 24px rgb(0 0 0 / 0.4);
+				max-height: 18rem;
+				overflow-y: auto;
+			}
+
+			.result {
+				display: flex;
+				align-items: center;
+				gap: 0.75rem;
+				width: 100%;
+				min-height: 48px;
+				padding: 0 0.6rem;
+				border: 0;
+				border-radius: 8px;
+				background: none;
+				text-align: left;
+				cursor: pointer;
+			}
+
+			.result:hover,
+			.result:focus-visible {
+				background: rgb(255 255 255 / 0.07);
+			}
+
+			.result .badge {
+				--size: 26px;
+				flex-shrink: 0;
+			}
+
+			.result span.meta {
+				display: block;
+				color: var(--muted);
+				font-size: 0.75rem;
+			}
+
+			/* View list (desktop) */
+			.view-list {
+				display: grid;
+				gap: 0.5rem;
+			}
+
+			.view-btn {
+				display: grid;
+				grid-template-columns: 36px 1fr;
+				gap: 0.15rem 0.75rem;
+				align-items: center;
+				padding: 0.65rem 0.75rem;
+				border-radius: 12px;
+				border: 1px solid var(--border);
+				background: none;
+				text-align: left;
+				cursor: pointer;
+			}
+
+			.view-btn:hover {
+				background: rgb(255 255 255 / 0.04);
+			}
+
+			.view-btn[aria-pressed='true'] {
+				border-color: var(--accent);
+				background: rgb(114 228 156 / 0.1);
+			}
+
+			.view-btn svg {
+				width: 24px;
+				height: 24px;
+				grid-row: span 2;
+				justify-self: center;
+				color: var(--muted);
+			}
+
+			.view-btn[aria-pressed='true'] svg {
+				color: var(--accent);
+			}
+
+			.view-btn strong {
+				font-weight: 600;
+			}
+
+			.view-btn span {
+				font-size: 0.8125rem;
+				color: var(--muted);
+				line-height: 1.35;
+			}
+
+			.panel-section {
+				display: grid;
+				gap: 0.75rem;
+			}
+
+			.chips {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+			}
+
+			/* Legend */
+			.legend-bar {
+				height: 12px;
+				border-radius: 999px;
+				background: linear-gradient(
+					90deg,
+					#440154,
+					#482878,
+					#3e4a89,
+					#31688e,
+					#26828e,
+					#1f9e89,
+					#35b779,
+					#6ece58,
+					#b5de2b,
+					#fde725
+				);
+				position: relative;
+			}
+
+			.legend-band {
+				position: absolute;
+				top: -4px;
+				bottom: -4px;
+				border: 2px solid #fff;
+				border-radius: 4px;
+			}
+
+			.legend-scale {
+				display: flex;
+				justify-content: space-between;
+				font-size: 0.75rem;
+				color: var(--muted);
+				font-variant-numeric: tabular-nums;
+			}
+
+			/* Now list */
+			.now-list {
+				display: grid;
+				gap: 0.25rem;
+				margin: 0;
+				padding: 0;
+				list-style: none;
+			}
+
+			.now-item {
+				display: grid;
+				grid-template-columns: 28px 1fr auto;
+				gap: 0.1rem 0.7rem;
+				align-items: center;
+				width: 100%;
+				padding: 0.55rem 0.5rem;
+				border: 0;
+				border-radius: 8px;
+				background: none;
+				text-align: left;
+				cursor: pointer;
+			}
+
+			.now-item:hover {
+				background: rgb(255 255 255 / 0.05);
+			}
+
+			.now-item .badge {
+				--size: 26px;
+				grid-row: span 2;
+			}
+
+			.now-item .line2 {
+				grid-column: 2 / 4;
+				font-size: 0.8125rem;
+				color: var(--muted);
+			}
+
+			.add-btn {
+				margin-top: auto;
+			}
+
+			/* Phone top bar */
+			.phone-top {
+				display: none;
+			}
+
+			/* Detail card */
+			.detail {
+				position: absolute;
+				z-index: 1100;
+				right: 12px;
+				top: 12px;
+				bottom: 12px;
+				width: min(24rem, calc(100% - 24px));
+				overflow-y: auto;
+				background: var(--panel);
+				border: 1px solid var(--border-strong);
+				border-radius: 16px;
+				box-shadow: 0 16px 40px rgb(0 0 0 / 0.5);
+				padding: 1rem 1.1rem 1.25rem;
+				display: flex;
+				flex-direction: column;
+				gap: 1rem;
+			}
+
+			.detail-head {
+				display: grid;
+				grid-template-columns: auto 1fr auto;
+				gap: 0.75rem;
+				align-items: start;
+			}
+
+			.detail-head .badge {
+				--size: 40px;
+			}
+
+			.detail-head h2 {
+				font-size: 1.25rem;
+			}
+
+			.close {
+				width: 44px;
+				height: 44px;
+				border-radius: 8px;
+				border: 1px solid var(--border-strong);
+				background: none;
+				cursor: pointer;
+				font-size: 1.4rem;
+				line-height: 1;
+				color: var(--muted);
+			}
+
+			.readings {
+				display: grid;
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+				gap: 0.5rem;
+			}
+
+			.reading {
+				padding: 0.6rem 0.75rem;
+				border-radius: 12px;
+				background: rgb(255 255 255 / 0.04);
+				border: 1px solid var(--border);
+			}
+
+			.reading .value {
+				font-size: 1.5rem;
+				font-weight: 600;
+				font-variant-numeric: tabular-nums;
+				line-height: 1.2;
+			}
+
+			.reading .value small {
+				font-size: 0.875rem;
+				font-weight: 400;
+				color: var(--muted);
+			}
+
+			.alert {
+				padding: 0.6rem 0.75rem;
+				border-radius: 12px;
+				background: rgb(248 113 113 / 0.12);
+				border: 1px solid rgb(248 113 113 / 0.45);
+				font-size: 0.875rem;
+			}
+
+			.alert.offline {
+				background: rgb(123 138 156 / 0.12);
+				border-color: rgb(123 138 156 / 0.45);
+			}
+
+			dl.facts {
+				display: grid;
+				grid-template-columns: auto 1fr;
+				gap: 0.35rem 1rem;
+				margin: 0;
+				font-size: 0.875rem;
+			}
+
+			dl.facts dt {
+				color: var(--muted);
+			}
+
+			dl.facts dd {
+				margin: 0;
+				font-variant-numeric: tabular-nums;
+				min-width: 0;
+				overflow-wrap: anywhere;
+			}
+
+			.links h3 {
+				font-size: 0.875rem;
+				color: var(--muted);
+				font-weight: 600;
+				margin-bottom: 0.25rem;
+			}
+
+			.link-row {
+				display: flex;
+				align-items: center;
+				gap: 0.65rem;
+				width: 100%;
+				min-height: 44px;
+				padding: 0 0.5rem;
+				border: 0;
+				border-radius: 8px;
+				background: none;
+				text-align: left;
+				cursor: pointer;
+				font-size: 0.9375rem;
+			}
+
+			.link-row:hover {
+				background: rgb(255 255 255 / 0.06);
+			}
+
+			.link-row .badge {
+				--size: 24px;
+				border-width: 1.5px;
+			}
+
+			.actions {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+				padding-top: 0.25rem;
+				border-top: 1px solid var(--border);
+				padding-block-start: 0.9rem;
+			}
+
+			.dial {
+				width: 72px;
+				height: 72px;
+				flex-shrink: 0;
+			}
+
+			.pivot-row {
+				display: flex;
+				gap: 1rem;
+				align-items: center;
+			}
+
+			.updated {
+				font-size: 0.75rem;
+				color: var(--muted);
+			}
+
+			.toast {
+				position: absolute;
+				z-index: 1300;
+				left: 50%;
+				top: 16px;
+				transform: translateX(-50%);
+				max-width: calc(100% - 32px);
+				padding: 0.7rem 1rem;
+				background: var(--panel);
+				border: 1px solid var(--border-strong);
+				border-radius: 8px;
+				box-shadow: 0 8px 20px rgb(0 0 0 / 0.45);
+				font-size: 0.875rem;
+			}
+
+			.map-foot {
+				position: absolute;
+				z-index: 1000;
+				left: 12px;
+				bottom: 12px;
+				padding: 0.35rem 0.7rem;
+				border-radius: 8px;
+				background: rgb(15 23 34 / 0.9);
+				border: 1px solid var(--border);
+				font-size: 0.75rem;
+				color: var(--muted);
+			}
+
+			.fab {
+				display: none;
+			}
+
+			/* Zoom rules: minor point assets (poles, valves, gates) and value chips only appear
+			   once there is room for them. */
+			.zoom-far .minor,
+			.zoom-far .badge-chip,
+			.zoom-mid .minor .badge-chip {
+				display: none;
+			}
+
+			@media (max-width: 47.99rem) {
+				.sidebar {
+					display: none;
+				}
+
+				.phone-top {
+					display: grid;
+					gap: 0.5rem;
+					position: absolute;
+					z-index: 1050;
+					left: 0;
+					right: 0;
+					top: 0;
+					padding: 0.6rem 0.6rem 0;
+				}
+
+				.seg {
+					display: grid;
+					grid-template-columns: repeat(4, minmax(0, 1fr)) 44px;
+					gap: 4px;
+					padding: 4px;
+					border-radius: 14px;
+					background: rgb(15 23 34 / 0.94);
+					border: 1px solid var(--border-strong);
+					box-shadow: 0 6px 16px rgb(0 0 0 / 0.4);
+				}
+
+				.seg button {
+					display: grid;
+					justify-items: center;
+					gap: 1px;
+					min-height: 48px;
+					padding: 4px 2px;
+					border: 0;
+					border-radius: 10px;
+					background: none;
+					font-size: 0.75rem;
+					color: var(--muted);
+					cursor: pointer;
+				}
+
+				.seg button svg {
+					width: 20px;
+					height: 20px;
+				}
+
+				.seg button[aria-pressed='true'] {
+					background: rgb(114 228 156 / 0.16);
+					color: var(--text);
+				}
+
+				.seg button[aria-pressed='true'] svg {
+					color: var(--accent);
+				}
+
+				.phone-row {
+					display: flex;
+					gap: 0.5rem;
+					overflow-x: auto;
+					scrollbar-width: none;
+					padding-bottom: 2px;
+				}
+
+				.phone-search {
+					display: block;
+				}
+
+				.detail {
+					top: auto;
+					left: 0;
+					right: 0;
+					bottom: 0;
+					width: auto;
+					max-height: 62%;
+					border-radius: 16px 16px 0 0;
+					padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+				}
+
+				.fab {
+					display: inline-flex;
+					position: absolute;
+					z-index: 1040;
+					left: 12px;
+					bottom: 44px;
+					border-radius: 999px;
+					box-shadow: 0 6px 16px rgb(0 0 0 / 0.45);
+				}
+
+				.map-foot {
+					left: auto;
+					right: 60px;
+					bottom: 12px;
+				}
+
+				.phone-legend {
+					position: absolute;
+					z-index: 1040;
+					left: 12px;
+					right: 60px;
+					bottom: 44px;
+					padding: 0.6rem 0.75rem;
+					border-radius: 12px;
+					background: rgb(15 23 34 / 0.94);
+					border: 1px solid var(--border-strong);
+					display: grid;
+					gap: 0.4rem;
+				}
+			}
+
+			@media (min-width: 48rem) {
+				.phone-legend,
+				.phone-search {
+					display: none !important;
+				}
+			}
+
+			@media (prefers-reduced-motion: reduce) {
+				.badge {
+					transition: none;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<p class="sample-note">
+			<strong>Sample</strong>
+			<span
+				>Paddock outlines and pH are real. Every asset (pivots, pumps, poles, meters) is made up and
+				placed by hand, and the live readings are simulated.</span
+			>
+			<a href="index.html">All samples</a>
+		</p>
+
+		<div class="app">
+			<aside class="sidebar" aria-label="Map controls">
+				<div class="search" id="search-desktop"></div>
+				<section class="panel-section" aria-labelledby="views-heading">
+					<h2 id="views-heading" class="small muted" style="font-weight: 600">View</h2>
+					<div class="view-list" id="view-list"></div>
+				</section>
+				<section class="panel-section" id="view-panel" aria-live="polite"></section>
+				<a class="btn add-btn" href="editing.html">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path stroke-linecap="round" d="M12 5v14M5 12h14" />
+					</svg>
+					Add to map
+				</a>
+			</aside>
+
+			<div class="map-wrap" id="map-wrap">
+				<div id="map"></div>
+
+				<div class="phone-top">
+					<div class="seg" id="seg"></div>
+					<div class="search phone-search" id="search-phone" hidden></div>
+					<div class="phone-row" id="phone-row"></div>
+				</div>
+
+				<div class="phone-legend" id="phone-legend" hidden></div>
+
+				<a class="btn primary fab" href="editing.html" aria-label="Add to map">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+						<path stroke-linecap="round" d="M12 5v14M5 12h14" />
+					</svg>
+					Add
+				</a>
+
+				<p class="map-foot" id="map-foot">Live readings simulated</p>
+				<section class="detail" id="detail" hidden aria-labelledby="detail-title"></section>
+				<p class="toast" id="toast" role="status" hidden></p>
+			</div>
+		</div>
+
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+		<script src="shared/icons.js"></script>
+		<script src="shared/paddocks.js"></script>
+		<script src="shared/assets.js"></script>
+		<script>
+			const TYPES = window.ASSET_TYPES;
+			const VIEWS = window.MAP_VIEWS;
+			const byId = new Map(window.ASSETS.map((a) => [a.id, a]));
+			const LINKS = window.ASSET_LINKS;
+			const VIEW_MEDIUM = { irrigation: 'water', infrastructure: 'power' };
+			const PH = { min: 5, max: 8, optimal: [6, 7] };
+			const VIRIDIS = [
+				'#440154',
+				'#482878',
+				'#3e4a89',
+				'#31688e',
+				'#26828e',
+				'#1f9e89',
+				'#35b779',
+				'#6ece58',
+				'#b5de2b',
+				'#fde725'
+			];
+
+			const state = {
+				view: VIEWS.some((v) => v.id === location.hash.slice(1))
+					? location.hash.slice(1)
+					: 'irrigation',
+				filters: {},
+				selected: null, // { kind: 'asset', id } | { kind: 'paddock', id }
+				lastUpdate: Date.now()
+			};
+			for (const v of VIEWS) state.filters[v.id] = new Set(v.filters.map((f) => f.id));
+
+			// ─── Geometry helpers ───────────────────────────────────────────
+			const M_PER_DEG_LAT = 111_200;
+			const M_PER_DEG_LON = 83_800; // at 41° south
+			const ll = ([lon, lat]) => [lat, lon];
+			function offset([lon, lat], bearingDeg, metres) {
+				const b = (bearingDeg * Math.PI) / 180;
+				return [
+					lat + (Math.cos(b) * metres) / M_PER_DEG_LAT,
+					lon + (Math.sin(b) * metres) / M_PER_DEG_LON
+				];
+			}
+			function wedge(centre, radius, from, to) {
+				const pts = [ll(centre)];
+				let sweep = (to - from + 360) % 360;
+				for (let a = 0; a <= sweep; a += 3) pts.push(offset(centre, from + a, radius));
+				pts.push(offset(centre, to, radius));
+				return pts;
+			}
+			function ringArea(ring) {
+				let sum = 0;
+				for (let i = 0; i < ring.length; i++) {
+					const [x1, y1] = ring[i];
+					const [x2, y2] = ring[(i + 1) % ring.length];
+					sum +=
+						x1 * M_PER_DEG_LON * (y2 * M_PER_DEG_LAT) - x2 * M_PER_DEG_LON * (y1 * M_PER_DEG_LAT);
+				}
+				return Math.abs(sum / 2);
+			}
+			function centroid(ring) {
+				const n = ring.length;
+				return ring.reduce((acc, [x, y]) => [acc[0] + x / n, acc[1] + y / n], [0, 0]);
+			}
+			function viridis(value) {
+				const t = Math.min(1, Math.max(0, (value - PH.min) / (PH.max - PH.min)));
+				const i = Math.min(VIRIDIS.length - 2, Math.floor(t * (VIRIDIS.length - 1)));
+				const u = t * (VIRIDIS.length - 1) - i;
+				const a = parseInt(VIRIDIS[i].slice(1), 16);
+				const b = parseInt(VIRIDIS[i + 1].slice(1), 16);
+				const mix = (s) => Math.round(((a >> s) & 255) + (((b >> s) & 255) - ((a >> s) & 255)) * u);
+				return `rgb(${mix(16)} ${mix(8)} ${mix(0)})`;
+			}
+			const phStatus = (ph) =>
+				ph < PH.optimal[0] ? 'Low' : ph > PH.optimal[1] ? 'High' : 'Optimal';
+
+			// ─── Paddocks ───────────────────────────────────────────────────
+			const paddocks = window.FARM_PADDOCKS.map((p) => {
+				const rings = p.rings.map((r) => r.split(' ').map((pair) => pair.split(',').map(Number)));
+				return {
+					...p,
+					rings,
+					areaHa: rings.reduce((s, r) => s + ringArea(r), 0) / 10_000,
+					centre: centroid(rings[0])
+				};
+			});
+
+			// ─── Map ────────────────────────────────────────────────────────
+			const map = L.map('map', { zoomControl: false, maxZoom: 20 });
+			L.control.zoom({ position: 'bottomright' }).addTo(map);
+			const tiles = L.tileLayer(
+				'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+				{ maxZoom: 20, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' }
+			).addTo(map);
+			let tileErrors = 0;
+			tiles.on('tileerror', () => {
+				tileErrors += 1;
+				if (tileErrors === 4)
+					toast('Satellite tiles are blocked here, so the map shows outlines only.');
+			});
+			map.fitBounds(
+				[
+					[-41.1915, 146.4825],
+					[-41.1745, 146.5065]
+				],
+				{ padding: [10, 10] }
+			);
+
+			const paddockLayer = L.layerGroup().addTo(map);
+			const assetLayer = L.layerGroup().addTo(map);
+			const layersById = new Map(); // asset id → { markers: [], paths: [] }
+
+			function zoomClass() {
+				const z = map.getZoom();
+				const wrap = document.getElementById('map-wrap');
+				wrap.classList.toggle('zoom-far', z < 15);
+				wrap.classList.toggle('zoom-mid', z >= 15 && z < 17);
+			}
+			map.on('zoomend', zoomClass);
+
+			function drawPaddocks() {
+				paddockLayer.clearLayers();
+				const view = VIEWS.find((v) => v.id === state.view);
+				for (const p of paddocks) {
+					const selected = state.selected?.kind === 'paddock' && state.selected.id === p.id;
+					let style;
+					if (view.paddocks === 'metric') {
+						style =
+							p.ph == null
+								? {
+										color: '#94a3b8',
+										weight: 1,
+										fillColor: '#475569',
+										fillOpacity: 0.35,
+										dashArray: '4 3'
+									}
+								: { color: '#0f172a', weight: 1, fillColor: viridis(p.ph), fillOpacity: 0.85 };
+					} else if (view.paddocks === 'named') {
+						style = { color: '#ffffff', weight: 1.5, fillColor: '#ffffff', fillOpacity: 0.06 };
+					} else {
+						// Context: a quiet outline so the paddocks orient you without competing.
+						style = { color: '#ffffff', weight: 1, opacity: 0.35, fill: false, interactive: false };
+					}
+					if (selected) style = { ...style, color: '#ffffff', weight: 3, opacity: 1 };
+					const poly = L.polygon(
+						p.rings.map((r) => r.map(ll)),
+						{ ...style, interactive: view.paddocks !== 'context' }
+					).addTo(paddockLayer);
+					if (view.paddocks === 'context') continue;
+					poly.bindTooltip(
+						`<strong>${p.name}</strong>` +
+							(view.paddocks === 'metric'
+								? p.ph == null
+									? 'No soil test'
+									: `pH ${p.ph.toFixed(1)}, ${phStatus(p.ph)}`
+								: `${p.areaHa.toFixed(1)} ha`),
+						{ sticky: true, direction: 'top', className: 'map-tip' }
+					);
+					poly.on('click', () => select({ kind: 'paddock', id: p.id }));
+					if (view.paddocks === 'named' && p.areaHa > 4) {
+						L.tooltip({ permanent: true, direction: 'center', className: 'map-label' })
+							.setLatLng(ll(p.centre))
+							.setContent(p.name)
+							.addTo(paddockLayer);
+					}
+				}
+			}
+
+			// ─── Assets ─────────────────────────────────────────────────────
+			function inView(asset) {
+				const chip = TYPES[asset.type].views[state.view];
+				return chip !== undefined && state.filters[state.view].has(chip);
+			}
+
+			function neighbours(id) {
+				// Highlight what matters for the selection in this view: everything upstream and
+				// downstream through the view's medium, plus anything mounted on it or it on.
+				const medium = VIEW_MEDIUM[state.view];
+				const set = new Set([id]);
+				const walk = (start, forward) => {
+					const queue = [start];
+					while (queue.length) {
+						const cur = queue.shift();
+						for (const l of LINKS) {
+							if (l.kind !== 'feeds' || l.medium !== medium) continue;
+							const next = forward ? (l.from === cur ? l.to : null) : l.to === cur ? l.from : null;
+							if (next && !set.has(next)) {
+								set.add(next);
+								queue.push(next);
+							}
+						}
+					}
+				};
+				if (medium) {
+					walk(id, true);
+					walk(id, false);
+				}
+				for (const l of LINKS) {
+					if (l.kind !== 'mounted_on') continue;
+					if (l.from === id) set.add(l.to);
+					if (l.to === id) set.add(l.from);
+				}
+				return set;
+			}
+
+			function chipFor(asset) {
+				const live = asset.live;
+				if (!live) return null;
+				if (live.status === 'offline') return 'Offline';
+				const fields = TYPES[asset.type].live?.[state.view];
+				if (!fields) return null;
+				const f = fields[0];
+				const v = live[f.key];
+				if (v == null) return null;
+				if (asset.type === 'centre_pivot')
+					return live.status === 'running' ? `${Math.round(v)}°` : null;
+				return `${typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(1)) : v} ${f.unit ?? ''}`.trim();
+			}
+
+			function markerFor(asset, latlng, highlight) {
+				const type = TYPES[asset.type];
+				const sel = state.selected?.kind === 'asset' && state.selected.id === asset.id;
+				const linked = !sel && highlight?.has(asset.id);
+				const dim = highlight && !highlight.has(asset.id);
+				const minor = type.minZoom ? 'minor' : '';
+				const icon = L.divIcon({
+					className: `asset-icon ${minor} ${dim ? 'dimmed' : ''}`,
+					iconSize: [44, 44],
+					html: window.badgeHtml({
+						glyph: type.glyph,
+						status: asset.live?.status ?? 'none',
+						chip: chipFor(asset),
+						extra: sel ? 'is-selected' : linked ? 'is-linked' : ''
+					})
+				});
+				const m = L.marker(latlng, {
+					icon,
+					keyboard: true,
+					title: asset.name,
+					zIndexOffset: sel ? 1000 : linked ? 500 : 0
+				});
+				const word = asset.live ? window.STATUS_WORDS[asset.live.status] : type.label;
+				m.bindTooltip(`<strong>${asset.name}</strong>${word}`, {
+					direction: 'top',
+					offset: [0, -16],
+					className: 'map-tip'
+				});
+				m.on('click', () => select({ kind: 'asset', id: asset.id }));
+				return m;
+			}
+
+			function drawAssets() {
+				assetLayer.clearLayers();
+				layersById.clear();
+				const highlight = state.selected?.kind === 'asset' ? neighbours(state.selected.id) : null;
+				const visible = window.ASSETS.filter(inView);
+				// Draw order: areas, then lines, then points on top.
+				const order = { Polygon: 0, LineString: 1, Point: 2 };
+				visible.sort((a, b) => order[a.geometry.type] - order[b.geometry.type]);
+				for (const asset of visible) {
+					const dim = highlight && !highlight.has(asset.id);
+					const on = highlight?.has(asset.id);
+					const op = dim ? 0.25 : 1;
+					const g = asset.geometry;
+					const onClick = () => select({ kind: 'asset', id: asset.id });
+					const tip = (layer) =>
+						layer.bindTooltip(`<strong>${asset.name}</strong>${TYPES[asset.type].label}`, {
+							sticky: true,
+							direction: 'top',
+							className: 'map-tip'
+						});
+
+					if (asset.type === 'dam') {
+						const poly = L.polygon(g.coordinates[0].map(ll), {
+							color: '#bfe3ff',
+							weight: on ? 3 : 1.5,
+							fillColor: '#2b7fc4',
+							fillOpacity: 0.55 * op,
+							opacity: op
+						}).addTo(assetLayer);
+						poly.on('click', onClick);
+						tip(poly);
+						markerFor(asset, poly.getBounds().getCenter(), highlight).addTo(assetLayer);
+					} else if (asset.type === 'centre_pivot') {
+						drawPivot(asset, highlight, op, on, onClick);
+					} else if (asset.type === 'linear_move') {
+						drawLinear(asset, highlight, op, onClick);
+					} else if (g.type === 'LineString') {
+						const pts = g.coordinates.map(ll);
+						const styles = {
+							water_main: { color: '#5fb4f5', weight: 4 },
+							power_line: { color: '#f5cf5b', weight: 3, dashArray: '10 7' },
+							road: { color: '#d8c3a0', weight: 5 }
+						}[asset.type];
+						const extra = on ? 2 : 0;
+						L.polyline(pts, {
+							color: '#0b1117',
+							weight: styles.weight + 4 + extra,
+							opacity: 0.8 * op,
+							interactive: false
+						}).addTo(assetLayer);
+						L.polyline(pts, {
+							...styles,
+							weight: styles.weight + extra,
+							opacity: op,
+							interactive: false
+						}).addTo(assetLayer);
+						// A wide invisible line gives fingers something to hit.
+						const hit = L.polyline(pts, { weight: 22, opacity: 0 }).addTo(assetLayer);
+						hit.on('click', onClick);
+						tip(hit);
+					} else {
+						markerFor(asset, ll(g.coordinates), highlight).addTo(assetLayer);
+					}
+				}
+			}
+
+			function drawPivot(asset, highlight, op, on, onClick) {
+				const c = asset.geometry.coordinates;
+				const r = asset.props.radius_m;
+				const live = asset.live;
+				const colour =
+					{ running: '#72e49c', fault: '#f87171', idle: '#9fb3c8' }[live.status] ?? '#9fb3c8';
+				const circle = L.circle(ll(c), {
+					radius: r,
+					color: '#ffffff',
+					weight: on ? 2.5 : 1.5,
+					opacity: 0.85 * op,
+					dashArray: live.status === 'idle' ? '6 5' : null,
+					fillColor: '#ffffff',
+					fillOpacity: 0.04 * op
+				}).addTo(assetLayer);
+				circle.on('click', onClick);
+				circle.bindTooltip(`<strong>${asset.name}</strong>${window.STATUS_WORDS[live.status]}`, {
+					sticky: true,
+					direction: 'top',
+					className: 'map-tip'
+				});
+				if (live.start_deg != null && live.status !== 'idle') {
+					// The part of this pass already watered.
+					L.polygon(wedge(c, r, live.start_deg, live.angle_deg), {
+						stroke: false,
+						fillColor: colour,
+						fillOpacity: 0.28 * op,
+						interactive: false
+					}).addTo(assetLayer);
+				}
+				L.polyline([ll(c), offset(c, live.angle_deg, r)], {
+					color: '#0b1117',
+					weight: 7,
+					opacity: 0.7 * op,
+					interactive: false
+				}).addTo(assetLayer);
+				L.polyline([ll(c), offset(c, live.angle_deg, r)], {
+					color: colour,
+					weight: 3.5,
+					opacity: op,
+					interactive: false
+				}).addTo(assetLayer);
+				markerFor(asset, ll(c), highlight).addTo(assetLayer);
+			}
+
+			function drawLinear(asset, highlight, op, onClick) {
+				const pts = asset.geometry.coordinates.map(ll);
+				const offline = asset.live.status === 'offline';
+				// The strip watered so far on this run (from the west edge of the paddock).
+				const west = 146.4941;
+				const [a, b] = asset.geometry.coordinates;
+				L.polygon(
+					[
+						[a[1], west],
+						[a[1], a[0]],
+						[b[1], b[0]],
+						[b[1], west]
+					],
+					{ stroke: false, fillColor: '#9fb3c8', fillOpacity: 0.18 * op, interactive: false }
+				).addTo(assetLayer);
+				L.polyline(pts, {
+					color: '#0b1117',
+					weight: 10,
+					opacity: 0.75 * op,
+					interactive: false
+				}).addTo(assetLayer);
+				const machine = L.polyline(pts, {
+					color: offline ? '#9aa8b8' : '#72e49c',
+					weight: 5,
+					opacity: op,
+					dashArray: offline ? '8 6' : null
+				}).addTo(assetLayer);
+				machine.on('click', onClick);
+				const mid = [(pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2];
+				markerFor(asset, mid, highlight).addTo(assetLayer);
+			}
+
+			// ─── Selection and detail card ──────────────────────────────────
+			function select(sel) {
+				state.selected = sel;
+				render();
+			}
+
+			function fmt(v, unit) {
+				if (v == null) return '–';
+				const n = typeof v === 'number' ? (Number.isInteger(v) ? String(v) : v.toFixed(1)) : v;
+				return unit ? `${n} ${unit}` : n;
+			}
+
+			function dialSvg(live) {
+				const p = (deg, r) => {
+					const b = (deg * Math.PI) / 180;
+					return [36 + Math.sin(b) * r, 36 - Math.cos(b) * r];
+				};
+				const [ax, ay] = p(live.angle_deg, 30);
+				let arc = '';
+				if (live.start_deg != null && live.status !== 'idle') {
+					const [sx, sy] = p(live.start_deg, 30);
+					const sweep = (live.angle_deg - live.start_deg + 360) % 360;
+					arc = `<path d="M36 36L${sx} ${sy}A30 30 0 ${sweep > 180 ? 1 : 0} 1 ${ax} ${ay}Z" fill="rgb(114 228 156 / 0.3)"/>`;
+				}
+				return `<svg class="dial" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="30" fill="none" stroke="#2d3b4d" stroke-width="2"/>${arc}<line x1="36" y1="36" x2="${ax}" y2="${ay}" stroke="#e6edf3" stroke-width="3" stroke-linecap="round"/><text x="36" y="12" fill="#9fb3c8" font-size="8" text-anchor="middle">N</text></svg>`;
+			}
+
+			const RELATION = {
+				'feeds-in-water': 'Gets water from',
+				'feeds-out-water': 'Supplies water to',
+				'feeds-in-power': 'Powered from',
+				'feeds-out-power': 'Supplies power to',
+				'mounted_on-out': 'Part of',
+				'mounted_on-in': 'Carries'
+			};
+
+			function renderDetail() {
+				const el = document.getElementById('detail');
+				const sel = state.selected;
+				if (!sel) {
+					el.hidden = true;
+					return;
+				}
+				el.hidden = false;
+				if (sel.kind === 'paddock') {
+					const p = paddocks.find((x) => x.id === sel.id);
+					el.innerHTML = `
+						<div class="detail-head">
+							<span class="badge">${window.glyphSvg('paddock')}</span>
+							<div><h2 id="detail-title">${p.name}</h2><p class="small muted">Paddock ${p.id}, ${p.farm}</p></div>
+							<button class="close" aria-label="Close" data-close>×</button>
+						</div>
+						${
+							state.view === 'soil'
+								? `<div class="readings"><div class="reading"><p class="xs muted">Soil pH (water)</p><p class="value">${fmt(p.ph)}</p><p class="small">${p.ph == null ? 'No data' : phStatus(p.ph)}</p></div><div class="reading"><p class="xs muted">Sampled</p><p class="value" style="font-size:1.1rem">${p.phDate ?? '–'}</p></div></div>`
+								: ''
+						}
+						<dl class="facts"><dt>Area</dt><dd>${p.areaHa.toFixed(1)} ha</dd><dt>Farm</dt><dd>${p.farm}</dd></dl>
+						<div class="actions"><a class="btn" href="#">See soil tests</a><a class="btn" href="editing.html">Edit boundary</a></div>`;
+				} else {
+					const a = byId.get(sel.id);
+					const type = TYPES[a.type];
+					const live = a.live;
+					const liveFields = type.live?.[state.view] ?? Object.values(type.live ?? {})[0] ?? [];
+					const status = live?.status ?? null;
+					let liveHtml = '';
+					if (live && status !== 'none') {
+						if (status === 'offline') {
+							liveHtml = `<p class="alert offline">No reading for ${live.lastSeen}. The last values are shown greyed out.</p>`;
+						} else if (live.message) {
+							liveHtml = `<p class="alert">${live.message}</p>`;
+						}
+					}
+					if (live && liveFields.length) {
+						const tiles = liveFields
+							.map(
+								(f) =>
+									`<div class="reading" style="${status === 'offline' ? 'opacity:.5' : ''}"><p class="xs muted">${f.label}</p><p class="value">${fmt(live[f.key])}${f.unit && live[f.key] != null ? ` <small>${f.unit}</small>` : ''}</p></div>`
+							)
+							.join('');
+						const dial = a.type === 'centre_pivot' ? dialSvg(live) : '';
+						liveHtml += dial
+							? `<div class="pivot-row">${dial}<div class="readings" style="flex:1">${tiles}</div></div>`
+							: `<div class="readings">${tiles}</div>`;
+						liveHtml += `<p class="updated" id="updated">Updated just now</p>`;
+					}
+					const facts = type.fields
+						.map((f) => `<dt>${f.label}</dt><dd>${fmt(a.props[f.key], f.unit)}</dd>`)
+						.join('');
+					// Connections for this view's medium come first: water in Irrigation, power in
+					// Infrastructure.
+					const groups = {};
+					const medium = VIEW_MEDIUM[state.view];
+					const sorted = [...LINKS].sort((x, y) => (y.medium === medium) - (x.medium === medium));
+					for (const l of sorted) {
+						let key, other;
+						if (l.from === a.id) [key, other] = [`${l.kind}-out`, l.to];
+						else if (l.to === a.id) [key, other] = [`${l.kind}-in`, l.from];
+						else continue;
+						if (l.medium) key += `-${l.medium}`;
+						(groups[key] ??= []).push(other);
+					}
+					const groupLabel = RELATION;
+					const linksHtml = Object.entries(groups)
+						.map(
+							([key, ids]) =>
+								`<div class="links"><h3>${groupLabel[key]}</h3>${ids
+									.map((id) => {
+										const o = byId.get(id);
+										return `<button class="link-row" data-go="${id}">${window.badgeHtml({ glyph: TYPES[o.type].glyph, status: o.live?.status ?? 'none' })}<span>${o.name} <span class="muted small">${TYPES[o.type].label}</span></span></button>`;
+									})
+									.join('')}</div>`
+						)
+						.join('');
+					el.innerHTML = `
+						<div class="detail-head">
+							${window.badgeHtml({ glyph: type.glyph, status: status ?? 'none' })}
+							<div><h2 id="detail-title">${a.name}</h2><p class="small muted">${type.label}</p>
+							${status ? `<p style="margin-top:.35rem"><span class="pill ${status}">${window.STATUS_WORDS[status]}</span></p>` : ''}</div>
+							<button class="close" aria-label="Close" data-close>×</button>
+						</div>
+						${liveHtml}
+						<dl class="facts">${facts}</dl>
+						${linksHtml}
+						<div class="actions">
+							<a class="btn" href="editing.html#edit">Edit details</a>
+							<a class="btn" href="editing.html#move">Move</a>
+							<a class="btn danger" href="editing.html#remove">Remove</a>
+						</div>`;
+				}
+				el.querySelector('[data-close]').addEventListener('click', () => select(null));
+				el.querySelectorAll('[data-go]').forEach((b) =>
+					b.addEventListener('click', () => goTo(byId.get(b.dataset.go)))
+				);
+			}
+
+			function goTo(asset) {
+				const type = TYPES[asset.type];
+				if (!type.views[state.view]) setView(Object.keys(type.views)[0], false);
+				state.filters[state.view].add(type.views[state.view]);
+				select({ kind: 'asset', id: asset.id });
+				const g = asset.geometry;
+				const target =
+					g.type === 'Point'
+						? ll(g.coordinates)
+						: L.latLngBounds(
+								(g.type === 'Polygon' ? g.coordinates[0] : g.coordinates).map(ll)
+							).getCenter();
+				// Keep the asset clear of the card (right on desktop, bottom sheet on phones).
+				map.panTo(target, { animate: false });
+				const size = map.getSize();
+				if (window.matchMedia('(max-width: 47.99rem)').matches) map.panBy([0, size.y * 0.27]);
+				else map.panBy([Math.min(200, size.x * 0.2), 0]);
+			}
+
+			// ─── Side panels ────────────────────────────────────────────────
+			function renderViewButtons() {
+				document.getElementById('view-list').innerHTML = VIEWS.map(
+					(v) =>
+						`<button class="view-btn" aria-pressed="${v.id === state.view}" data-view="${v.id}">${window.glyphSvg(v.glyph)}<strong>${v.label}</strong><span>${v.blurb}</span></button>`
+				).join('');
+				document.getElementById('seg').innerHTML =
+					VIEWS.map(
+						(v) =>
+							`<button aria-pressed="${v.id === state.view}" data-view="${v.id}">${window.glyphSvg(v.glyph)}${v.label}</button>`
+					).join('') + `<button aria-label="Find on the map" data-search>${searchIcon}</button>`;
+				document
+					.querySelectorAll('[data-view]')
+					.forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+				document.querySelector('[data-search]').addEventListener('click', () => {
+					const s = document.getElementById('search-phone');
+					s.hidden = !s.hidden;
+					if (!s.hidden) s.querySelector('input').focus();
+				});
+			}
+
+			const searchIcon =
+				'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"/></svg>';
+
+			function filterChips() {
+				const view = VIEWS.find((v) => v.id === state.view);
+				if (view.id === 'soil') {
+					return `<button class="chip" aria-pressed="true">Soil pH</button><button class="chip" aria-pressed="false" data-soon>Phosphorus</button><button class="chip" aria-pressed="false" data-soon>Potassium</button><button class="chip" aria-pressed="false" data-soon>Organic matter</button>`;
+				}
+				if (view.id === 'property') {
+					return `<button class="chip" aria-pressed="true">Paddock names</button><button class="chip" aria-pressed="false" data-soon>Title boundaries</button>`;
+				}
+				return view.filters
+					.map(
+						(f) =>
+							`<button class="chip" data-filter="${f.id}" aria-pressed="${state.filters[view.id].has(f.id)}">${f.label}</button>`
+					)
+					.join('');
+			}
+
+			function legendHtml() {
+				const tested = paddocks.filter((p) => p.ph != null);
+				const optimal = tested.filter((p) => phStatus(p.ph) === 'Optimal').length;
+				const left = ((PH.optimal[0] - PH.min) / (PH.max - PH.min)) * 100;
+				const width = ((PH.optimal[1] - PH.optimal[0]) / (PH.max - PH.min)) * 100;
+				return `<div class="legend-bar" role="img" aria-label="pH from ${PH.min} to ${PH.max}, optimal ${PH.optimal[0]} to ${PH.optimal[1]}"><span class="legend-band" style="left:${left}%;width:${width}%"></span></div>
+					<div class="legend-scale"><span>${PH.min}</span><span>Optimal ${PH.optimal[0]}–${PH.optimal[1]}</span><span>${PH.max}</span></div>
+					<p class="small">${optimal} of ${tested.length} tested paddocks in the optimal range</p>`;
+			}
+
+			function nowListHtml(ids) {
+				return `<ul class="now-list">${ids
+					.map((id) => {
+						const a = byId.get(id);
+						const t = TYPES[a.type];
+						const live = a.live;
+						let line2 = '';
+						if (a.type === 'centre_pivot')
+							line2 =
+								live.status === 'running'
+									? `${Math.round(live.angle_deg)}°, ${live.depth_mm} mm, ends ${live.finish}`
+									: (live.message ?? 'Parked');
+						else if (a.type === 'linear_move') line2 = `Last seen ${live.lastSeen}`;
+						else {
+							const f = t.live?.[state.view]?.[0];
+							line2 = f ? `${f.label} ${fmt(live[f.key], f.unit)}` : '';
+						}
+						return `<li><button class="now-item" data-go="${id}">${window.badgeHtml({ glyph: t.glyph, status: live.status })}<strong>${a.name}</strong><span class="pill ${live.status}">${window.STATUS_WORDS[live.status]}</span><span class="line2 num">${line2}</span></button></li>`;
+					})
+					.join('')}</ul>`;
+			}
+
+			function renderPanel() {
+				const view = VIEWS.find((v) => v.id === state.view);
+				let body = '';
+				if (view.id === 'soil') {
+					body = `<h2>Soil pH (water)</h2>${legendHtml()}<p class="xs muted">Latest test per paddock. Grey dashed paddocks have no test.</p>`;
+				} else if (view.id === 'irrigation') {
+					const irrigators = window.ASSETS.filter((a) =>
+						['centre_pivot', 'linear_move'].includes(a.type)
+					);
+					const order = { fault: 0, warn: 1, running: 2, offline: 3, idle: 4 };
+					irrigators.sort((a, b) => order[a.live.status] - order[b.live.status]);
+					body = `<h2>Irrigation now</h2>${nowListHtml(irrigators.map((a) => a.id))}<h3 class="small muted" style="margin-top:.5rem">Water supply</h3>${nowListHtml(['D1', 'P1', 'WM1'])}`;
+				} else if (view.id === 'infrastructure') {
+					const total = window.ASSETS.filter((a) => a.type === 'electricity_meter').reduce(
+						(s, a) => s + a.live.power_kw,
+						0
+					);
+					body = `<h2>Power now <span class="num" style="float:right">${total.toFixed(1)} kW</span></h2>${nowListHtml(['E1', 'E2', 'P1'])}`;
+				} else {
+					const total = paddocks.reduce((s, p) => s + p.areaHa, 0);
+					body = `<h2>Property</h2><p class="small">${paddocks.length} paddocks, ${Math.round(total)} ha mapped.</p><p class="xs muted">Title boundaries would sit here as today.</p>`;
+				}
+				document.getElementById('view-panel').innerHTML =
+					`<div class="chips">${filterChips()}</div>${body}`;
+
+				// Phone: chips under the switcher, legend or status summary at the bottom.
+				const row = document.getElementById('phone-row');
+				row.innerHTML = filterChips();
+				const legend = document.getElementById('phone-legend');
+				legend.hidden = view.id !== 'soil' || !!state.selected;
+				legend.innerHTML = view.id === 'soil' ? legendHtml() : '';
+				if (view.id === 'irrigation') {
+					const running = window.ASSETS.filter(
+						(a) => a.live?.status === 'running' && TYPES[a.type].views.irrigation === 'irrigators'
+					).length;
+					const faults = window.ASSETS.filter((a) => a.live?.status === 'fault').length;
+					row.insertAdjacentHTML(
+						'afterbegin',
+						`<button class="chip" data-go="I3" aria-pressed="false" style="border-color:var(--danger)">${faults} fault</button><span class="chip" aria-pressed="false">${running} running</span>`
+					);
+				}
+
+				document.querySelectorAll('[data-filter]').forEach((b) =>
+					b.addEventListener('click', () => {
+						const set = state.filters[state.view];
+						if (set.has(b.dataset.filter)) set.delete(b.dataset.filter);
+						else set.add(b.dataset.filter);
+						render();
+					})
+				);
+				document
+					.querySelectorAll('#view-panel [data-go], #phone-row [data-go]')
+					.forEach((b) => b.addEventListener('click', () => goTo(byId.get(b.dataset.go))));
+				document
+					.querySelectorAll('[data-soon]')
+					.forEach((b) =>
+						b.addEventListener('click', () =>
+							toast('Works as it does today. Only pH is wired up in this sample.')
+						)
+					);
+			}
+
+			// ─── Search across paddocks and assets ──────────────────────────
+			function mountSearch(host) {
+				host.innerHTML = `<label class="sr-only" for="${host.id}-input" style="position:absolute;left:-9999px">Find on the map</label><input id="${host.id}-input" type="search" placeholder="Find a paddock, pole or pump" autocomplete="off" /><ul hidden></ul>`;
+				const input = host.querySelector('input');
+				const list = host.querySelector('ul');
+				input.addEventListener('input', () => {
+					const q = input.value.trim().toLowerCase();
+					if (!q) {
+						list.hidden = true;
+						return;
+					}
+					const hits = [
+						...window.ASSETS.filter(
+							(a) =>
+								a.name.toLowerCase().includes(q) ||
+								TYPES[a.type].label.toLowerCase().includes(q) ||
+								String(a.props.pole_number ?? '').includes(q)
+						).map((a) => ({ a })),
+						...paddocks.filter((p) => p.name.toLowerCase().includes(q)).map((p) => ({ p }))
+					].slice(0, 8);
+					list.hidden = false;
+					list.innerHTML = hits.length
+						? hits
+								.map(({ a, p }) =>
+									a
+										? `<li><button class="result" data-asset="${a.id}">${window.badgeHtml({ glyph: TYPES[a.type].glyph, status: a.live?.status ?? 'none' })}<span>${a.name}<span class="meta">${TYPES[a.type].label}, ${Object.keys(
+												TYPES[a.type].views
+											)
+												.map((v) => VIEWS.find((x) => x.id === v).label)
+												.join(' and ')} view</span></span></button></li>`
+										: `<li><button class="result" data-paddock="${p.id}">${window.badgeHtml({ glyph: 'paddock' })}<span>${p.name}<span class="meta">Paddock, ${p.farm}</span></span></button></li>`
+								)
+								.join('')
+						: '<li class="small muted" style="padding:.75rem">Nothing matches. Try a pole number or a paddock name.</li>';
+					list.querySelectorAll('[data-asset]').forEach((b) =>
+						b.addEventListener('click', () => {
+							list.hidden = true;
+							input.value = '';
+							goTo(byId.get(b.dataset.asset));
+						})
+					);
+					list.querySelectorAll('[data-paddock]').forEach((b) =>
+						b.addEventListener('click', () => {
+							list.hidden = true;
+							input.value = '';
+							const p = paddocks.find((x) => x.id === b.dataset.paddock);
+							if (VIEWS.find((v) => v.id === state.view).paddocks === 'context')
+								setView('soil', false);
+							select({ kind: 'paddock', id: p.id });
+							map.panTo(ll(p.centre));
+						})
+					);
+				});
+			}
+
+			// ─── Glue ───────────────────────────────────────────────────────
+			function setView(id, keepSelection = true) {
+				state.view = id;
+				history.replaceState(null, '', `#${id}`);
+				const sel = state.selected;
+				if (sel?.kind === 'asset' && !(keepSelection && inView(byId.get(sel.id))))
+					state.selected = null;
+				if (sel?.kind === 'paddock' && VIEWS.find((v) => v.id === id).paddocks === 'context')
+					state.selected = null;
+				render();
+			}
+
+			function render() {
+				renderViewButtons();
+				renderPanel();
+				drawPaddocks();
+				drawAssets();
+				renderDetail();
+				zoomClass();
+			}
+
+			let toastTimer;
+			function toast(text) {
+				const el = document.getElementById('toast');
+				el.textContent = text;
+				el.hidden = false;
+				clearTimeout(toastTimer);
+				toastTimer = setTimeout(() => (el.hidden = true), 4000);
+			}
+
+			document.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape' && state.selected) select(null);
+			});
+			map.on('click', (e) => {
+				if (
+					e.originalEvent.target.id === 'map' ||
+					e.originalEvent.target.classList.contains('leaflet-container')
+				)
+					select(null);
+			});
+
+			// Simulated live data: Pivot 2 keeps turning and the pump flow wanders a little.
+			setInterval(() => {
+				const p2 = byId.get('I1').live;
+				p2.angle_deg = (p2.angle_deg + 0.6) % 360;
+				const pump = byId.get('P1').live;
+				pump.flow_ls = +(57 + Math.random() * 2).toFixed(1);
+				pump.power_kw = +(40.5 + Math.random() * 1.5).toFixed(1);
+				byId.get('WM1').live.flow_ls = pump.flow_ls;
+				byId.get('E1').live.power_kw = +(pump.power_kw + 0.7).toFixed(1);
+				state.lastUpdate = Date.now();
+				if (state.view === 'irrigation' || state.view === 'infrastructure') {
+					drawAssets();
+					renderPanel();
+					if (state.selected?.kind === 'asset' && byId.get(state.selected.id).live) renderDetail();
+				}
+			}, 5000);
+			setInterval(() => {
+				const s = Math.round((Date.now() - state.lastUpdate) / 1000);
+				document.getElementById('map-foot').textContent =
+					`Live readings simulated, updated ${s} s ago`;
+				const u = document.getElementById('updated');
+				if (u) u.textContent = `Updated ${s} s ago`;
+			}, 1000);
+
+			mountSearch(document.getElementById('search-desktop'));
+			mountSearch(document.getElementById('search-phone'));
+			render();
+		</script>
+	</body>
+</html>

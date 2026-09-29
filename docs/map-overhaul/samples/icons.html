@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<title>Map icon sheet</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600&display=swap"
+		/>
+		<link rel="stylesheet" href="shared/samples.css" />
+		<style>
+			/* Layout: one reading column of specimen sections, each a labelled grid of swatches. */
+			main {
+				max-width: 72rem;
+				margin: 0 auto;
+				padding: 1.5rem 1rem 4rem;
+				display: grid;
+				gap: 2.75rem;
+			}
+
+			section {
+				display: grid;
+				gap: 1rem;
+			}
+
+			section > p {
+				max-width: 44rem;
+				color: var(--muted);
+			}
+
+			/* A patch of pretend paddock so specimens are judged on something like imagery. */
+			.ground {
+				background:
+					radial-gradient(circle at 20% 30%, rgb(120 140 60 / 0.55), transparent 40%),
+					radial-gradient(circle at 75% 60%, rgb(150 95 70 / 0.5), transparent 45%),
+					radial-gradient(circle at 45% 85%, rgb(70 110 60 / 0.6), transparent 40%),
+					linear-gradient(135deg, #3c4d2c, #5a5634 45%, #3d5230);
+				border-radius: 12px;
+				border: 1px solid var(--border);
+			}
+
+			.grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+				gap: 0.75rem;
+			}
+
+			.cell {
+				display: grid;
+				gap: 0.6rem;
+				justify-items: start;
+				padding: 0.9rem;
+				border-radius: 12px;
+				background: var(--panel);
+				border: 1px solid var(--border);
+				min-width: 0;
+			}
+
+			.cell .sizes {
+				display: flex;
+				align-items: center;
+				gap: 0.9rem;
+			}
+
+			.cell .sizes .badge:nth-child(1) {
+				--size: 22px;
+				border-width: 1.5px;
+			}
+
+			.cell .sizes .badge:nth-child(3) {
+				--size: 40px;
+			}
+
+			.cell h3 {
+				font-size: 0.9375rem;
+			}
+
+			.cell p {
+				font-size: 0.8125rem;
+				color: var(--muted);
+			}
+
+			.states {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+				gap: 0.75rem;
+			}
+
+			.state {
+				display: grid;
+				grid-template-columns: 72px 1fr;
+				gap: 0.25rem 0.75rem;
+				align-items: center;
+				padding: 0.75rem;
+				border-radius: 12px;
+				background: var(--panel);
+				border: 1px solid var(--border);
+			}
+
+			.state .stage {
+				grid-row: span 2;
+				height: 76px;
+				display: grid;
+				align-content: start;
+				padding-top: 10px;
+				place-items: center;
+				position: relative;
+			}
+
+			.state .stage .badge-chip {
+				/* Below the badge here, so it stays inside the narrow stage. */
+				left: 50%;
+				top: calc(100% + 12px);
+				transform: translateX(-50%);
+			}
+
+			.state p {
+				font-size: 0.8125rem;
+				color: var(--muted);
+			}
+
+			.state .dimmed {
+				opacity: 0.35;
+			}
+
+			.anatomy {
+				display: grid;
+				grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+				gap: 1.5rem;
+				align-items: center;
+			}
+
+			.anatomy .ground {
+				height: 13rem;
+				display: grid;
+				place-items: center;
+				position: relative;
+			}
+
+			.anatomy .ground .badge {
+				--size: 56px;
+				border-width: 3px;
+			}
+
+			.anatomy .ground .badge-chip {
+				left: calc(50% + 36px);
+				font-size: 16px;
+			}
+
+			.anatomy ol {
+				margin: 0;
+				padding-left: 1.25rem;
+				display: grid;
+				gap: 0.5rem;
+			}
+
+			.swatches {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+				gap: 0.75rem;
+			}
+
+			.swatch {
+				display: grid;
+				gap: 0.5rem;
+			}
+
+			.swatch svg {
+				width: 100%;
+				height: auto;
+				display: block;
+			}
+
+			.swatch p {
+				font-size: 0.8125rem;
+				color: var(--muted);
+			}
+
+			.compare {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+				gap: 1rem;
+			}
+
+			.compare .ground {
+				height: 11rem;
+				position: relative;
+			}
+
+			.compare .ground > * {
+				position: absolute;
+			}
+
+			.opt-b .badge {
+				border-color: rgb(255 255 255 / 0.9);
+			}
+
+			.opt-b .dot {
+				position: absolute;
+				right: -3px;
+				bottom: -3px;
+				width: 11px;
+				height: 11px;
+				border-radius: 50%;
+				border: 2px solid #0b1117;
+			}
+
+			.tag {
+				display: inline-block;
+				padding: 0.1rem 0.55rem;
+				border-radius: 999px;
+				font-size: 0.75rem;
+				font-weight: 600;
+				background: rgb(114 228 156 / 0.15);
+				color: var(--accent);
+			}
+
+			.tag.alt {
+				background: rgb(255 255 255 / 0.08);
+				color: var(--muted);
+			}
+
+			.table-wrap {
+				overflow-x: auto;
+			}
+
+			table {
+				border-collapse: collapse;
+				min-width: 36rem;
+				font-size: 0.875rem;
+			}
+
+			th,
+			td {
+				text-align: left;
+				padding: 0.55rem 0.9rem 0.55rem 0;
+				border-bottom: 1px solid var(--border);
+				vertical-align: top;
+			}
+
+			th {
+				color: var(--muted);
+				font-weight: 600;
+			}
+
+			@media (max-width: 40rem) {
+				.anatomy {
+					grid-template-columns: minmax(0, 1fr);
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<p class="sample-note">
+			<strong>Sample</strong>
+			<span>Icons and map styles for the new asset types. Everything here is up for feedback.</span>
+			<a href="index.html">All samples</a>
+		</p>
+		<main>
+			<header style="display: grid; gap: 0.5rem">
+				<h1>Map icon sheet</h1>
+				<p class="muted" style="max-width: 44rem">
+					Point assets are round badges: a dark disc with a light glyph, so they read on bright and
+					dark imagery alike. The glyph says what the thing is. The ring says whether it is working.
+					Lines and areas carry their own colour instead (water blue, power yellow, road tan).
+				</p>
+			</header>
+
+			<section aria-labelledby="anatomy">
+				<h2 id="anatomy">Anatomy of a badge</h2>
+				<div class="anatomy">
+					<div class="ground" id="anatomy-stage"></div>
+					<ol>
+						<li>
+							<strong>Glyph.</strong> One per asset type, stroke drawn, readable at 16px. Type is
+							never shown by colour, so the set works for colour-blind users and in glare.
+						</li>
+						<li>
+							<strong>Disc.</strong> Always dark (the app's panel colour) with a thin black edge, so
+							it separates from any imagery. 28px on the map inside a 44px tap target.
+						</li>
+						<li>
+							<strong>Status ring.</strong> Green for running, amber for warning, red for fault,
+							grey dashed for offline. White when the asset has no live data. Faults and warnings
+							also get a corner "!" so they don't rely on colour.
+						</li>
+						<li>
+							<strong>Value chip.</strong> One live reading, chosen by the view: flow in Irrigation,
+							kilowatts in Infrastructure. Hidden when zoomed out.
+						</li>
+					</ol>
+				</div>
+			</section>
+
+			<section aria-labelledby="set">
+				<h2 id="set">The set</h2>
+				<p>
+					Each type at list size (22px), map size (28px) and selected (40px). Types marked "line" or
+					"area" use the badge in lists, pickers and the detail card, and on the map only at their
+					label point.
+				</p>
+				<div class="grid" id="set-grid"></div>
+			</section>
+
+			<section aria-labelledby="states">
+				<h2 id="states">States</h2>
+				<p>
+					Live status and selection are separate channels, so a selected pump that is faulting shows
+					both. Status always comes with a word, in the tooltip, the list and the card.
+				</p>
+				<div class="states" id="states-grid"></div>
+			</section>
+
+			<section aria-labelledby="lines">
+				<h2 id="lines">Lines and areas</h2>
+				<p>
+					Every line has a dark casing so it holds up on pale paddocks, and an invisible 22px wide
+					hit line so it can be tapped with a thumb.
+				</p>
+				<div class="swatches" id="swatches"></div>
+			</section>
+
+			<section aria-labelledby="options">
+				<h2 id="options">Two directions for point colour</h2>
+				<p>
+					The sheet above uses option A. Option B is the common alternative, shown here so you can
+					compare them on the same patch of ground.
+				</p>
+				<div class="compare">
+					<div class="swatch">
+						<div class="ground" id="opt-a"></div>
+						<p>
+							<span class="tag">A · Recommended</span> Neutral discs, status in the ring. The fault
+							stands out because nothing else on the map is red.
+						</p>
+					</div>
+					<div class="swatch opt-b">
+						<div class="ground" id="opt-b"></div>
+						<p>
+							<span class="tag alt">B</span> Discs coloured by domain (water blue, power yellow,
+							access tan) with status as a small dot. Types group at a glance, but a fault is a 7px
+							dot and green or amber status clashes with the domain colours.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<section aria-labelledby="zoom">
+				<h2 id="zoom">What shows at each zoom</h2>
+				<p>Leaflet zoom levels for the farm. 15 fits the whole Woodcote block on a laptop.</p>
+				<div class="table-wrap">
+					<table>
+						<thead>
+							<tr>
+								<th scope="col">Zoom</th>
+								<th scope="col">Points</th>
+								<th scope="col">Lines and areas</th>
+								<th scope="col">Text</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td class="num">14 and out</td>
+								<td>
+									Major assets only (irrigators, pumps, dams, meters). Faults always show, even when
+									clustered.
+								</td>
+								<td>Mains, power lines and roads, thinner</td>
+								<td>None</td>
+							</tr>
+							<tr>
+								<td class="num">15–16</td>
+								<td>Major assets with value chips</td>
+								<td>All</td>
+								<td>Value chips</td>
+							</tr>
+							<tr>
+								<td class="num">17 and in</td>
+								<td>Everything, including poles, valves and gates</td>
+								<td>All, full width</td>
+								<td>Chips, and names for irrigators and dams</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</section>
+		</main>
+
+		<script src="shared/icons.js"></script>
+		<script src="shared/assets.js"></script>
+		<script>
+			const TYPES = window.ASSET_TYPES;
+			const b = window.badgeHtml;
+
+			document.getElementById('anatomy-stage').innerHTML =
+				`<span style="position:relative;display:inline-flex">${b({ glyph: 'pump', status: 'running', chip: '58 L/s' })}</span>`;
+
+			const extra = {
+				fence: {
+					label: 'Fence',
+					geometry: 'LineString',
+					glyph: 'fence',
+					note: 'Proposed, not in the samples yet'
+				},
+				tank: { label: 'Tank', geometry: 'Point', glyph: 'tank', note: 'Proposed' },
+				probe: {
+					label: 'Soil moisture probe',
+					geometry: 'Point',
+					glyph: 'probe',
+					note: 'Proposed, for live data'
+				},
+				paddock: { label: 'Paddock', geometry: 'Polygon', glyph: 'paddock', note: 'Existing' },
+				title: { label: 'Title', geometry: 'Polygon', glyph: 'title', note: 'Existing' }
+			};
+			const kind = { Point: 'point', LineString: 'line', Polygon: 'area' };
+			document.getElementById('set-grid').innerHTML = [
+				...Object.values(TYPES),
+				...Object.values(extra)
+			]
+				.map(
+					(t) =>
+						`<div class="cell"><div class="sizes">${b({ glyph: t.glyph })}${b({ glyph: t.glyph })}${b({ glyph: t.glyph, extra: 'is-selected' })}</div><div><h3>${t.label}</h3><p>${kind[t.geometry]}${t.note ? `, ${t.note.toLowerCase()}` : ''}</p></div></div>`
+				)
+				.join('');
+
+			const states = [
+				['Default', 'No live data. White ring.', b({ glyph: 'pole' })],
+				[
+					'Running',
+					'Green ring and halo. Chip shows the view’s reading.',
+					b({ glyph: 'pump', status: 'running', chip: '41 kW' })
+				],
+				['Stopped', 'Live, but idle. White ring, no halo.', b({ glyph: 'pivot', status: 'idle' })],
+				[
+					'Warning',
+					'Amber ring and "!". For example, dam below 30%.',
+					b({ glyph: 'dam', status: 'warn', chip: '24 %' })
+				],
+				[
+					'Fault',
+					'Red ring, halo and "!". Sorted to the top of lists.',
+					b({ glyph: 'pivot', status: 'fault' })
+				],
+				[
+					'Offline',
+					'Grey dashed ring. No reading within the expected time.',
+					b({ glyph: 'linear', status: 'offline', chip: 'Offline' })
+				],
+				[
+					'Selected',
+					'Larger, double white ring. One at a time.',
+					b({ glyph: 'water_meter', status: 'running', extra: 'is-selected' })
+				],
+				[
+					'Connected to selection',
+					'Blue outer ring: feeds or is fed by the selection.',
+					b({ glyph: 'valve', extra: 'is-linked' })
+				],
+				[
+					'Not connected',
+					'Faded to 35% while something is selected.',
+					`<span class="dimmed">${b({ glyph: 'gate' })}</span>`
+				],
+				[
+					'Planned',
+					'Dashed and faded. Drawn but not built yet.',
+					b({ glyph: 'tank', extra: 'is-planned' })
+				]
+			];
+			document.getElementById('states-grid').innerHTML = states
+				.map(
+					([title, text, html]) =>
+						`<div class="state"><div class="stage"><span style="position:relative;display:inline-flex">${html}</span></div><strong>${title}</strong><p>${text}</p></div>`
+				)
+				.join('');
+
+			// Line and area specimens, drawn in SVG on the same pretend ground.
+			const ground =
+				'<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3c4d2c"/><stop offset=".5" stop-color="#5a5634"/><stop offset="1" stop-color="#3d5230"/></linearGradient></defs><rect width="240" height="110" rx="12" fill="url(#g)"/>';
+			const path = 'M16 80 C 70 20, 130 100, 224 30';
+			const swatches = [
+				[
+					'Water main',
+					'Blue, 4px, solid. Wider when connected to the selection.',
+					`<path d="${path}" stroke="#0b1117" stroke-width="8" fill="none" opacity=".8"/><path d="${path}" stroke="#5fb4f5" stroke-width="4" fill="none"/>`
+				],
+				[
+					'Power line',
+					'Yellow, 3px, dashed like a span between poles. Poles appear from zoom 17.',
+					`<path d="${path}" stroke="#0b1117" stroke-width="7" fill="none" opacity=".8"/><path d="${path}" stroke="#f5cf5b" stroke-width="3" stroke-dasharray="10 7" fill="none"/>`
+				],
+				[
+					'Road or track',
+					'Tan, 5px. Dry-weather tracks dashed.',
+					`<path d="${path}" stroke="#0b1117" stroke-width="9" fill="none" opacity=".8"/><path d="${path}" stroke="#d8c3a0" stroke-width="5" fill="none"/><path d="M16 100 C 90 70, 150 110, 224 80" stroke="#0b1117" stroke-width="7" fill="none" opacity=".7"/><path d="M16 100 C 90 70, 150 110, 224 80" stroke="#d8c3a0" stroke-width="3" stroke-dasharray="7 6" fill="none"/>`
+				],
+				[
+					'Fence (proposed)',
+					'Thin white dotted. Only in the Infrastructure view.',
+					`<path d="${path}" stroke="#0b1117" stroke-width="4" fill="none" opacity=".6"/><path d="${path}" stroke="#ffffff" stroke-width="1.8" stroke-dasharray="1 5" stroke-linecap="round" fill="none"/>`
+				],
+				[
+					'Centre pivot, running',
+					'Circle outline, the arm at its live angle, this pass shaded green.',
+					`<circle cx="120" cy="55" r="46" fill="#fff" fill-opacity=".04" stroke="#fff" stroke-width="1.5"/><path d="M120 55 L126 9.4 A46 46 0 0 1 157 82 Z" fill="#72e49c" fill-opacity=".3"/><line x1="120" y1="55" x2="157" y2="82" stroke="#0b1117" stroke-width="7" opacity=".7"/><line x1="120" y1="55" x2="157" y2="82" stroke="#72e49c" stroke-width="3.5"/>`
+				],
+				[
+					'Centre pivot, parked or faulted',
+					'Parked: dashed circle, grey arm. Fault: red arm and shading.',
+					`<circle cx="65" cy="55" r="40" fill="none" stroke="#fff" stroke-width="1.5" stroke-dasharray="6 5"/><line x1="65" y1="55" x2="35" y2="30" stroke="#9fb3c8" stroke-width="3.5"/><circle cx="178" cy="55" r="40" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M178 55 L171 15.6 A40 40 0 0 1 216 67 Z" fill="#f87171" fill-opacity=".3"/><line x1="178" y1="55" x2="216" y2="67" stroke="#f87171" stroke-width="3.5"/>`
+				],
+				[
+					'Linear move',
+					'The machine as a thick line, the strip watered this run shaded.',
+					`<rect x="40" y="12" width="96" height="86" fill="#9fb3c8" fill-opacity=".18"/><line x1="136" y1="12" x2="136" y2="98" stroke="#0b1117" stroke-width="10" opacity=".75"/><line x1="136" y1="12" x2="136" y2="98" stroke="#72e49c" stroke-width="5"/><path d="M150 55h26m-8-7 8 7-8 7" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`
+				],
+				[
+					'Dam',
+					'Water fill, pale edge. The chip shows the level when a sensor is linked.',
+					`<path d="M60 30 C 110 8, 190 20, 196 55 C 200 90, 120 100, 70 88 C 30 78, 30 45, 60 30Z" fill="#2b7fc4" fill-opacity=".6" stroke="#bfe3ff" stroke-width="1.5"/>`
+				],
+				[
+					'Paddock as context',
+					'In Irrigation and Infrastructure, paddocks are faint outlines and ignore taps, so taps land on assets.',
+					`<path d="M20 20 L110 12 L118 96 L26 100Z M128 14 L222 22 L214 98 L126 96Z" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="1"/>`
+				],
+				[
+					'Title boundary',
+					'Unchanged from today: dashed yellow over an ownership tint.',
+					`<path d="M20 18 L220 14 L214 96 L28 98Z" fill="#2563eb" fill-opacity=".18" stroke="#facc15" stroke-width="2" stroke-dasharray="6 4"/>`
+				]
+			];
+			document.getElementById('swatches').innerHTML = swatches
+				.map(
+					([title, text, svg]) =>
+						`<div class="swatch"><svg viewBox="0 0 240 110" role="img" aria-label="${title}">${ground}${svg}</svg><strong>${title}</strong><p>${text}</p></div>`
+				)
+				.join('');
+
+			// Option comparison: the same six assets in both treatments.
+			const pos = [
+				['pump', 'running', 18, 22],
+				['pivot', 'fault', 42, 60],
+				['elec_meter', 'running', 70, 28],
+				['gate', 'none', 58, 12],
+				['valve', 'none', 30, 78],
+				['pole', 'none', 84, 70]
+			];
+			const domain = {
+				pump: '#2b7fc4',
+				pivot: '#2b7fc4',
+				valve: '#2b7fc4',
+				elec_meter: '#b8921f',
+				pole: '#b8921f',
+				gate: '#8b6f47'
+			};
+			const dot = { running: '#72e49c', fault: '#f87171', none: null };
+			document.getElementById('opt-a').innerHTML = pos
+				.map(
+					([g, s, x, y]) =>
+						`<span style="left:${x}%;top:${y}%">${b({ glyph: g, status: s })}</span>`
+				)
+				.join('');
+			document.getElementById('opt-b').innerHTML = pos
+				.map(
+					([g, s, x, y]) =>
+						`<span style="left:${x}%;top:${y}%"><span class="badge" style="background:${domain[g]}">${window.glyphSvg(g)}${dot[s] ? `<span class="dot" style="background:${dot[s]}"></span>` : ''}</span></span>`
+				)
+				.join('');
+		</script>
+	</body>
+</html>

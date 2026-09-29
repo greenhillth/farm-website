@@ -1,0 +1,836 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<title>Map editing storyboard</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600&display=swap"
+		/>
+		<link rel="stylesheet" href="shared/samples.css" />
+		<style>
+			/* Layout: a storyboard. Phone frames in reading order, one desktop frame, each with a
+			   caption that says what the step is for. */
+			main {
+				max-width: 76rem;
+				margin: 0 auto;
+				padding: 1.5rem 1rem 4rem;
+				display: grid;
+				gap: 2rem;
+			}
+
+			.board {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(min(100%, 19.5rem), 1fr));
+				gap: 2rem 1.5rem;
+				align-items: start;
+			}
+
+			figure {
+				margin: 0;
+				display: grid;
+				gap: 0.75rem;
+				min-width: 0;
+			}
+
+			figcaption {
+				display: grid;
+				gap: 0.25rem;
+			}
+
+			figcaption .step {
+				font-size: 0.75rem;
+				color: var(--muted);
+				font-variant-numeric: tabular-nums;
+			}
+
+			figcaption p {
+				font-size: 0.875rem;
+				color: var(--muted);
+			}
+
+			.phone {
+				position: relative;
+				width: 100%;
+				max-width: 20rem;
+				aspect-ratio: 9 / 18;
+				border-radius: 28px;
+				border: 6px solid #1c2633;
+				background: #0d151d;
+				overflow: hidden;
+				box-shadow: 0 16px 40px rgb(0 0 0 / 0.45);
+			}
+
+			.desktop {
+				position: relative;
+				width: 100%;
+				aspect-ratio: 16 / 9;
+				border-radius: 12px;
+				border: 6px solid #1c2633;
+				background: #0d151d;
+				overflow: hidden;
+				box-shadow: 0 16px 40px rgb(0 0 0 / 0.45);
+			}
+
+			.wide {
+				grid-column: 1 / -1;
+			}
+
+			.mini {
+				position: absolute;
+				inset: 0;
+			}
+
+			.mini svg {
+				width: 100%;
+				height: 100%;
+				display: block;
+			}
+
+			.pin {
+				position: absolute;
+				transform: translate(-50%, -50%);
+				display: inline-flex;
+			}
+
+			.pin .badge {
+				--size: 22px;
+				border-width: 1.5px;
+			}
+
+			.pin .badge-chip {
+				left: calc(50% + 14px);
+				font-size: 10px;
+			}
+
+			/* Frame chrome */
+			.bar {
+				position: absolute;
+				left: 8px;
+				right: 8px;
+				top: 8px;
+				display: flex;
+				gap: 6px;
+				align-items: center;
+				padding: 6px 8px;
+				border-radius: 12px;
+				background: rgb(15 23 34 / 0.95);
+				border: 1px solid var(--border-strong);
+				font-size: 0.8125rem;
+			}
+
+			.bar .grow {
+				flex: 1;
+				min-width: 0;
+			}
+
+			.mbtn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 0.35rem;
+				min-height: 36px;
+				padding: 0 0.7rem;
+				border-radius: 8px;
+				border: 1px solid var(--border-strong);
+				background: rgb(255 255 255 / 0.06);
+				font-size: 0.8125rem;
+				white-space: nowrap;
+			}
+
+			.mbtn.primary {
+				background: var(--accent);
+				border-color: var(--accent);
+				color: #06210f;
+				font-weight: 600;
+			}
+
+			.mbtn.danger {
+				background: #7f1d1d;
+				border-color: #b91c1c;
+				color: #fee2e2;
+				font-weight: 600;
+			}
+
+			.sheet {
+				position: absolute;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				max-height: 78%;
+				overflow: hidden;
+				background: var(--panel);
+				border-top: 1px solid var(--border-strong);
+				border-radius: 16px 16px 0 0;
+				padding: 0.8rem 0.85rem 1rem;
+				display: grid;
+				gap: 0.65rem;
+				align-content: start;
+				font-size: 0.8125rem;
+			}
+
+			.sheet h3 {
+				font-size: 1rem;
+			}
+
+			.grab {
+				width: 36px;
+				height: 4px;
+				border-radius: 2px;
+				background: var(--border-strong);
+				justify-self: center;
+			}
+
+			.type-group {
+				display: grid;
+				gap: 0.35rem;
+			}
+
+			.type-group h4 {
+				margin: 0;
+				font-size: 0.75rem;
+				color: var(--muted);
+				font-weight: 600;
+			}
+
+			.types {
+				display: grid;
+				grid-template-columns: repeat(3, minmax(0, 1fr));
+				gap: 0.35rem;
+			}
+
+			.type {
+				display: grid;
+				justify-items: center;
+				gap: 0.25rem;
+				padding: 0.45rem 0.2rem;
+				border-radius: 10px;
+				border: 1px solid var(--border);
+				text-align: center;
+				font-size: 0.6875rem;
+				line-height: 1.2;
+			}
+
+			.type .badge {
+				--size: 28px;
+			}
+
+			.type.hot {
+				border-color: var(--accent);
+				background: rgb(114 228 156 / 0.1);
+			}
+
+			.field {
+				display: grid;
+				gap: 0.2rem;
+			}
+
+			.field label,
+			.field .label {
+				font-size: 0.75rem;
+				color: var(--muted);
+			}
+
+			.input {
+				min-height: 34px;
+				display: flex;
+				align-items: center;
+				padding: 0 0.6rem;
+				border-radius: 8px;
+				border: 1px solid var(--border-strong);
+				background: var(--bg);
+				font-variant-numeric: tabular-nums;
+			}
+
+			.input.focus {
+				border-color: var(--accent);
+				box-shadow: 0 0 0 2px rgb(114 228 156 / 0.25);
+			}
+
+			.segs {
+				display: grid;
+				grid-auto-flow: column;
+				grid-auto-columns: 1fr;
+				border: 1px solid var(--border-strong);
+				border-radius: 8px;
+				overflow: hidden;
+			}
+
+			.segs span {
+				text-align: center;
+				padding: 0.4rem 0;
+			}
+
+			.segs span.on {
+				background: rgb(114 228 156 / 0.18);
+				font-weight: 600;
+			}
+
+			.row2 {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 0.5rem;
+			}
+
+			.linked {
+				display: flex;
+				align-items: center;
+				gap: 0.5rem;
+				padding: 0.45rem 0.55rem;
+				border-radius: 8px;
+				background: rgb(120 189 240 / 0.12);
+				border: 1px solid rgb(120 189 240 / 0.4);
+			}
+
+			.linked .badge {
+				--size: 22px;
+				border-width: 1.5px;
+			}
+
+			.crosshair {
+				position: absolute;
+				left: 50%;
+				top: 42%;
+				width: 44px;
+				height: 44px;
+				transform: translate(-50%, -50%);
+			}
+
+			.gps {
+				position: absolute;
+				width: 64px;
+				height: 64px;
+				border-radius: 50%;
+				background: rgb(120 189 240 / 0.18);
+				border: 1px solid rgb(120 189 240 / 0.6);
+				transform: translate(-50%, -50%);
+			}
+
+			.gps::after {
+				content: '';
+				position: absolute;
+				left: 50%;
+				top: 50%;
+				width: 12px;
+				height: 12px;
+				border-radius: 50%;
+				background: #78bdf0;
+				border: 2px solid #fff;
+				transform: translate(-50%, -50%);
+			}
+
+			.hint {
+				position: absolute;
+				left: 12px;
+				right: 12px;
+				padding: 0.5rem 0.65rem;
+				border-radius: 10px;
+				background: rgb(15 23 34 / 0.95);
+				border: 1px solid var(--border-strong);
+				font-size: 0.75rem;
+				text-align: center;
+			}
+
+			.toast-m {
+				position: absolute;
+				left: 12px;
+				right: 12px;
+				bottom: 18px;
+				display: flex;
+				align-items: center;
+				gap: 0.5rem;
+				padding: 0.55rem 0.7rem;
+				border-radius: 10px;
+				background: #1b2634;
+				border: 1px solid var(--border-strong);
+				font-size: 0.8125rem;
+				box-shadow: 0 8px 20px rgb(0 0 0 / 0.5);
+			}
+
+			.toast-m .grow {
+				flex: 1;
+			}
+
+			.toast-m a {
+				font-weight: 600;
+			}
+
+			.scrim {
+				position: absolute;
+				inset: 0;
+				background: rgb(0 0 0 / 0.55);
+			}
+
+			.dialog {
+				position: absolute;
+				left: 14px;
+				right: 14px;
+				top: 50%;
+				transform: translateY(-50%);
+				padding: 1rem;
+				border-radius: 16px;
+				background: var(--panel);
+				border: 1px solid var(--border-strong);
+				display: grid;
+				gap: 0.7rem;
+				font-size: 0.8125rem;
+			}
+
+			.dialog ul {
+				margin: 0;
+				padding-left: 1.1rem;
+				display: grid;
+				gap: 0.3rem;
+			}
+
+			.side {
+				position: absolute;
+				top: 0;
+				right: 0;
+				bottom: 0;
+				width: 36%;
+				background: var(--panel);
+				border-left: 1px solid var(--border-strong);
+				padding: 0.9rem;
+				display: grid;
+				gap: 0.6rem;
+				align-content: start;
+				font-size: 0.8125rem;
+				overflow: hidden;
+			}
+
+			.handle {
+				position: absolute;
+				width: 14px;
+				height: 14px;
+				border-radius: 50%;
+				background: #fff;
+				border: 3px solid #0b1117;
+				transform: translate(-50%, -50%);
+				box-shadow: 0 0 0 2px #fff;
+			}
+
+			.handle.square {
+				border-radius: 3px;
+			}
+
+			.hlabel {
+				position: absolute;
+				transform: translate(-50%, 0);
+				padding: 1px 6px;
+				border-radius: 6px;
+				background: rgb(11 17 23 / 0.9);
+				font-size: 10px;
+				white-space: nowrap;
+			}
+
+			.history {
+				display: grid;
+				gap: 0.35rem;
+				margin: 0;
+				padding: 0;
+				list-style: none;
+			}
+
+			.history li {
+				display: grid;
+				grid-template-columns: auto 1fr;
+				gap: 0 0.5rem;
+			}
+
+			.history time {
+				color: var(--muted);
+				font-variant-numeric: tabular-nums;
+			}
+
+			.principles {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+				gap: 0.75rem 1.5rem;
+				margin: 0;
+				padding: 0;
+				list-style: none;
+			}
+
+			.principles li {
+				display: grid;
+				gap: 0.2rem;
+			}
+
+			.principles p {
+				color: var(--muted);
+				font-size: 0.875rem;
+			}
+
+			:target {
+				outline: 2px solid var(--accent);
+				outline-offset: 8px;
+				border-radius: 12px;
+			}
+		</style>
+	</head>
+	<body>
+		<p class="sample-note">
+			<strong>Sample</strong>
+			<span>A storyboard of adding, drawing, editing and removing assets. Not interactive.</span>
+			<a href="index.html">All samples</a>
+		</p>
+		<main>
+			<header style="display: grid; gap: 0.5rem; max-width: 46rem">
+				<h1>Map editing storyboard</h1>
+				<p class="muted">
+					Editing is a mode you step into from the map, not a set of tools that are always on. It
+					keeps the everyday map calm for people who only look, and makes it obvious when a tap will
+					change something.
+				</p>
+			</header>
+
+			<ul class="principles">
+				<li>
+					<strong>Each change saves on its own</strong>
+					<p>No draft to publish later. Every save shows an Undo for ten seconds.</p>
+				</li>
+				<li>
+					<strong>Place with a crosshair or GPS</strong>
+					<p>
+						A finger hides what it taps. The map moves under a fixed cross instead, or you stand at
+						the pole and use your location.
+					</p>
+				</li>
+				<li>
+					<strong>Snap and connect</strong>
+					<p>
+						Points snap onto lines and line ends snap onto points. Snapping creates the connection,
+						so nobody fills in a "connected to" field by hand.
+					</p>
+				</li>
+				<li>
+					<strong>Remove means archive</strong>
+					<p>
+						Archived assets leave the map but keep their history and readings. Permanent delete is a
+						separate admin action.
+					</p>
+				</li>
+			</ul>
+
+			<div class="board">
+				<figure id="add">
+					<div class="phone" data-frame="add"></div>
+					<figcaption>
+						<span class="step">1 of 7</span>
+						<strong>Choose what to add</strong>
+						<p>
+							Types from the current view come first (Infrastructure here), then the rest. The list
+							is short because types are fixed in code, not made up per farm.
+						</p>
+					</figcaption>
+				</figure>
+				<figure id="place">
+					<div class="phone" data-frame="place"></div>
+					<figcaption>
+						<span class="step">2 of 7</span>
+						<strong>Place a point</strong>
+						<p>
+							Drag the map to put the cross on the pole, or use your location when standing at it.
+							The cross has snapped onto the feeder, so the pole joins that line.
+						</p>
+					</figcaption>
+				</figure>
+				<figure id="details">
+					<div class="phone" data-frame="details"></div>
+					<figcaption>
+						<span class="step">3 of 7</span>
+						<strong>Fill in the details</strong>
+						<p>
+							Fields come from the pole type. Only the pole number is required. The connection made
+							by snapping is shown, and can be removed.
+						</p>
+					</figcaption>
+				</figure>
+				<figure id="edit" class="wide">
+					<div class="desktop" data-frame="edit"></div>
+					<figcaption>
+						<span class="step">4 of 7</span>
+						<strong>Edit an existing pivot, on a desktop</strong>
+						<p>
+							Selecting Edit on a pivot shows handles for the pivot point, the radius and the ends
+							of a part circle. The form beside it updates as you drag, and typed values move the
+							handles. History shows who changed what.
+						</p>
+					</figcaption>
+				</figure>
+				<figure id="line">
+					<div class="phone" data-frame="line"></div>
+					<figcaption>
+						<span class="step">5 of 7</span>
+						<strong>Draw a line</strong>
+						<p>
+							Tap to add points. The start snapped to the dam pump, so the new main is fed by it.
+							Length updates as you go, and Undo removes the last point.
+						</p>
+					</figcaption>
+				</figure>
+				<figure id="remove">
+					<div class="phone" data-frame="remove"></div>
+					<figcaption>
+						<span class="step">6 of 7</span>
+						<strong>Remove</strong>
+						<p>
+							The dialog says what else is affected before anything happens. The pole comes off the
+							map and the feeder is joined between the poles either side.
+						</p>
+					</figcaption>
+				</figure>
+				<figure id="move">
+					<div class="phone" data-frame="move"></div>
+					<figcaption>
+						<span class="step">7 of 7</span>
+						<strong>Move, then undo</strong>
+						<p>
+							Move uses the same crosshair as Place. The save is immediate, and the toast offers
+							Undo for ten seconds.
+						</p>
+					</figcaption>
+				</figure>
+			</div>
+		</main>
+
+		<script src="shared/icons.js"></script>
+		<script src="shared/paddocks.js"></script>
+		<script src="shared/assets.js"></script>
+		<script>
+			const TYPES = window.ASSET_TYPES;
+			const byId = new Map(window.ASSETS.map((a) => [a.id, a]));
+			const b = window.badgeHtml;
+			const g = window.glyphSvg;
+
+			// A tiny static map: paddocks and chosen assets drawn in SVG, projected into a bbox.
+			function miniMap(frame, bbox, show, extraSvg = '') {
+				const [w0, s0, e0, n0] = bbox;
+				const w = frame.clientWidth || 320;
+				const h = frame.clientHeight || 640;
+				// Keep the scale right: widen the box to the frame's aspect ratio.
+				const kx = 83_800;
+				const ky = 111_200;
+				const cx = (w0 + e0) / 2;
+				const cy = (s0 + n0) / 2;
+				const scale = Math.min(w / ((e0 - w0) * kx), h / ((n0 - s0) * ky));
+				const x = (lon) => w / 2 + (lon - cx) * kx * scale;
+				const y = (lat) => h / 2 - (lat - cy) * ky * scale;
+				const pct = ([lon, lat]) => ({
+					left: `${(x(lon) / w) * 100}%`,
+					top: `${(y(lat) / h) * 100}%`
+				});
+				const pathOf = (coords) =>
+					coords
+						.map(([lon, lat], i) => `${i ? 'L' : 'M'}${x(lon).toFixed(1)} ${y(lat).toFixed(1)}`)
+						.join('');
+				let svg = `<rect width="${w}" height="${h}" fill="#33422a"/>`;
+				for (const p of window.FARM_PADDOCKS) {
+					for (const r of p.rings) {
+						const coords = r.split(' ').map((c) => c.split(',').map(Number));
+						svg += `<path d="${pathOf(coords)}Z" fill="#4a5a33" stroke="#ffffff" stroke-opacity=".35" stroke-width="1"/>`;
+					}
+				}
+				const style = {
+					water_main: ['#5fb4f5', 3, ''],
+					power_line: ['#f5cf5b', 2.5, '8 6'],
+					road: ['#d8c3a0', 4, '']
+				};
+				const pins = [];
+				for (const id of show) {
+					const a = byId.get(id);
+					const geom = a.geometry;
+					if (geom.type === 'LineString' && style[a.type]) {
+						const [c, wd, dash] = style[a.type];
+						svg += `<path d="${pathOf(geom.coordinates)}" stroke="#0b1117" stroke-width="${wd + 4}" fill="none" opacity=".8"/><path d="${pathOf(geom.coordinates)}" stroke="${c}" stroke-width="${wd}" fill="none" stroke-dasharray="${dash}"/>`;
+					} else if (geom.type === 'Polygon') {
+						svg += `<path d="${pathOf(geom.coordinates[0])}Z" fill="#2b7fc4" fill-opacity=".6" stroke="#bfe3ff" stroke-width="1.5"/>`;
+					} else if (geom.type === 'Point') {
+						pins.push({ a, at: pct(geom.coordinates) });
+					}
+				}
+				const host = document.createElement('div');
+				host.className = 'mini';
+				host.innerHTML = `<svg viewBox="0 0 ${w} ${h}" aria-hidden="true">${svg}${typeof extraSvg === 'function' ? extraSvg({ x, y, scale }) : extraSvg}</svg>`;
+				for (const { a, at } of pins) {
+					const el = document.createElement('span');
+					el.className = 'pin';
+					el.style.left = at.left;
+					el.style.top = at.top;
+					el.innerHTML = b({ glyph: TYPES[a.type].glyph, status: a.live?.status ?? 'none' });
+					host.append(el);
+				}
+				frame.prepend(host);
+				return { x, y, pct, w, h };
+			}
+
+			const frames = Object.fromEntries(
+				[...document.querySelectorAll('[data-frame]')].map((el) => [el.dataset.frame, el])
+			);
+			const polesIds = window.ASSETS.filter((a) => a.type === 'utility_pole').map((a) => a.id);
+			const around = (lon, lat, span) => [
+				lon - span,
+				lat - span * 0.9,
+				lon + span,
+				lat + span * 0.9
+			];
+
+			// 1. Choose what to add
+			miniMap(frames.add, around(146.4995, -41.1835, 0.004), [
+				'R1',
+				'PL1',
+				'PL2',
+				...polesIds,
+				'E1',
+				'P1'
+			]);
+			const group = (title, types, hot) =>
+				`<div class="type-group"><h4>${title}</h4><div class="types">${types
+					.map(
+						([glyph, label]) =>
+							`<div class="type ${hot === label ? 'hot' : ''}">${b({ glyph })}${label}</div>`
+					)
+					.join('')}</div></div>`;
+			frames.add.insertAdjacentHTML(
+				'beforeend',
+				`<div class="scrim" style="background:rgb(0 0 0 / .35)"></div><div class="sheet"><span class="grab"></span><h3>Add to the map</h3><div class="input">Search types</div>
+				${group(
+					'Infrastructure',
+					[
+						['pole', 'Utility pole'],
+						['power_line', 'Power line'],
+						['elec_meter', 'Electricity meter'],
+						['road', 'Road or track'],
+						['gate', 'Gate'],
+						['building', 'Building']
+					],
+					'Utility pole'
+				)}
+				${group('Irrigation', [
+					['pivot', 'Centre pivot'],
+					['linear', 'Linear move'],
+					['pump', 'Pump'],
+					['dam', 'Dam'],
+					['water_main', 'Water main'],
+					['water_meter', 'Water meter']
+				])}
+				</div>`
+			);
+
+			// 2. Place a point
+			const place = miniMap(frames.place, around(146.4987, -41.1818, 0.0022), [
+				'R1',
+				'PL1',
+				...polesIds,
+				'M1'
+			]);
+			frames.place.insertAdjacentHTML(
+				'beforeend',
+				`<div class="bar"><span class="mbtn">Cancel</span><span class="grow" style="text-align:center"><strong>New utility pole</strong></span></div>
+				<div class="gps" style="left:58%;top:49%"></div>
+				<svg class="crosshair" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="13" fill="none" stroke="#0b1117" stroke-width="5"/><circle cx="22" cy="22" r="13" fill="none" stroke="#fff" stroke-width="2"/><path d="M22 2v12M22 30v12M2 22h12M30 22h12" stroke="#0b1117" stroke-width="5"/><path d="M22 2v12M22 30v12M2 22h12M30 22h12" stroke="#fff" stroke-width="2"/></svg>
+				<div class="hint" style="top:52%"><span style="color:var(--status-high)">Snapped to</span> Pump and pivot feeder</div>
+				<div class="sheet" style="gap:.5rem"><span class="grab"></span><p class="small">Move the map until the pole is under the cross.</p><div class="row2"><span class="mbtn">Use my location, ±4 m</span><span class="mbtn primary">Place here</span></div></div>`
+			);
+
+			// 3. Details
+			miniMap(frames.details, around(146.4987, -41.1818, 0.0022), ['R1', 'PL1', ...polesIds]);
+			frames.details.insertAdjacentHTML(
+				'beforeend',
+				`<div class="sheet" style="max-height:86%"><span class="grab"></span>
+				<div style="display:flex;gap:.6rem;align-items:center">${b({ glyph: 'pole', extra: 'is-planned' })}<div><h3>New utility pole</h3><p class="xs muted">146.49870, −41.18190</p></div></div>
+				<div class="field"><label>Pole number (required)</label><div class="input focus">481212</div></div>
+				<div class="field"><span class="label">Owner</span><div class="segs"><span class="on">Network</span><span>Farm</span></div></div>
+				<div class="row2"><div class="field"><span class="label">Material</span><div class="input">Wood ▾</div></div><div class="field"><span class="label">Height</span><div class="input">11 m</div></div></div>
+				<div class="field"><span class="label">Equipment on pole</span><div class="input muted">For example, a transformer</div></div>
+				<div class="field"><span class="label">Connections</span><div class="linked">${b({ glyph: 'power_line' })}<span style="flex:1">Part of Pump and pivot feeder</span><span class="muted">×</span></div></div>
+				<div class="row2"><span class="mbtn">Add photo</span><span class="mbtn primary">Save pole</span></div></div>`
+			);
+
+			// 4. Draw a line
+			miniMap(
+				frames.line,
+				around(146.4999, -41.1836, 0.0014),
+				['D1', 'P1', 'M3', 'R1'],
+				({ x, y }) => {
+					const pts = [
+						[146.4993, -41.1836],
+						[146.4998, -41.1829],
+						[146.5004, -41.1826],
+						[146.5008, -41.1832]
+					];
+					const d = pts.map(([lon, lat], i) => `${i ? 'L' : 'M'}${x(lon)} ${y(lat)}`).join('');
+					const last = pts[pts.length - 1];
+					return `<path d="${d}" stroke="#0b1117" stroke-width="7" fill="none" opacity=".8"/><path d="${d}" stroke="#5fb4f5" stroke-width="3" fill="none"/>
+					<path d="M${x(last[0])} ${y(last[1])}L${x(146.5005)} ${y(-41.1841)}" stroke="#5fb4f5" stroke-width="2.5" stroke-dasharray="5 5" fill="none"/>
+					${pts.map(([lon, lat]) => `<circle cx="${x(lon)}" cy="${y(lat)}" r="5" fill="#fff" stroke="#0b1117" stroke-width="2"/>`).join('')}
+					<circle cx="${x(146.4993)}" cy="${y(-41.1836)}" r="16" fill="none" stroke="#78bdf0" stroke-width="2.5"/>`;
+				}
+			);
+			frames.line.insertAdjacentHTML(
+				'beforeend',
+				`<div class="bar"><span class="mbtn">Cancel</span><span class="grow" style="text-align:center"><strong>New water main</strong><br><span class="xs muted num">4 points, 223 m</span></span><span class="mbtn">Undo</span></div>
+				<div class="hint" style="top:66px">Starts at <strong>Dam pump</strong>. Tap to add points.</div>
+				<div class="sheet"><span class="grab"></span><div class="row2"><span class="mbtn">Snap to points: on</span><span class="mbtn primary">Finish line</span></div></div>`
+			);
+
+			// 5. Edit a pivot on desktop
+			const pivot = byId.get('I1');
+			const [pl, pt2] = pivot.geometry.coordinates;
+			const edit = miniMap(
+				frames.edit,
+				[pl - 0.0013, pt2 - 0.0045, pl + 0.0087, pt2 + 0.0045],
+				['M1', 'P1', 'D1', 'PL1'],
+				({ x, y, scale }) => {
+					const r = pivot.props.radius_m * scale;
+					const cxp = x(pl);
+					const cyp = y(pt2);
+					return `<circle cx="${cxp}" cy="${cyp}" r="${r}" fill="#fff" fill-opacity=".06" stroke="#fff" stroke-width="2"/><circle cx="${cxp}" cy="${cyp}" r="${r}" fill="none" stroke="#72e49c" stroke-width="2" stroke-dasharray="6 6"/><line x1="${cxp}" y1="${cyp}" x2="${cxp + r}" y2="${cyp}" stroke="#fff" stroke-width="1.5" stroke-dasharray="3 4"/>`;
+				}
+			);
+			const cxPx = edit.x(pl);
+			const cyPx = edit.y(pt2);
+			const rPx = edit.x(pl + pivot.props.radius_m / 83_800) - cxPx;
+			const at = (px, py) => `left:${(px / edit.w) * 100}%;top:${(py / edit.h) * 100}%`;
+			frames.edit.insertAdjacentHTML(
+				'beforeend',
+				`<span class="handle square" style="${at(cxPx, cyPx)}"></span>
+				<span class="hlabel" style="${at(cxPx, cyPx + 12)}">Pivot point</span>
+				<span class="handle" style="${at(cxPx + rPx, cyPx)}"></span>
+				<span class="hlabel" style="${at(cxPx + rPx - 10, cyPx + 12)}">380 m</span>
+				<div class="bar" style="right:calc(36% + 8px)"><strong class="grow">Editing Pivot 2</strong><span class="mbtn">Cancel</span><span class="mbtn primary">Save changes</span></div>
+				<div class="side">
+					<div style="display:flex;gap:.6rem;align-items:center">${b({ glyph: 'pivot', status: 'running', extra: 'is-selected' })}<div><h3>Pivot 2</h3><p class="xs muted">Centre pivot</p></div></div>
+					<div class="row2"><div class="field"><span class="label">Radius</span><div class="input focus">380 m</div></div><div class="field"><span class="label">Spans</span><div class="input">7</div></div></div>
+					<div class="field"><span class="label">Arc</span><div class="segs"><span class="on">Full circle</span><span>Part circle</span></div></div>
+					<div class="field"><span class="label">Make and model</span><div class="input">Valley 8000</div></div>
+					<div class="field"><span class="label">Live data from</span><div class="input">Not linked yet ▾</div></div>
+					<div class="field"><span class="label">History</span><ul class="history xs"><li><time>29 Sep</time><span>Radius 360 → 380 m, Tom</span></li><li><time>12 Aug</time><span>Added, Tom</span></li></ul></div>
+				</div>`
+			);
+
+			// 6. Remove
+			miniMap(frames.remove, around(146.4987, -41.1818, 0.0022), ['R1', 'PL1', 'PL2', ...polesIds]);
+			frames.remove.insertAdjacentHTML(
+				'beforeend',
+				`<div class="scrim"></div><div class="dialog" role="dialog" aria-label="Remove pole">
+				<div style="display:flex;gap:.6rem;align-items:center">${b({ glyph: 'pole', extra: 'is-selected' })}<h3>Remove Pole 481205?</h3></div>
+				<p>It comes off the map. Its details and history are kept, and an admin can restore it.</p>
+				<p class="muted">This also changes:</p>
+				<ul><li>Pump and pivot feeder: rejoined between poles 481204 and 481206</li><li>Shed spur: now starts at pole 481204</li></ul>
+				<div class="row2"><span class="mbtn">Keep pole</span><span class="mbtn danger">Remove pole</span></div></div>`
+			);
+
+			// 7. Move, then undo
+			miniMap(frames.move, around(146.4987, -41.1818, 0.0022), ['R1', 'PL1', 'PL2', ...polesIds]);
+			frames.move.insertAdjacentHTML(
+				'beforeend',
+				`<div class="toast-m">${b({ glyph: 'pole' })}<span class="grow">Pole 481205 moved 6 m</span><a href="#move">Undo</a></div>`
+			);
+		</script>
+	</body>
+</html>
