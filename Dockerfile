@@ -1,13 +1,13 @@
 # Production image for the farm-website SvelteKit app (adapter-node).
 # Runtime config (ORIGIN, BACKEND_ORIGIN, BODY_SIZE_LIMIT) comes from the environment, never the image.
-FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS build
+FROM node:24-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85 AS build
 WORKDIR /app
 COPY package.json package-lock.json .npmrc ./
 RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+FROM node:24-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85
 LABEL org.opencontainers.image.title="farm-website" \
       org.opencontainers.image.description="Farm management frontend (SvelteKit, adapter-node)"
 WORKDIR /app
